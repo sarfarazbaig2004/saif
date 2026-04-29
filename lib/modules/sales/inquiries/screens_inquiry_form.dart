@@ -113,20 +113,14 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
       final role = (rootUserData['role'] ?? '').toString().trim();
       _canManageAssignment = role == 'admin' || role == 'manager';
 
-      _companyId = _firstNonEmpty([
-        _companyId,
-        rootUserData['companyId'],
-      ]);
+      _companyId = _firstNonEmpty([_companyId, rootUserData['companyId']]);
 
       if (widget.existingDoc != null) {
         final existingSnap = await widget.existingDoc!.get();
         final data = existingSnap.data() ?? {};
         _existingRawData = data;
 
-        _companyId = _firstNonEmpty([
-          data['companyId'],
-          _companyId,
-        ]);
+        _companyId = _firstNonEmpty([data['companyId'], _companyId]);
 
         final assignedTo = (data['assignedToUid'] ?? '').toString().trim();
         _assignedToUid = assignedTo.isEmpty ? _assignedToUid : assignedTo;
@@ -219,15 +213,9 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
           _linkedQuotationIdController.text,
         ]);
 
-        _source = _firstNonEmpty([
-          data['source'],
-          _source,
-        ]);
+        _source = _firstNonEmpty([data['source'], _source]);
 
-        _inquiryType = _firstNonEmpty([
-          data['inquiryType'],
-          _inquiryType,
-        ]);
+        _inquiryType = _firstNonEmpty([data['inquiryType'], _inquiryType]);
 
         final nextFollowUpTs = data['nextFollowUpDate'] as Timestamp?;
         final expectedClosureTs = data['expectedClosureDate'] as Timestamp?;
@@ -236,15 +224,9 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
         _expectedClosureDate =
             expectedClosureTs?.toDate() ?? _expectedClosureDate;
 
-        _priority = _firstNonEmpty([
-          data['priority'],
-          _priority,
-        ]);
+        _priority = _firstNonEmpty([data['priority'], _priority]);
 
-        _status = _firstNonEmpty([
-          data['status'],
-          _status,
-        ]);
+        _status = _firstNonEmpty([data['status'], _status]);
       }
 
       if (mounted) setState(() {});
@@ -318,11 +300,11 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
   }
 
   InputDecoration _dec(
-      String label, {
-        String? hint,
-        Widget? prefixIcon,
-        Widget? suffixIcon,
-      }) {
+    String label, {
+    String? hint,
+    Widget? prefixIcon,
+    Widget? suffixIcon,
+  }) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
@@ -359,11 +341,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboardType,
-      decoration: _dec(
-        label,
-        hint: hint,
-        prefixIcon: prefixIcon,
-      ),
+      decoration: _dec(label, hint: hint, prefixIcon: prefixIcon),
       validator: (value) {
         if (required && (value == null || value.trim().isEmpty)) {
           return 'Required';
@@ -407,11 +385,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                   color: const Color(0xFFEAF1FF),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  color: const Color(0xFF2563EB),
-                  size: 20,
-                ),
+                child: Icon(icon, color: const Color(0xFF2563EB), size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -446,20 +420,11 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
     );
   }
 
-  Widget _twoCol({
-    required Widget left,
-    required Widget right,
-  }) {
+  Widget _twoCol({required Widget left, required Widget right}) {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 800) {
-          return Column(
-            children: [
-              left,
-              const SizedBox(height: 14),
-              right,
-            ],
-          );
+          return Column(children: [left, const SizedBox(height: 14), right]);
         }
 
         return Row(
@@ -522,10 +487,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
           prefixIcon: const Icon(Icons.calendar_month_outlined),
           suffixIcon: value == null
               ? const Icon(Icons.arrow_drop_down)
-              : IconButton(
-            onPressed: onClear,
-            icon: const Icon(Icons.close),
-          ),
+              : IconButton(onPressed: onClear, icon: const Icon(Icons.close)),
         ),
         child: Text(
           _formatDate(value),
@@ -653,7 +615,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
         }
 
         final finalAssignedToUid =
-        (_assignedToUid ?? user.uid).toString().trim().isEmpty
+            (_assignedToUid ?? user.uid).toString().trim().isEmpty
             ? user.uid
             : (_assignedToUid ?? user.uid).toString().trim();
 
@@ -730,10 +692,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                 _assignedToName.isNotEmpty
                     ? 'Assigned to: $_assignedToName'
                     : 'Assignment available for admin/manager only',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF374151),
-                ),
+                style: const TextStyle(fontSize: 13, color: Color(0xFF374151)),
               ),
             ),
           ],
@@ -772,8 +731,9 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
           return an.compareTo(bn);
         });
 
-        final safeValue =
-        docs.any((d) => d.id == _assignedToUid) ? _assignedToUid : null;
+        final safeValue = docs.any((d) => d.id == _assignedToUid)
+            ? _assignedToUid
+            : null;
 
         return DropdownButtonFormField<String>(
           initialValue: safeValue,
@@ -838,21 +798,23 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF2563EB),
                 foregroundColor: Colors.white,
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               icon: _saving
                   ? const SizedBox(
-                height: 16,
-                width: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.white,
-                ),
-              )
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                   : const Icon(Icons.save_outlined, size: 18),
               label: Text(_saving ? 'Saving...' : 'Save'),
             ),
@@ -875,10 +837,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF0F172A),
-                          Color(0xFF1E3A8A),
-                        ],
+                        colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
@@ -945,7 +904,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                   _sectionCard(
                     title: 'Customer & Contact',
                     subtitle:
-                    'Review and edit basic customer and contact details.',
+                        'Review and edit basic customer and contact details.',
                     icon: Icons.business_center_outlined,
                     child: Column(
                       children: [
@@ -988,7 +947,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                   _sectionCard(
                     title: 'Inquiry Classification',
                     subtitle:
-                    'Manage subject, source, type, priority, status and assignment.',
+                        'Manage subject, source, type, priority, status and assignment.',
                     icon: Icons.tune_rounded,
                     child: Column(
                       children: [
@@ -997,69 +956,80 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                             controller: _subjectController,
                             label: 'Inquiry Subject',
                             hint:
-                            'Example: Requirement for 400A inverter welding machine',
+                                'Example: Requirement for 400A inverter welding machine',
                             prefixIcon: const Icon(Icons.title_outlined),
                           ),
                           right: _buildAssignmentSection(),
                         ),
                         const SizedBox(height: 14),
                         _twoCol(
-                          left: DropdownButtonFormField<String>(
-                            initialValue: _source.isEmpty ? null : _source,
-                            decoration: _dec(
-                              'Inquiry Source',
-                              prefixIcon: const Icon(Icons.hub_outlined),
-                            ),
-                            items: const [
-                              'Phone Call',
-                              'WhatsApp',
-                              'Email',
-                              'Visit',
-                              'Tender',
-                              'Website',
-                              'IndiaMART',
-                              'Reference',
-                              'Exhibition',
-                              'Other',
-                            ]
-                                .map(
-                                  (e) => DropdownMenuItem<String>(
-                                value: e,
-                                child: Text(e),
-                              ),
-                            )
-                                .toList(),
-                            onChanged: (v) => setState(() => _source = v ?? ''),
+                          left: Builder(
+                            builder: (context) {
+                              final sourceOptions = <String>{
+                                'Phone Call',
+                                'WhatsApp',
+                                'Email',
+                                'Visit',
+                                'Tender',
+                                'Website',
+                                'IndiaMART',
+                                'Reference',
+                                'Exhibition',
+                                'Other',
+                                if (_source.trim().isNotEmpty) _source.trim(),
+                              }.toList();
+
+                              final sourceInitialValue =
+                                  sourceOptions.contains(_source.trim())
+                                  ? _source.trim()
+                                  : null;
+
+                              return DropdownButtonFormField<String>(
+                                initialValue: sourceInitialValue,
+                                decoration: _dec(
+                                  'Inquiry Source',
+                                  prefixIcon: const Icon(Icons.hub_outlined),
+                                ),
+                                items: sourceOptions
+                                    .map(
+                                      (e) => DropdownMenuItem<String>(
+                                        value: e,
+                                        child: Text(e),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (v) =>
+                                    setState(() => _source = (v ?? '').trim()),
+                              );
+                            },
                           ),
                           right: _field(
                             controller: _sourceRefController,
                             label: 'Source Reference',
                             hint:
-                            'Example: L&T, IndiaMART lead, existing client',
+                                'Example: L&T, IndiaMART lead, existing client',
                             prefixIcon: const Icon(Icons.link_outlined),
                           ),
                         ),
                         const SizedBox(height: 14),
                         _twoCol(
                           left: DropdownButtonFormField<String>(
-                            initialValue: _inquiryType.isEmpty ? null : _inquiryType,
+                            initialValue: _inquiryType.isEmpty
+                                ? null
+                                : _inquiryType,
                             decoration: _dec(
                               'Inquiry Type',
                               prefixIcon: const Icon(Icons.category_outlined),
                             ),
-                            items: const [
-                              'Product',
-                              'Service',
-                              'Project',
-                              'Both',
-                            ]
-                                .map(
-                                  (e) => DropdownMenuItem<String>(
-                                value: e,
-                                child: Text(e),
-                              ),
-                            )
-                                .toList(),
+                            items:
+                                const ['Product', 'Service', 'Project', 'Both']
+                                    .map(
+                                      (e) => DropdownMenuItem<String>(
+                                        value: e,
+                                        child: Text(e),
+                                      ),
+                                    )
+                                    .toList(),
                             onChanged: (v) =>
                                 setState(() => _inquiryType = v ?? ''),
                           ),
@@ -1068,15 +1038,16 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                             decoration: _dec(
                               'Priority',
                               prefixIcon: const Icon(
-                                  Icons.local_fire_department_outlined),
+                                Icons.local_fire_department_outlined,
+                              ),
                             ),
                             items: const ['Hot', 'Warm', 'Cold']
                                 .map(
                                   (e) => DropdownMenuItem<String>(
-                                value: e,
-                                child: Text(e),
-                              ),
-                            )
+                                    value: e,
+                                    child: Text(e),
+                                  ),
+                                )
                                 .toList(),
                             onChanged: (v) =>
                                 setState(() => _priority = v ?? 'Warm'),
@@ -1090,23 +1061,24 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                               'Status',
                               prefixIcon: const Icon(Icons.flag_outlined),
                             ),
-                            items: const [
-                              'Open',
-                              'Qualified',
-                              'Quotation Pending',
-                              'Quotation Sent',
-                              'Follow-up Pending',
-                              'Won',
-                              'Lost',
-                              'Not Qualified',
-                            ]
-                                .map(
-                                  (e) => DropdownMenuItem<String>(
-                                value: e,
-                                child: Text(e),
-                              ),
-                            )
-                                .toList(),
+                            items:
+                                const [
+                                      'Open',
+                                      'Qualified',
+                                      'Quotation Pending',
+                                      'Quotation Sent',
+                                      'Follow-up Pending',
+                                      'Won',
+                                      'Lost',
+                                      'Not Qualified',
+                                    ]
+                                    .map(
+                                      (e) => DropdownMenuItem<String>(
+                                        value: e,
+                                        child: Text(e),
+                                      ),
+                                    )
+                                    .toList(),
                             onChanged: (v) =>
                                 setState(() => _status = v ?? 'Open'),
                           ),
@@ -1140,7 +1112,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                   _sectionCard(
                     title: 'Requirement & Commercial Details',
                     subtitle:
-                    'Maintain requirement, quantity, expected value, location and delivery details.',
+                        'Maintain requirement, quantity, expected value, location and delivery details.',
                     icon: Icons.inventory_2_outlined,
                     child: Column(
                       children: [
@@ -1148,7 +1120,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                           controller: _requiredProductsController,
                           label: 'Required Products / Services',
                           hint:
-                          'Write product, specs, application, accessories, technical requirement, etc.',
+                              'Write product, specs, application, accessories, technical requirement, etc.',
                           maxLines: 5,
                           prefixIcon: const Padding(
                             padding: EdgeInsets.only(bottom: 70),
@@ -1168,8 +1140,9 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                             label: 'Expected Deal Value',
                             hint: 'Example: 250000',
                             keyboardType: TextInputType.number,
-                            prefixIcon:
-                            const Icon(Icons.currency_rupee_outlined),
+                            prefixIcon: const Icon(
+                              Icons.currency_rupee_outlined,
+                            ),
                           ),
                         ),
                         const SizedBox(height: 14),
@@ -1178,8 +1151,9 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                             controller: _deliveryTimelineController,
                             label: 'Delivery Timeline',
                             hint: 'Immediate / 2 weeks / 30 days',
-                            prefixIcon:
-                            const Icon(Icons.local_shipping_outlined),
+                            prefixIcon: const Icon(
+                              Icons.local_shipping_outlined,
+                            ),
                           ),
                           right: _field(
                             controller: _locationController,
@@ -1195,7 +1169,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                   _sectionCard(
                     title: 'Follow-up & Notes',
                     subtitle:
-                    'Track next action date, expected closure and important notes.',
+                        'Track next action date, expected closure and important notes.',
                     icon: Icons.event_note_outlined,
                     child: Column(
                       children: [
@@ -1222,7 +1196,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                           controller: _lastFollowUpNoteController,
                           label: 'Last Follow-up Note',
                           hint:
-                          'Example: Customer asked for revised quotation by Friday.',
+                              'Example: Customer asked for revised quotation by Friday.',
                           maxLines: 4,
                           prefixIcon: const Padding(
                             padding: EdgeInsets.only(bottom: 52),
@@ -1234,7 +1208,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                           controller: _notesController,
                           label: 'Customer Notes',
                           hint:
-                          'Example: Needs technical catalogue and competitor comparison.',
+                              'Example: Needs technical catalogue and competitor comparison.',
                           maxLines: 4,
                           prefixIcon: const Padding(
                             padding: EdgeInsets.only(bottom: 52),
@@ -1246,7 +1220,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                           controller: _internalNotesController,
                           label: 'Internal Notes',
                           hint:
-                          'Example: Strong lead, decision maker involved, budget positive.',
+                              'Example: Strong lead, decision maker involved, budget positive.',
                           maxLines: 4,
                           prefixIcon: const Padding(
                             padding: EdgeInsets.only(bottom: 52),
@@ -1258,8 +1232,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                           controller: _linkedQuotationIdController,
                           label: 'Linked Quotation ID',
                           hint: 'Optional quotation reference',
-                          prefixIcon:
-                          const Icon(Icons.receipt_long_outlined),
+                          prefixIcon: const Icon(Icons.receipt_long_outlined),
                         ),
                       ],
                     ),
@@ -1274,8 +1247,9 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                       runSpacing: 12,
                       children: [
                         OutlinedButton(
-                          onPressed:
-                          _saving ? null : () => Navigator.pop(context),
+                          onPressed: _saving
+                              ? null
+                              : () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 18,
@@ -1302,13 +1276,13 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                           ),
                           icon: _saving
                               ? const SizedBox(
-                            height: 16,
-                            width: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
+                                  height: 16,
+                                  width: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
                               : const Icon(Icons.save_outlined),
                           label: Text(_saving ? 'Saving...' : 'Save Changes'),
                         ),

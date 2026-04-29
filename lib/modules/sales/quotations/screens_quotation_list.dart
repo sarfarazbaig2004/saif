@@ -626,6 +626,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       final customer = (data['clientName'] ?? '').toString().toLowerCase();
       final status = (data['status'] ?? 'Draft').toString();
       final isDeleted = data['isDeleted'] == true;
+      final isLatest = data['isLatest'] != false;
 
       final matchesSearch =
           search.isEmpty ||
@@ -635,7 +636,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
           _statusFilter == 'All' ||
           status.toLowerCase() == _statusFilter.toLowerCase();
 
-      return !isDeleted && matchesSearch && matchesStatus;
+      return !isDeleted && isLatest && matchesSearch && matchesStatus;
     }).toList();
 
     filtered.sort((a, b) {
@@ -1140,7 +1141,9 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                     children: [
                                       _buildStatusChip(status),
                                       const SizedBox(width: 8),
-                                      if (approval != 'Pending')
+                                      if (approval != 'Pending' &&
+                                          approval.toLowerCase() !=
+                                              status.toLowerCase())
                                         _buildStatusChip(
                                           approval,
                                           isApproval: true,

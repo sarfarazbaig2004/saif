@@ -1847,23 +1847,41 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         ),
         const SizedBox(height: 16),
         _buildResponsiveFields([
-          DropdownButtonFormField<String>(
-            initialValue: _selectedSource,
-            decoration: _dec(
-              'Source',
-              prefixIcon: const Icon(Icons.campaign_outlined),
-            ),
-            items: [
-              'Whatsapp',
-              'E-mail',
-              'Website',
-              'Referral',
-              'Cold Call',
-              'Exhibition',
-              'IndiaMART',
-              'Other',
-            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            onChanged: (v) => setState(() => _selectedSource = v),
+          Builder(
+            builder: (context) {
+              final sourceOptions = <String>{
+                'Phone Call',
+                'Whatsapp',
+                'WhatsApp',
+                'E-mail',
+                'Email',
+                'Website',
+                'Referral',
+                'Cold Call',
+                'Exhibition',
+                'IndiaMART',
+                'Other',
+                if ((_selectedSource ?? '').trim().isNotEmpty)
+                  (_selectedSource ?? '').trim(),
+              }.toList();
+
+              final safeInitialValue =
+                  sourceOptions.contains((_selectedSource ?? '').trim())
+                  ? (_selectedSource ?? '').trim()
+                  : null;
+
+              return DropdownButtonFormField<String>(
+                initialValue: safeInitialValue,
+                decoration: _dec(
+                  'Source',
+                  prefixIcon: const Icon(Icons.campaign_outlined),
+                ),
+                items: sourceOptions
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                    .toList(),
+                onChanged: (v) => setState(() => _selectedSource = v),
+              );
+            },
           ),
           TextFormField(
             controller: _sourceRefController,

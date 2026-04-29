@@ -81,11 +81,16 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
   final TextEditingController _gstController = TextEditingController();
   String _customerState = '';
   Map<String, dynamic>? _customerInsights;
+  List<Map<String, dynamic>> _customerNameSuggestions = [];
+  bool _isSearchingCustomerHints = false;
+  int _customerHintRequestId = 0;
 
   final TextEditingController _quoteNumberController = TextEditingController();
   final TextEditingController _subjectController = TextEditingController();
   String? _linkedInquiryId;
   String? _linkedInquiryNumber;
+  String? _linkedInquiryAssignedToUid;
+  String? _linkedInquiryAssignedToName;
   final TextEditingController _inquiryRefNoteController =
       TextEditingController();
 
@@ -182,6 +187,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
 
     _linkedInquiryId = data['inquiryId']?.toString();
     _linkedInquiryNumber = data['inquiryNumber']?.toString();
+    _linkedInquiryAssignedToUid = data['assignedToUid']?.toString();
+    _linkedInquiryAssignedToName = data['assignedToName']?.toString();
     _selectedInquirySource = data['inquirySource']?.toString() ?? 'Verbal';
     _inquiryDate =
         (data['inquiryDate'] as Timestamp?)?.toDate() ?? DateTime.now();
@@ -482,6 +489,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     _linkedInquiryId = seed['id']?.toString() ?? seed['inquiryId']?.toString();
     _linkedInquiryNumber =
         seed['inquiryNumber']?.toString() ?? seed['inquiryCode']?.toString();
+    _linkedInquiryAssignedToUid = seed['assignedToUid']?.toString();
+    _linkedInquiryAssignedToName = seed['assignedToName']?.toString();
 
     final seededCustomerId = (seed['customerId'] ?? '').toString().trim();
     if (seededCustomerId.isNotEmpty) {
@@ -758,6 +767,243 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     setState(() => _errorMessage = message);
   }
 
+  String _normalizeName(String name) {
+    return name.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  String _canonicalCompanyName(String name) {
+    var s = _normalizeName(name)
+        .replaceAll(RegExp(r'[^a-z0-9\s]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    const removableTokens = {
+      'pvt',
+      'private',
+      'ltd',
+      'limited',
+      'llp',
+      'co',
+      'company',
+      'm/s',
+      'ms',
+      'the',
+    };
+    final parts = s
+        .split(' ')
+        .where((p) => p.isNotEmpty && !removableTokens.contains(p))
+        .toList();
+    return parts.join(' ').trim();
+  }
+
+  bool _isSameOrSimilarCompany(String a, String b) {
+    final na = _normalizeName(a);
+    final nb = _normalizeName(b);
+    if (na.isEmpty || nb.isEmpty) return false;
+    if (na == nb) return true;
+    if (na.contains(nb) || nb.contains(na)) return true;
+
+    final ca = _canonicalCompanyName(a);
+    final cb = _canonicalCompanyName(b);
+    if (ca.isEmpty || cb.isEmpty) return false;
+    return ca == cb || ca.contains(cb) || cb.contains(ca);
+  }
+
+  bool _isActiveQuotationStatus(String status) {
+    final s = status.trim().toLowerCase();
+    return s.isNotEmpty && s != 'cancelled' && s != 'rejected';
+  }
+
+  Future<void> _onCompanyNameChanged(String value) async {
+    final query = _normalizeName(value);
+    final currentRequest = ++_customerHintRequestId;
+
+    if (query.length < 2 || _companyId == null || _companyId!.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _customerNameSuggestions = [];
+        _isSearchingCustomerHints = false;
+      });
+      return;
+    }
+
+    if (mounted) {
+      setState(() => _isSearchingCustomerHints = true);
+    }
+
+    await Future.delayed(const Duration(milliseconds: 220));
+    if (currentRequest != _customerHintRequestId) return;
+
+    try {
+      final companyRef = FirebaseFirestore.instance
+          .collection('companies')
+          .doc(_companyId);
+
+      final customerSnap = await companyRef
+          .collection('customers')
+          .limit(300)
+          .get();
+
+      final inquirySnap = await companyRef
+          .collection('inquiries')
+          .limit(250)
+          .get();
+
+      final quoteSnap = await companyRef
+          .collection('quotations')
+          .where('isLatest', isEqualTo: true)
+          .where('isDeleted', isEqualTo: false)
+          .limit(200)
+          .get();
+
+      final Map<String, Map<String, dynamic>> byName = {};
+
+      for (final doc in customerSnap.docs) {
+        final d = doc.data();
+        final name = (d['companyName'] ?? d['name'] ?? '').toString().trim();
+        if (name.isEmpty) continue;
+
+        final normalized = _normalizeName(name);
+        final canonical = _canonicalCompanyName(name);
+        final queryCanonical = _canonicalCompanyName(query);
+        final queryMatches =
+            normalized.contains(query) ||
+            query.contains(normalized) ||
+            (canonical.isNotEmpty &&
+                queryCanonical.isNotEmpty &&
+                (canonical.contains(queryCanonical) ||
+                    queryCanonical.contains(canonical)));
+        if (!queryMatches) continue;
+
+        byName[normalized] = {
+          'name': name,
+          'customerId': doc.id,
+          'source': 'customer',
+        };
+      }
+
+      for (final doc in inquirySnap.docs) {
+        final d = doc.data();
+        final name =
+            (d['customerName'] ?? d['companyName'] ?? '').toString().trim();
+        if (name.isEmpty) continue;
+        final normalized = _normalizeName(name);
+        final canonical = _canonicalCompanyName(name);
+        final queryCanonical = _canonicalCompanyName(query);
+        final queryMatches =
+            normalized.contains(query) ||
+            query.contains(normalized) ||
+            (canonical.isNotEmpty &&
+                queryCanonical.isNotEmpty &&
+                (canonical.contains(queryCanonical) ||
+                    queryCanonical.contains(canonical)));
+        if (!queryMatches) continue;
+
+        final assignedToName = (d['assignedToName'] ?? '').toString().trim();
+        final assignedToUid = (d['assignedToUid'] ?? '').toString().trim();
+        final inquiryNo =
+            (d['inquiryNumber'] ?? d['inquiryCode'] ?? doc.id).toString();
+        byName[normalized] = {
+          'name': name,
+          'inquiryNumber': inquiryNo,
+          'assignedToName': assignedToName,
+          'assignedToUid': assignedToUid,
+          'source': 'inquiry',
+        };
+      }
+
+      for (final doc in quoteSnap.docs) {
+        final d = doc.data();
+        final name = (d['clientName'] ?? '').toString().trim();
+        if (name.isEmpty) continue;
+        final normalized = _normalizeName(name);
+        final canonical = _canonicalCompanyName(name);
+        final queryCanonical = _canonicalCompanyName(query);
+        final queryMatches =
+            normalized.contains(query) ||
+            query.contains(normalized) ||
+            (canonical.isNotEmpty &&
+                queryCanonical.isNotEmpty &&
+                (canonical.contains(queryCanonical) ||
+                    queryCanonical.contains(canonical)));
+        if (!queryMatches) continue;
+        final status = (d['status'] ?? '').toString();
+        if (!_isActiveQuotationStatus(status)) continue;
+
+        final ownerUid = (d['createdBy'] ?? '').toString().trim();
+        final ownerName = (d['assignedToName'] ?? d['createdByName'] ?? '')
+            .toString()
+            .trim();
+        final existing = byName[normalized];
+        byName[normalized] = {
+          'name': name,
+          'quoteNumber': (d['quoteNumber'] ?? '').toString(),
+          'status': status,
+          'ownerUid': ownerUid,
+          'ownerName': ownerName,
+          'inquiryNumber':
+              existing?['inquiryNumber'] ?? (d['inquiryNumber'] ?? '').toString(),
+          'assignedToName': existing?['assignedToName'] ?? ownerName,
+          'assignedToUid': existing?['assignedToUid'] ?? ownerUid,
+          'source': 'quotation',
+        };
+      }
+
+      if (!mounted || currentRequest != _customerHintRequestId) return;
+      setState(() {
+        _customerNameSuggestions = byName.values.take(8).toList();
+        _isSearchingCustomerHints = false;
+      });
+    } catch (_) {
+      if (!mounted || currentRequest != _customerHintRequestId) return;
+      setState(() {
+        _customerNameSuggestions = [];
+        _isSearchingCustomerHints = false;
+      });
+    }
+  }
+
+  Future<void> _validateDuplicateCustomerOwnership() async {
+    if (_companyId == null || _currentUserUid == null) return;
+    final enteredName = _normalizeName(_clientNameController.text);
+    if (enteredName.isEmpty) return;
+    final enteredCustomerId = (_selectedCustomerId ?? '').trim();
+
+    final snap = await FirebaseFirestore.instance
+        .collection('companies')
+        .doc(_companyId)
+        .collection('quotations')
+        .where('isLatest', isEqualTo: true)
+        .where('isDeleted', isEqualTo: false)
+        .limit(300)
+        .get();
+
+    for (final doc in snap.docs) {
+      final d = doc.data();
+      final quoteCustomerId = (d['customerId'] ?? '').toString().trim();
+      final name = (d['clientName'] ?? '').toString();
+      final matchesByCustomerId =
+          enteredCustomerId.isNotEmpty &&
+          quoteCustomerId.isNotEmpty &&
+          enteredCustomerId == quoteCustomerId;
+      final matchesByName = _isSameOrSimilarCompany(name, enteredName);
+      if (!matchesByCustomerId && !matchesByName) continue;
+      final ownerUid = (d['createdBy'] ?? '').toString().trim();
+      final status = (d['status'] ?? '').toString();
+      if (!_isActiveQuotationStatus(status)) continue;
+      if (ownerUid.isNotEmpty &&
+          ownerUid != _currentUserUid &&
+          !_isAdminOrManager) {
+        final ownerName =
+            (d['assignedToName'] ?? d['createdByName'] ?? '').toString().trim();
+        throw Exception(
+          ownerName.isEmpty
+              ? 'This customer already has an active quotation assigned to another salesperson.'
+              : 'This customer is already handled by $ownerName in an active quotation.',
+        );
+      }
+    }
+  }
+
   String _extractLegacyTerm(String searchTitle) {
     return _dynamicTerms
         .firstWhere(
@@ -841,6 +1087,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     setState(() => _isLoading = true);
 
     try {
+      await _validateDuplicateCustomerOwnership();
+
       final counterRef = FirebaseFirestore.instance
           .collection('companies')
           .doc(_companyId)
@@ -925,6 +1173,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
         'inquiryId': _linkedInquiryId ?? '',
         'inquiryNumber': _linkedInquiryNumber ?? '',
         'inquiryRefNo': _linkedInquiryNumber ?? '',
+        'assignedToUid': _linkedInquiryAssignedToUid ?? '',
+        'assignedToName': _linkedInquiryAssignedToName ?? '',
         'inquirySource': _selectedInquirySource,
         'inquiryDate': Timestamp.fromDate(_inquiryDate),
         'inquiryReference': _inquiryRefNoteController.text.trim(),
@@ -981,6 +1231,34 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
         payload['version'] = isRevision ? _currentVersion + 1 : 1;
         payload['isLatest'] = true;
         payload['parentQuotationId'] = isRevision ? widget.quotationId : null;
+      }
+
+      if (!isUpdate &&
+          _linkedInquiryId != null &&
+          _linkedInquiryId!.isNotEmpty) {
+        final existingForInquiry = await FirebaseFirestore.instance
+            .collection('companies')
+            .doc(_companyId)
+            .collection('quotations')
+            .where('inquiryId', isEqualTo: _linkedInquiryId)
+            .where('isDeleted', isEqualTo: false)
+            .where('isLatest', isEqualTo: true)
+            .limit(20)
+            .get();
+
+        final hasConflict = existingForInquiry.docs.any((doc) {
+          final quoteData = doc.data();
+          final owner = (quoteData['createdBy'] ?? '').toString().trim();
+          final status = (quoteData['status'] ?? '').toString().toLowerCase();
+          final isActive = status != 'cancelled' && status != 'rejected';
+          return isActive && owner.isNotEmpty && owner != _currentUserUid;
+        });
+
+        if (hasConflict) {
+          throw Exception(
+            'Another salesperson already has an active quotation for this inquiry.',
+          );
+        }
       }
 
       await FirebaseFirestore.instance
@@ -1063,6 +1341,30 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
             if (isUpdate && !isRevision) {
               tx.update(quoteRef, payloadWithNumber);
             } else {
+              if (_linkedInquiryId != null && _linkedInquiryId!.isNotEmpty) {
+                final inquiryRef = FirebaseFirestore.instance
+                    .collection('companies')
+                    .doc(_companyId)
+                    .collection('inquiries')
+                    .doc(_linkedInquiryId);
+                final inquiryDoc = await tx.get(inquiryRef);
+                final assignedUid =
+                    (inquiryDoc.data()?['assignedToUid'] ?? '').toString().trim();
+                final assignedName =
+                    (inquiryDoc.data()?['assignedToName'] ?? '').toString().trim();
+
+                if (!_isAdminOrManager &&
+                    assignedUid.isNotEmpty &&
+                    assignedUid != _currentUserUid) {
+                  throw Exception(
+                    assignedName.isEmpty
+                        ? 'This inquiry is assigned to another salesperson.'
+                        : 'This inquiry is assigned to $assignedName. Only assigned user can create quotation.',
+                  );
+                }
+
+              }
+
               tx.set(quoteRef, payloadWithNumber);
             }
 
@@ -2092,7 +2394,85 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                               _clientNameController,
                               'Company Name *',
                               validator: (v) => v!.isEmpty ? 'Required' : null,
+                              onChanged: _onCompanyNameChanged,
                             ),
+                            if (_isSearchingCustomerHints)
+                              const Padding(
+                                padding: EdgeInsets.only(top: 4, bottom: 8),
+                                child: LinearProgressIndicator(minHeight: 2),
+                              ),
+                            if (_customerNameSuggestions.isNotEmpty)
+                              Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade50,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.amber.shade200),
+                                ),
+                                child: Column(
+                                  children: _customerNameSuggestions.map((s) {
+                                    final name = (s['name'] ?? '').toString();
+                                    final assignee = (s['assignedToName'] ?? '')
+                                        .toString()
+                                        .trim();
+                                    final inq =
+                                        (s['inquiryNumber'] ?? '').toString();
+                                    final quoteNo =
+                                        (s['quoteNumber'] ?? '').toString();
+                                    final status =
+                                        (s['status'] ?? '').toString().trim();
+                                    final subtitleParts = <String>[
+                                      if (inq.isNotEmpty) 'INQ: $inq',
+                                      if (quoteNo.isNotEmpty) 'Quote: $quoteNo',
+                                      if (assignee.isNotEmpty)
+                                        'Assigned: $assignee',
+                                      if (status.isNotEmpty) 'Status: $status',
+                                    ];
+
+                                    return ListTile(
+                                      dense: true,
+                                      visualDensity: VisualDensity.compact,
+                                      leading: Icon(
+                                        Icons.info_outline,
+                                        size: 18,
+                                        color: Colors.amber.shade800,
+                                      ),
+                                      title: Text(
+                                        name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        subtitleParts.join('  |  '),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey.shade800,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        setState(() {
+                                          _clientNameController.text = name;
+                                          _clientNameController.selection =
+                                              TextSelection.collapsed(
+                                            offset: name.length,
+                                          );
+                                          final customerId =
+                                              (s['customerId'] ?? '')
+                                                  .toString()
+                                                  .trim();
+                                          if (customerId.isNotEmpty) {
+                                            _selectedCustomerId = customerId;
+                                          }
+                                          _customerNameSuggestions = [];
+                                        });
+                                      },
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
                             _buildItemTextField(
                               _addressController,
                               'Billing Address',

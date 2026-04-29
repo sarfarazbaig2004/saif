@@ -497,6 +497,34 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
       return;
     }
 
+    final assignedToUid =
+        (inquiryData['assignedToUid'] ?? inquiry.assignedToUid).toString().trim();
+    final assignedToName =
+        (inquiryData['assignedToName'] ?? inquiry.assignedToName).toString().trim();
+    final currentUid = _currentUser?.uid ?? '';
+    final role = (_getString(await _profileDataFuture, 'role')).toLowerCase();
+    final isPrivileged = _isAdminOrManager(role);
+
+    // Enforce assignment ownership: only assigned user/admin can quote this inquiry.
+    if (!isPrivileged &&
+        assignedToUid.isNotEmpty &&
+        currentUid.isNotEmpty &&
+        assignedToUid != currentUid) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              assignedToName.isEmpty
+                  ? 'This inquiry is assigned to another salesperson.'
+                  : 'This inquiry is assigned to $assignedToName. Only assigned user can create quotation.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
     // UX: Show un-dismissible loader while fetching CRM data
     showDialog(
       context: context,
@@ -552,6 +580,8 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
           '',
       'location': inquiry.location,
       'source': inquiry.source,
+      'assignedToUid': assignedToUid,
+      'assignedToName': assignedToName,
       // Pass the raw array whether it was saved as 'items' or 'products'
       'items': inquiryData['products'] ?? inquiryData['items'] ?? [],
     };

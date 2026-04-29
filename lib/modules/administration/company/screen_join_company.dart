@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import 'package:QUIK/modules/administration/company/screen_join_company_otp.dart';
 import 'package:QUIK/modules/administration/company/services/join_company_service.dart';
@@ -9,6 +10,70 @@ const Color pageBgColor = Color(0xFFF5F7FB);
 const Color borderColor = Color(0xFFE5E7EB);
 const Color mutedTextColor = Color(0xFF6B7280);
 const Color successColor = Color(0xFF16A34A);
+
+class _InlineFormError extends StatelessWidget {
+  const _InlineFormError({required this.title, required this.message});
+
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFED7AA)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEA580C).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.mark_email_unread_outlined,
+              size: 17,
+              color: Color(0xFFEA580C),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Color(0xFF9A3412),
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  message,
+                  style: const TextStyle(
+                    color: Color(0xFF9A3412),
+                    fontSize: 12.5,
+                    height: 1.4,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 class ScreenJoinCompany extends StatefulWidget {
   const ScreenJoinCompany({super.key});
@@ -31,9 +96,23 @@ class _ScreenJoinCompanyState extends State<ScreenJoinCompany> {
   bool isLoading = false;
   bool obscurePassword = true;
   bool obscureConfirmPassword = true;
+  String? formErrorTitle;
+  String? formErrorMessage;
+
+  void _clearFormError() {
+    if (formErrorTitle == null && formErrorMessage == null) return;
+    setState(() {
+      formErrorTitle = null;
+      formErrorMessage = null;
+    });
+  }
 
   void _showError(String message) {
     if (!mounted) return;
+
+    final snackWidth = MediaQuery.sizeOf(
+      context,
+    ).width.clamp(0, 720).toDouble();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -46,6 +125,7 @@ class _ScreenJoinCompanyState extends State<ScreenJoinCompany> {
         ),
         backgroundColor: Colors.red.shade700,
         behavior: SnackBarBehavior.floating,
+        width: snackWidth < 560 ? null : 560,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
@@ -71,9 +151,32 @@ class _ScreenJoinCompanyState extends State<ScreenJoinCompany> {
   }
 
   String _friendlyError(Object error) {
+    if (error is FirebaseFunctionsException) {
+      final message = (error.message ?? '').trim();
+      final normalized = message.toLowerCase();
+
+      if (error.code == 'permission-denied' &&
+          normalized.contains('invite is for another email')) {
+        return 'This invite code is linked to a different employee email. Use the exact email your company admin invited, or ask them to send a new invite.';
+      }
+
+      if (message.isNotEmpty) {
+        return message;
+      }
+    }
+
     final message = error.toString().trim();
     if (message.isEmpty) {
       return 'Unable to continue. Please try again.';
+    }
+
+    if (message.contains('Invite is for another email')) {
+      return 'This invite code is linked to a different employee email. Use the exact email your company admin invited, or ask them to send a new invite.';
+    }
+
+    final firebasePrefix = RegExp(r'^\[firebase_functions/[^\]]+\]\s*');
+    if (firebasePrefix.hasMatch(message)) {
+      return message.replaceFirst(firebasePrefix, '');
     }
 
     if (message.startsWith('Exception: ')) {
@@ -85,6 +188,7 @@ class _ScreenJoinCompanyState extends State<ScreenJoinCompany> {
 
   Future<void> _joinCompany() async {
     if (isLoading) return;
+    _clearFormError();
     if (!_formKey.currentState!.validate()) return;
 
     final inviteCode = inviteCodeController.text.trim().toUpperCase();
@@ -157,7 +261,13 @@ class _ScreenJoinCompanyState extends State<ScreenJoinCompany> {
         Navigator.pop(context, true);
       }
     } catch (e) {
-      _showError(_friendlyError(e));
+      final message = _friendlyError(e);
+      if (mounted) {
+        setState(() {
+          formErrorTitle = 'Unable to send OTP';
+          formErrorMessage = message;
+        });
+      }
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
@@ -260,7 +370,9 @@ class _ScreenJoinCompanyState extends State<ScreenJoinCompany> {
                                   Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: primaryColor.withValues(alpha: 0.08),
+                                      color: primaryColor.withValues(
+                                        alpha: 0.08,
+                                      ),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: const Icon(
@@ -318,6 +430,7 @@ class _ScreenJoinCompanyState extends State<ScreenJoinCompany> {
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: nameController,
+                              onChanged: (_) => _clearFormError(),
                               decoration: _inputDecoration(
                                 label: 'Full Name',
                                 hint: 'e.g. Bilal Khan',
@@ -333,6 +446,7 @@ class _ScreenJoinCompanyState extends State<ScreenJoinCompany> {
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: emailController,
+                              onChanged: (_) => _clearFormError(),
                               keyboardType: TextInputType.emailAddress,
                               decoration: _inputDecoration(
                                 label: 'Employee Email',
@@ -356,6 +470,7 @@ class _ScreenJoinCompanyState extends State<ScreenJoinCompany> {
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: passwordController,
+                              onChanged: (_) => _clearFormError(),
                               obscureText: obscurePassword,
                               decoration: _inputDecoration(
                                 label: 'Password',
@@ -387,6 +502,7 @@ class _ScreenJoinCompanyState extends State<ScreenJoinCompany> {
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: confirmPasswordController,
+                              onChanged: (_) => _clearFormError(),
                               obscureText: obscureConfirmPassword,
                               decoration: _inputDecoration(
                                 label: 'Confirm Password',
@@ -437,6 +553,7 @@ class _ScreenJoinCompanyState extends State<ScreenJoinCompany> {
                             const SizedBox(height: 14),
                             TextFormField(
                               controller: inviteCodeController,
+                              onChanged: (_) => _clearFormError(),
                               textCapitalization: TextCapitalization.characters,
                               style: const TextStyle(
                                 fontSize: 16,
@@ -462,6 +579,13 @@ class _ScreenJoinCompanyState extends State<ScreenJoinCompany> {
                               },
                             ),
                             const SizedBox(height: 18),
+                            if (formErrorMessage != null) ...[
+                              _InlineFormError(
+                                title: formErrorTitle ?? 'Unable to continue',
+                                message: formErrorMessage!,
+                              ),
+                              const SizedBox(height: 18),
+                            ],
                             Container(
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(

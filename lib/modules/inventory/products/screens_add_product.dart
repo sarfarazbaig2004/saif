@@ -1,11 +1,10 @@
-// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
-
-import 'dart:html' as html; // NATIVE WEB FILE LAUNCHER (NO PLUGINS REQUIRED)
+// ignore_for_file: deprecated_member_use
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ScreensAddProduct extends StatefulWidget {
   final String companyId;
@@ -494,7 +493,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
   // SECURE NATIVE URL LAUNCHER (BYPASS CORS)
   // ---------------------------------------------------------
 
-  void _launchSafeUrl(String? urlString) {
+  Future<void> _launchSafeUrl(String? urlString) async {
     if (urlString == null || urlString.trim().isEmpty) return;
 
     final url = urlString.trim();
@@ -512,7 +511,18 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
     }
 
     try {
-      html.window.open(url, '_blank');
+      final uri = Uri.tryParse(url);
+      if (uri == null) {
+        throw Exception('Invalid URL');
+      }
+
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) {
+        throw Exception('Could not open URL');
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -915,10 +925,17 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
     required IconData icon,
     String? hint,
   }) {
+    final width = MediaQuery.of(context).size.width;
+    final iconSize = width < 360 ? 18.0 : (width < 480 ? 19.0 : 20.0);
+    final labelFontSize = width < 360 ? 12.0 : (width < 480 ? 13.0 : 14.0);
+    final hintFontSize = width < 360 ? 11.0 : (width < 480 ? 12.0 : 13.0);
+
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      prefixIcon: Icon(icon, size: 20),
+      labelStyle: TextStyle(fontSize: labelFontSize),
+      hintStyle: TextStyle(fontSize: hintFontSize),
+      prefixIcon: Icon(icon, size: iconSize),
       filled: true,
       fillColor: Colors.white,
       isDense: true,
@@ -949,8 +966,12 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
     void Function(String)? onChanged,
     bool enabled = true,
   }) {
+    final width = MediaQuery.of(context).size.width;
+    final inputFontSize = width < 360 ? 13.0 : (width < 480 ? 14.0 : 15.0);
+
     return TextFormField(
       controller: controller,
+      style: TextStyle(fontSize: inputFontSize),
       decoration: _inputDecoration(label: label, icon: icon, hint: hint),
       keyboardType: keyboardType,
       maxLines: maxLines,
@@ -967,8 +988,12 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
     required List<DropdownMenuItem<String>> items,
     required void Function(String?) onChanged,
   }) {
+    final width = MediaQuery.of(context).size.width;
+    final inputFontSize = width < 360 ? 13.0 : (width < 480 ? 14.0 : 15.0);
+
     return DropdownButtonFormField<String>(
       initialValue: value,
+      style: TextStyle(fontSize: inputFontSize, color: Colors.black87),
       decoration: _inputDecoration(label: label, icon: icon),
       items: items,
       onChanged: onChanged,
@@ -976,6 +1001,9 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
   }
 
   Widget _buildAssignUserDropdown() {
+    final width = MediaQuery.of(context).size.width;
+    final inputFontSize = width < 360 ? 13.0 : (width < 480 ? 14.0 : 15.0);
+
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: _companyUsersRef.where('isActive', isEqualTo: true).snapshots(),
       builder: (context, snap) {
@@ -1011,6 +1039,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
 
         return DropdownButtonFormField<String>(
           initialValue: _assignedToUid,
+          style: TextStyle(fontSize: inputFontSize, color: Colors.black87),
           decoration: _inputDecoration(
             label: 'Assign To',
             icon: Icons.person_outline,
@@ -1034,29 +1063,42 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
   }
 
   Widget _sectionHeader(String title) {
+    return _sectionHeaderResponsive(title, fontSize: 15);
+  }
+
+  Widget _sectionHeaderResponsive(String title, {required double fontSize}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 15,
+        style: TextStyle(
+          fontSize: fontSize,
           fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 
-  Widget _sectionCard({required Widget child}) {
+  Widget _sectionCard({
+    required Widget child,
+    EdgeInsetsGeometry? padding,
+    BorderRadius? borderRadius,
+  }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: padding ?? const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: borderRadius ?? BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFE6EAF0)),
       ),
       child: child,
     );
+  }
+
+  bool _useTwoColumnLayout(double width, bool isLandscape) {
+    // Enable side-by-side fields only when width is comfortable enough.
+    return width >= 700 || (isLandscape && width >= 560);
   }
 
   Widget _buildStatusToggleTile({
@@ -1065,6 +1107,10 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
     required bool value,
     required void Function(bool) onChanged,
   }) {
+    final width = MediaQuery.of(context).size.width;
+    final titleSize = width < 360 ? 13.0 : 14.0;
+    final subtitleSize = width < 360 ? 11.0 : 12.0;
+
     return SwitchListTile(
       value: value,
       onChanged: onChanged,
@@ -1072,16 +1118,19 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       contentPadding: EdgeInsets.zero,
       title: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        style: TextStyle(fontWeight: FontWeight.w600, fontSize: titleSize),
       ),
       subtitle: Text(
         subtitle,
-        style: const TextStyle(fontSize: 12),
+        style: TextStyle(fontSize: subtitleSize),
       ),
     );
   }
 
   Widget _buildCategoryDropdown() {
+    final width = MediaQuery.of(context).size.width;
+    final inputFontSize = width < 360 ? 13.0 : (width < 480 ? 14.0 : 15.0);
+
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: _categoriesRef.orderBy('nameLower').snapshots(),
       builder: (context, snap) {
@@ -1120,6 +1169,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
 
         return DropdownButtonFormField<String?>(
           initialValue: _selectedCategoryId,
+          style: TextStyle(fontSize: inputFontSize, color: Colors.black87),
           decoration: _inputDecoration(
             label: 'Category *',
             icon: Icons.folder_outlined,
@@ -1166,10 +1216,14 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
   }
 
   Widget _buildSubcategoryDropdown() {
+    final width = MediaQuery.of(context).size.width;
+    final inputFontSize = width < 360 ? 13.0 : (width < 480 ? 14.0 : 15.0);
+
     final catId = _selectedCategoryId;
     if (catId == null) {
       return DropdownButtonFormField<String?>(
         initialValue: null,
+        style: TextStyle(fontSize: inputFontSize, color: Colors.black87),
         decoration: _inputDecoration(
           label: 'Subcategory',
           icon: Icons.folder_open_outlined,
@@ -1222,6 +1276,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
 
         return DropdownButtonFormField<String?>(
           initialValue: _selectedSubcategoryId,
+          style: TextStyle(fontSize: inputFontSize, color: Colors.black87),
           decoration: _inputDecoration(
             label: 'Subcategory',
             icon: Icons.folder_open_outlined,
@@ -1265,6 +1320,17 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
   @override
   Widget build(BuildContext context) {
     final isEditText = isEditMode ? 'Edit Product' : 'Add Product';
+    final media = MediaQuery.of(context);
+    final screenWidth = media.size.width;
+    final isLandscape = media.orientation == Orientation.landscape;
+
+    final isCompactPhone = screenWidth < 360;
+    final horizontalPadding = isCompactPhone ? 10.0 : (screenWidth < 480 ? 14.0 : 16.0);
+    final sectionPadding = isCompactPhone ? 10.0 : 14.0;
+    final sectionGap = isCompactPhone ? 10.0 : 12.0;
+    final fieldGap = isCompactPhone ? 8.0 : 10.0;
+    final sectionTitleSize = isCompactPhone ? 14.0 : 15.0;
+    final maxFormWidth = screenWidth >= 600 ? 960.0 : double.infinity;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8FB),
@@ -1274,18 +1340,26 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       ),
       body: LayoutBuilder(
         builder: (context, constraints) {
-          final isTablet = constraints.maxWidth >= 760;
+          final useTwoCol = _useTwoColumnLayout(
+            constraints.maxWidth,
+            isLandscape,
+          );
 
           final mainForm = Form(
             key: _formKey,
             child: Column(
               children: [
                 _sectionCard(
+                  padding: EdgeInsets.all(sectionPadding),
+                  borderRadius: BorderRadius.circular(isCompactPhone ? 12 : 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _sectionHeader('Basic Information'),
-                      if (isTablet)
+                      _sectionHeaderResponsive(
+                        'Basic Information',
+                        fontSize: sectionTitleSize,
+                      ),
+                      if (useTwoCol)
                         Row(
                           children: [
                             Expanded(
@@ -1297,7 +1371,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 onChanged: (_) => setState(() {}),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: fieldGap),
                             Expanded(
                               child: _buildDropdownField(
                                 label: 'Product Type',
@@ -1341,7 +1415,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                           validator: _requiredValidator,
                           onChanged: (_) => setState(() {}),
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: fieldGap),
                         _buildDropdownField(
                           label: 'Product Type',
                           icon: Icons.category_outlined,
@@ -1374,7 +1448,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                           },
                         ),
                       ],
-                      const SizedBox(height: 10),
+                      SizedBox(height: fieldGap),
                       _buildTextField(
                         controller: _descriptionController,
                         label: 'Description',
@@ -1382,21 +1456,21 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                         maxLines: 3,
                         onChanged: (_) => setState(() {}),
                       ),
-                      const SizedBox(height: 10),
-                      if (isTablet)
+                      SizedBox(height: fieldGap),
+                      if (useTwoCol)
                         Row(
                           children: [
                             Expanded(child: _buildCategoryDropdown()),
-                            const SizedBox(width: 10),
+                            SizedBox(width: fieldGap),
                             Expanded(child: _buildSubcategoryDropdown()),
                           ],
                         )
                       else ...[
                         _buildCategoryDropdown(),
-                        const SizedBox(height: 10),
+                        SizedBox(height: fieldGap),
                         _buildSubcategoryDropdown(),
                       ],
-                      const SizedBox(height: 10),
+                      SizedBox(height: fieldGap),
                       _buildTextField(
                         controller: _brandController,
                         label: 'Brand',
@@ -1407,13 +1481,18 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: sectionGap),
                 _sectionCard(
+                  padding: EdgeInsets.all(sectionPadding),
+                  borderRadius: BorderRadius.circular(isCompactPhone ? 12 : 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _sectionHeader('Codes & Classification'),
-                      if (isTablet)
+                      _sectionHeaderResponsive(
+                        'Codes & Classification',
+                        fontSize: sectionTitleSize,
+                      ),
+                      if (useTwoCol)
                         Row(
                           children: [
                             Expanded(
@@ -1425,7 +1504,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 onChanged: (_) => setState(() {}),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: fieldGap),
                             Expanded(
                               child: _buildTextField(
                                 controller: _itemCodeController,
@@ -1444,7 +1523,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                           validator: _requiredValidator,
                           onChanged: (_) => setState(() {}),
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: fieldGap),
                         _buildTextField(
                           controller: _itemCodeController,
                           label: 'Item Code',
@@ -1452,8 +1531,8 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                           onChanged: (_) => setState(() {}),
                         ),
                       ],
-                      const SizedBox(height: 10),
-                      if (isTablet)
+                      SizedBox(height: fieldGap),
+                      if (useTwoCol)
                         Row(
                           children: [
                             Expanded(
@@ -1463,7 +1542,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 icon: Icons.tag_outlined,
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: fieldGap),
                             Expanded(
                               child: _buildTextField(
                                 controller: _barcodeController,
@@ -1479,14 +1558,14 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                           label: 'SKU',
                           icon: Icons.tag_outlined,
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: fieldGap),
                         _buildTextField(
                           controller: _barcodeController,
                           label: 'Barcode',
                           icon: Icons.qr_code_scanner_outlined,
                         ),
                       ],
-                      const SizedBox(height: 10),
+                      SizedBox(height: fieldGap),
                       _buildTextField(
                         controller: _uomController,
                         label: 'UOM *',
@@ -1498,12 +1577,17 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: sectionGap),
                 _sectionCard(
+                  padding: EdgeInsets.all(sectionPadding),
+                  borderRadius: BorderRadius.circular(isCompactPhone ? 12 : 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _sectionHeader('Inventory Controls'),
+                      _sectionHeaderResponsive(
+                        'Inventory Controls',
+                        fontSize: sectionTitleSize,
+                      ),
                       _buildStatusToggleTile(
                         title: 'Track Inventory',
                         subtitle:
@@ -1537,8 +1621,8 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                             ),
                           ),
                         ),
-                      const SizedBox(height: 8),
-                      if (isTablet)
+                      SizedBox(height: isCompactPhone ? 6 : 8),
+                      if (useTwoCol)
                         Row(
                           children: [
                             Expanded(
@@ -1558,7 +1642,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 enabled: _trackInventory && !_isServiceLike,
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: fieldGap),
                             Expanded(
                               child: _buildTextField(
                                 controller: _reorderLevelController,
@@ -1592,7 +1676,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                           onChanged: (_) => setState(() {}),
                           enabled: _trackInventory && !_isServiceLike,
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: fieldGap),
                         _buildTextField(
                           controller: _reorderLevelController,
                           label: 'Reorder Level',
@@ -1607,8 +1691,8 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                           enabled: _trackInventory && !_isServiceLike,
                         ),
                       ],
-                      const SizedBox(height: 10),
-                      if (isTablet)
+                      SizedBox(height: fieldGap),
+                      if (useTwoCol)
                         Row(
                           children: [
                             Expanded(
@@ -1627,7 +1711,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 enabled: _trackInventory && !_isServiceLike,
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: fieldGap),
                             Expanded(
                               child: _buildTextField(
                                 controller: _maxStockLevelController,
@@ -1659,7 +1743,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                               : null,
                           enabled: _trackInventory && !_isServiceLike,
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: fieldGap),
                         _buildTextField(
                           controller: _maxStockLevelController,
                           label: 'Maximum Stock',
@@ -1676,13 +1760,18 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: sectionGap),
                 _sectionCard(
+                  padding: EdgeInsets.all(sectionPadding),
+                  borderRadius: BorderRadius.circular(isCompactPhone ? 12 : 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _sectionHeader('Pricing & Tax'),
-                      if (isTablet)
+                      _sectionHeaderResponsive(
+                        'Pricing & Tax',
+                        fontSize: sectionTitleSize,
+                      ),
+                      if (useTwoCol)
                         Row(
                           children: [
                             Expanded(
@@ -1698,7 +1787,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 onChanged: (_) => setState(() {}),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: fieldGap),
                             Expanded(
                               child: _buildTextField(
                                 controller: _unitPriceController,
@@ -1726,7 +1815,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                           validator: (v) => _numberValidator(v),
                           onChanged: (_) => setState(() {}),
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: fieldGap),
                         _buildTextField(
                           controller: _unitPriceController,
                           label: 'Selling Price *',
@@ -1738,8 +1827,8 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                           onChanged: (_) => setState(() {}),
                         ),
                       ],
-                      const SizedBox(height: 10),
-                      if (isTablet)
+                      SizedBox(height: fieldGap),
+                      if (useTwoCol)
                         Row(
                           children: [
                             Expanded(
@@ -1755,7 +1844,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 onChanged: (_) => setState(() {}),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: fieldGap),
                             Expanded(
                               child: _buildTextField(
                                 controller: _gstController,
@@ -1783,7 +1872,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                           validator: (v) => _numberValidator(v),
                           onChanged: (_) => setState(() {}),
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: fieldGap),
                         _buildTextField(
                           controller: _gstController,
                           label: 'GST % *',
@@ -1798,12 +1887,17 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: sectionGap),
                 _sectionCard(
+                  padding: EdgeInsets.all(sectionPadding),
+                  borderRadius: BorderRadius.circular(isCompactPhone ? 12 : 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _sectionHeader('Assignment & Control'),
+                      _sectionHeaderResponsive(
+                        'Assignment & Control',
+                        fontSize: sectionTitleSize,
+                      ),
                       _buildAssignUserDropdown(),
                       if (!_canAssignOthers) ...[
                         const SizedBox(height: 8),
@@ -1815,7 +1909,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 10),
+                      SizedBox(height: fieldGap),
                       _buildStatusToggleTile(
                         title: 'Active Product',
                         subtitle:
@@ -1852,19 +1946,19 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: sectionGap),
                 _buildImageAndCatalogCard(),
-                const SizedBox(height: 14),
+                SizedBox(height: sectionGap + 2),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(14),
+                  padding: EdgeInsets.all(sectionPadding),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(isCompactPhone ? 12 : 14),
                     border: Border.all(color: const Color(0xFFE6EAF0)),
                   ),
                   child: Wrap(
-                    alignment: WrapAlignment.end,
+                    alignment: isCompactPhone ? WrapAlignment.center : WrapAlignment.end,
                     spacing: 10,
                     runSpacing: 10,
                     children: [
@@ -1896,10 +1990,10 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
           );
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(horizontalPadding),
             child: Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 900),
+                constraints: BoxConstraints(maxWidth: maxFormWidth),
                 child: mainForm,
               ),
             ),
