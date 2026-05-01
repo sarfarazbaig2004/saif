@@ -41,6 +41,7 @@ import 'package:QUIK/modules/production/bom/screens/bom_list_screen.dart';
 import 'package:QUIK/modules/production/boq/screens/boq_list_screen.dart';
 import 'package:QUIK/modules/production/contractor_jobs/screens/contractor_job_list_screen.dart';
 import 'package:QUIK/modules/production/execution/screens/production_entry_list_screen.dart';
+import 'package:QUIK/modules/production/galvanizing/screens/galvanizing_job_list_screen.dart';
 import 'package:QUIK/modules/production/inspections/screens/inspection_list_screen.dart';
 import 'package:QUIK/modules/production/job_cards/screens/job_card_list_screen.dart';
 import 'package:QUIK/modules/production/masters/screens/item_list_screen.dart';
@@ -1956,6 +1957,12 @@ class _ZohoShellState extends State<ZohoShell> {
         return Padding(
           padding: const EdgeInsets.all(14),
           child: ContractorJobListScreen(tenantId: widget.companyId),
+        );
+
+      case ShellPage.productionGalvanizing:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: GalvanizingJobListScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.productionInspections:
