@@ -31,24 +31,36 @@ class FabricationRawMaterialStockScreen extends StatelessWidget {
         final metrics = _StockMetrics.fromRows(summaries);
 
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _ScreenHeader(metrics: metrics),
-            const SizedBox(height: 12),
-            const FabricationInventoryFlowCard(
-              activeStep: FabricationInventoryFlowStep.stock,
-              helperText:
-                  'This is the live raw material balance used by the fabrication store. GRN or material receipt increases stock, and material issue decreases stock automatically.',
-            ),
-            const SizedBox(height: 12),
             Expanded(
-              child:
-                  snapshot.connectionState == ConnectionState.waiting &&
-                      !snapshot.hasData
-                  ? const Center(child: CircularProgressIndicator(color: zBlue))
-                  : summaries.isEmpty
-                  ? const _EmptyStockState()
-                  : _LiveStockTable(rows: summaries, metrics: metrics),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(top: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ScreenHeader(metrics: metrics),
+                    const SizedBox(height: 12),
+                    const FabricationInventoryFlowCard(
+                      activeStep: FabricationInventoryFlowStep.stock,
+                      helperText:
+                          'This is the live raw material balance used by the fabrication store. GRN or material receipt increases stock, and material issue decreases stock automatically.',
+                    ),
+                    const SizedBox(height: 12),
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        !snapshot.hasData)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 48),
+                        child: Center(
+                          child: CircularProgressIndicator(color: zBlue),
+                        ),
+                      )
+                    else if (summaries.isEmpty)
+                      const _EmptyStockState()
+                    else
+                      _LiveStockTable(rows: summaries, metrics: metrics),
+                  ],
+                ),
+              ),
             ),
           ],
         );
@@ -212,71 +224,65 @@ class _LiveStockTable extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-          Expanded(
-            child: Scrollbar(
-              thumbVisibility: true,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SingleChildScrollView(
-                  child: DataTable(
-                    columnSpacing: 18,
-                    headingRowHeight: 44,
-                    dataRowMinHeight: 44,
-                    dataRowMaxHeight: 58,
-                    columns: const [
-                      DataColumn(label: Text('Section / Material')),
-                      DataColumn(label: Text('Grade')),
-                      DataColumn(label: Text('Length (mm)')),
-                      DataColumn(label: Text('Unit Weight')),
-                      DataColumn(label: Text('Available Stock (kg)')),
-                      DataColumn(label: Text('UOM')),
-                      DataColumn(label: Text('Last Updated')),
-                    ],
-                    rows: rows
-                        .map((row) {
-                          return DataRow(
-                            cells: [
-                              DataCell(
-                                ConstrainedBox(
-                                  constraints: const BoxConstraints(
-                                    minWidth: 220,
-                                    maxWidth: 320,
-                                  ),
-                                  child: Text(
-                                    row.materialDescription.isEmpty
-                                        ? 'Unnamed stock item'
-                                        : row.materialDescription,
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 2,
-                                  ),
-                                ),
+          Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columnSpacing: 18,
+                headingRowHeight: 44,
+                dataRowMinHeight: 44,
+                dataRowMaxHeight: 58,
+                columns: const [
+                  DataColumn(label: Text('Section / Material')),
+                  DataColumn(label: Text('Grade')),
+                  DataColumn(label: Text('Length (mm)')),
+                  DataColumn(label: Text('Unit Weight')),
+                  DataColumn(label: Text('Available Stock (kg)')),
+                  DataColumn(label: Text('UOM')),
+                  DataColumn(label: Text('Last Updated')),
+                ],
+                rows: rows
+                    .map((row) {
+                      return DataRow(
+                        cells: [
+                          DataCell(
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(
+                                minWidth: 220,
+                                maxWidth: 320,
                               ),
-                              DataCell(
-                                Text(row.grade.isEmpty ? '-' : row.grade),
+                              child: Text(
+                                row.materialDescription.isEmpty
+                                    ? 'Unnamed stock item'
+                                    : row.materialDescription,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
                               ),
-                              DataCell(Text(_formatNumber(row.lengthMm))),
-                              DataCell(
-                                Text(
-                                  row.unitWeightKgPerM <= 0
-                                      ? '-'
-                                      : '${row.unitWeightKgPerM.toStringAsFixed(2)} kg/m',
-                                ),
-                              ),
-                              DataCell(Text(_formatNumber(row.closingStockKg))),
-                              DataCell(Text(row.uom)),
-                              DataCell(
-                                Text(
-                                  row.lastUpdatedAt == null
-                                      ? '-'
-                                      : _formatDate(row.lastUpdatedAt!),
-                                ),
-                              ),
-                            ],
-                          );
-                        })
-                        .toList(growable: false),
-                  ),
-                ),
+                            ),
+                          ),
+                          DataCell(Text(row.grade.isEmpty ? '-' : row.grade)),
+                          DataCell(Text(_formatNumber(row.lengthMm))),
+                          DataCell(
+                            Text(
+                              row.unitWeightKgPerM <= 0
+                                  ? '-'
+                                  : '${row.unitWeightKgPerM.toStringAsFixed(2)} kg/m',
+                            ),
+                          ),
+                          DataCell(Text(_formatNumber(row.closingStockKg))),
+                          DataCell(Text(row.uom)),
+                          DataCell(
+                            Text(
+                              row.lastUpdatedAt == null
+                                  ? '-'
+                                  : _formatDate(row.lastUpdatedAt!),
+                            ),
+                          ),
+                        ],
+                      );
+                    })
+                    .toList(growable: false),
               ),
             ),
           ),
@@ -373,8 +379,8 @@ class _EmptyStockState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: const [
+    return const Column(
+      children: [
         _InlineStateCard(
           icon: Icons.inventory_2_outlined,
           title: 'No live raw material stock yet',

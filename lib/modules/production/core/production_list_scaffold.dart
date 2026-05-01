@@ -29,96 +29,142 @@ class ProductionListScaffold<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: zBorder),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 22,
-                backgroundColor: zBlueSoft,
-                child: Icon(icon, color: zBlue),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: zText,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: zMuted,
-                        fontSize: 13.2,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (headerAction != null) ...[
-                const SizedBox(width: 12),
-                headerAction!,
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (intro != null) ...[intro!, const SizedBox(height: 12)],
         Expanded(
-          child: StreamBuilder<List<T>>(
-            stream: stream,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting &&
-                  !snapshot.hasData) {
-                return const Center(
-                  child: CircularProgressIndicator(color: zBlue),
-                );
-              }
-
-              if (snapshot.hasError) {
-                return _ProductionEmptyState(
-                  icon: Icons.error_outline,
-                  title: 'Unable to load records',
-                  message: snapshot.error.toString(),
-                );
-              }
-
-              final items = snapshot.data ?? <T>[];
-              if (items.isEmpty) {
-                return _ProductionEmptyState(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _ProductionListHeader(
+                  title: title,
+                  subtitle: subtitle,
                   icon: icon,
-                  title: emptyTitle,
-                  message: emptyMessage,
-                );
-              }
+                  headerAction: headerAction,
+                ),
+                const SizedBox(height: 12),
+                if (intro != null) ...[intro!, const SizedBox(height: 12)],
+                StreamBuilder<List<T>>(
+                  stream: stream,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        !snapshot.hasData) {
+                      return const _ScrollableStatusState(
+                        child: CircularProgressIndicator(color: zBlue),
+                      );
+                    }
 
-              return ListView.separated(
-                itemCount: items.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
-                itemBuilder: (context, index) {
-                  return itemBuilder(context, items[index]);
-                },
-              );
-            },
+                    if (snapshot.hasError) {
+                      return _ProductionEmptyState(
+                        icon: Icons.error_outline,
+                        title: 'Unable to load records',
+                        message: snapshot.error.toString(),
+                      );
+                    }
+
+                    final items = snapshot.data ?? <T>[];
+                    if (items.isEmpty) {
+                      return _ProductionEmptyState(
+                        icon: icon,
+                        title: emptyTitle,
+                        message: emptyMessage,
+                      );
+                    }
+
+                    return Column(
+                      children: [
+                        for (var index = 0; index < items.length; index++) ...[
+                          itemBuilder(context, items[index]),
+                          if (index != items.length - 1)
+                            const SizedBox(height: 8),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+class _ScrollableStatusState extends StatelessWidget {
+  final Widget child;
+
+  const _ScrollableStatusState({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 48),
+      child: Center(child: child),
+    );
+  }
+}
+
+class _ProductionListHeader extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Widget? headerAction;
+
+  const _ProductionListHeader({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.headerAction,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: zBorder),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: zBlueSoft,
+            child: Icon(icon, color: zBlue),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: zText,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: zMuted,
+                    fontSize: 13.2,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (headerAction != null) ...[
+            const SizedBox(width: 12),
+            headerAction!,
+          ],
+        ],
+      ),
     );
   }
 }
