@@ -22,7 +22,9 @@ class TenantModuleService {
     ModuleIds.sales,
     ModuleIds.service,
     ModuleIds.inventory,
+    ModuleIds.dispatch,
     ModuleIds.finance,
+    ModuleIds.production,
     ModuleIds.reports,
     ModuleIds.settings,
   };
@@ -71,11 +73,17 @@ class TenantModuleService {
     final result = await _firestore.runTransaction((transaction) async {
       final tenantSnap = await transaction.get(tenantRef);
       final existingModuleIds = <String>{};
+      final metadataRepairModuleIds = <String>{};
 
       for (final moduleId in moduleIds) {
         final moduleSnap = await transaction.get(modulesRef.doc(moduleId));
         if (moduleSnap.exists) {
           existingModuleIds.add(moduleId);
+          final data = moduleSnap.data() ?? const <String, dynamic>{};
+          if (data['name'] != moduleId ||
+              (data['label'] ?? '').toString().trim().isEmpty) {
+            metadataRepairModuleIds.add(moduleId);
+          }
         }
       }
 
@@ -94,7 +102,10 @@ class TenantModuleService {
       }
 
       for (final moduleId in missingModuleIds) {
+        final module = ModuleRegistry.findById(moduleId);
         transaction.set(modulesRef.doc(moduleId), {
+          'name': moduleId,
+          'label': module?.displayName ?? moduleId,
           'enabled': _defaultEnabledModuleIds.contains(moduleId),
           'features': const <String, dynamic>{},
           'createdAt': FieldValue.serverTimestamp(),
@@ -102,10 +113,20 @@ class TenantModuleService {
         });
       }
 
+      for (final moduleId in metadataRepairModuleIds) {
+        final module = ModuleRegistry.findById(moduleId);
+        transaction.set(modulesRef.doc(moduleId), {
+          'name': moduleId,
+          'label': module?.displayName ?? moduleId,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+
       return TenantModuleSeedResult(
         tenantCreated: !tenantSnap.exists,
         modulesCreated: missingModuleIds.length,
         modulesSkipped: existingModuleIds.length,
+        modulesRepaired: metadataRepairModuleIds.length,
       );
     });
 
@@ -117,6 +138,10 @@ class TenantModuleService {
     } else if (result.modulesCreated > 0) {
       debugPrint(
         'TenantModuleService: backfilled tenant $normalizedTenantId from $source with ${result.modulesCreated} missing module docs',
+      );
+    } else if (result.modulesRepaired > 0) {
+      debugPrint(
+        'TenantModuleService: repaired tenant $normalizedTenantId from $source with ${result.modulesRepaired} module metadata updates',
       );
     } else {
       debugPrint(
@@ -139,7 +164,10 @@ class TenantModuleService {
 
     for (final module in ModuleRegistry.activeModules) {
       batch.set(modulesRef.doc(module.id), {
+        'name': module.id,
+        'label': module.displayName,
         'enabled': safeEnabledModuleIds.contains(module.id),
+        'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     }
@@ -268,12 +296,14 @@ class TenantModuleSeedResult {
   final bool tenantCreated;
   final int modulesCreated;
   final int modulesSkipped;
+  final int modulesRepaired;
   final bool companyMissing;
 
   const TenantModuleSeedResult({
     this.tenantCreated = false,
     this.modulesCreated = 0,
     this.modulesSkipped = 0,
+    this.modulesRepaired = 0,
     this.companyMissing = false,
   });
 }

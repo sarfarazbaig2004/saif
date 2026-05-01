@@ -3,6 +3,7 @@ import 'package:QUIK/core/modules/models/app_module.dart';
 class ModuleIds {
   static const String administration = 'administration';
   static const String crm = 'crm';
+  static const String dispatch = 'dispatch';
   static const String finance = 'finance';
   static const String hr = 'hr';
   static const String inventory = 'inventory';
@@ -52,6 +53,13 @@ class ModuleRegistry {
       baseRoute: '/inventory',
       iconKey: 'inventory_2',
       sortOrder: 50,
+    ),
+    AppModule(
+      id: ModuleIds.dispatch,
+      displayName: 'Dispatch',
+      baseRoute: '/dispatch',
+      iconKey: 'local_shipping',
+      sortOrder: 55,
     ),
     AppModule(
       id: ModuleIds.finance,

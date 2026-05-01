@@ -56,14 +56,23 @@ class ModuleAccessController extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final seedResult = await _service.ensureTenantModulesInitialized(
+        tenantId: normalizedTenantId,
+        source: 'module_access_provider',
+      );
       _enabledModuleIds = await _service.fetchEnabledModuleIds(
         normalizedTenantId,
-        forceRefresh: forceRefresh,
+        forceRefresh:
+            forceRefresh ||
+            seedResult.modulesCreated > 0 ||
+            seedResult.modulesRepaired > 0,
         fallbackToActiveRegistryWhenUnconfigured:
             fallbackToActiveRegistryWhenUnconfigured,
       );
       debugPrint(
-        'ModuleAccessProvider: enabled modules for $normalizedTenantId = $_enabledModuleIds',
+        'ModuleAccessProvider: enabled modules for $normalizedTenantId = $_enabledModuleIds '
+        '(production=${_enabledModuleIds.contains(ModuleIds.production)}, '
+        'dispatch=${_enabledModuleIds.contains(ModuleIds.dispatch)})',
       );
     } catch (e, stackTrace) {
       _error = e.toString();

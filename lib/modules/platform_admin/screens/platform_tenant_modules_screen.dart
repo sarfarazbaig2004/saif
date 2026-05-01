@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/modules/models/app_module.dart';
 import 'package:QUIK/core/modules/module_registry.dart';
+import 'package:QUIK/core/modules/providers/module_access_provider.dart';
 import 'package:QUIK/core/modules/services/tenant_module_service.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 
@@ -127,6 +128,10 @@ class _PlatformTenantModulesScreenState
         tenantId: companyId,
         enabledModuleIds: enabledModuleIds,
       );
+      final accessController = ModuleAccessProvider.of(context, listen: false);
+      if (accessController.tenantId == companyId) {
+        await accessController.refresh();
+      }
 
       if (!mounted || _selectedCompanyId != companyId) return;
       setState(() => _savingModules = false);
@@ -620,6 +625,8 @@ class _ModuleToggleTile extends StatelessWidget {
         return Icons.support_agent_outlined;
       case 'inventory_2':
         return Icons.inventory_2_outlined;
+      case 'local_shipping':
+        return Icons.local_shipping_outlined;
       case 'account_balance_wallet':
         return Icons.account_balance_wallet_outlined;
       case 'precision_manufacturing':

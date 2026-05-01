@@ -11,6 +11,7 @@ import 'package:QUIK/modules/administration/modules/screen_company_modules.dart'
 import 'package:QUIK/modules/administration/users/screen_user_management.dart';
 import 'package:QUIK/modules/crm/customers/screens_customer_list.dart';
 import 'package:QUIK/modules/dashboard/dashboard_screen.dart';
+import 'package:QUIK/modules/dispatch/screens/dispatch_list_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_inward_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_issue_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_stock_screen.dart';
@@ -40,6 +41,7 @@ import 'package:QUIK/modules/production/bom/screens/bom_list_screen.dart';
 import 'package:QUIK/modules/production/boq/screens/boq_list_screen.dart';
 import 'package:QUIK/modules/production/contractor_jobs/screens/contractor_job_list_screen.dart';
 import 'package:QUIK/modules/production/execution/screens/production_entry_list_screen.dart';
+import 'package:QUIK/modules/production/inspections/screens/inspection_list_screen.dart';
 import 'package:QUIK/modules/production/job_cards/screens/job_card_list_screen.dart';
 import 'package:QUIK/modules/production/masters/screens/item_list_screen.dart';
 import 'package:QUIK/modules/production/masters/screens/process_list_screen.dart';
@@ -93,6 +95,8 @@ enum ShellPage {
   productionBoq,
   productionJobCards,
   productionContractorJobs,
+  productionGalvanizing,
+  productionInspections,
   productionEntries,
 
   hrHome,
@@ -209,6 +213,10 @@ extension ShellPageX on ShellPage {
         return 'Job Cards';
       case ShellPage.productionContractorJobs:
         return 'Contractor Job Work';
+      case ShellPage.productionGalvanizing:
+        return 'Galvanizing';
+      case ShellPage.productionInspections:
+        return 'Inspections';
       case ShellPage.productionEntries:
         return 'Production Entries';
 
@@ -341,6 +349,10 @@ extension ShellPageX on ShellPage {
         return Icons.assignment_outlined;
       case ShellPage.productionContractorJobs:
         return Icons.engineering_outlined;
+      case ShellPage.productionGalvanizing:
+        return Icons.hot_tub_outlined;
+      case ShellPage.productionInspections:
+        return Icons.fact_check_outlined;
       case ShellPage.productionEntries:
         return Icons.factory_outlined;
       case ShellPage.hrHome:
@@ -571,6 +583,10 @@ class _ZohoShellState extends State<ZohoShell> {
       return false;
     }
 
+    if (_isDispatchPage(page) && !_isModuleEnabled(ModuleIds.dispatch)) {
+      return false;
+    }
+
     if (page == ShellPage.hrHome && !_isModuleEnabled(ModuleIds.hr)) {
       return false;
     }
@@ -664,13 +680,11 @@ class _ZohoShellState extends State<ZohoShell> {
         return _hasPermission('inventory', 'products');
       // Dispatch
       case ShellPage.dispatchReady:
-        return _hasPermission('dispatch', 'readyForDispatch');
       case ShellPage.dispatchChallans:
-        return _hasPermission('dispatch', 'dispatchChallans');
       case ShellPage.dispatchShipmentTracking:
-        return _hasPermission('dispatch', 'shipmentTracking');
       case ShellPage.dispatchDelivered:
-        return _hasPermission('dispatch', 'deliveredOrders');
+        return _isModuleEnabled(ModuleIds.dispatch) &&
+            _hasPermission('dispatch', _dispatchPermissionKey(page));
       // Production
       case ShellPage.productionItems:
       case ShellPage.productionProcesses:
@@ -679,6 +693,8 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.productionBoq:
       case ShellPage.productionJobCards:
       case ShellPage.productionContractorJobs:
+      case ShellPage.productionGalvanizing:
+      case ShellPage.productionInspections:
       case ShellPage.productionEntries:
         return _isModuleEnabled(ModuleIds.production);
       case ShellPage.hrHome:
@@ -735,7 +751,31 @@ class _ZohoShellState extends State<ZohoShell> {
         page == ShellPage.productionBoq ||
         page == ShellPage.productionJobCards ||
         page == ShellPage.productionContractorJobs ||
+        page == ShellPage.productionGalvanizing ||
+        page == ShellPage.productionInspections ||
         page == ShellPage.productionEntries;
+  }
+
+  bool _isDispatchPage(ShellPage page) {
+    return page == ShellPage.dispatchReady ||
+        page == ShellPage.dispatchChallans ||
+        page == ShellPage.dispatchShipmentTracking ||
+        page == ShellPage.dispatchDelivered;
+  }
+
+  String _dispatchPermissionKey(ShellPage page) {
+    switch (page) {
+      case ShellPage.dispatchReady:
+        return 'readyForDispatch';
+      case ShellPage.dispatchChallans:
+        return 'dispatchChallans';
+      case ShellPage.dispatchShipmentTracking:
+        return 'shipmentTracking';
+      case ShellPage.dispatchDelivered:
+        return 'deliveredOrders';
+      default:
+        return 'readyForDispatch';
+    }
   }
 
   bool get _isFabricationInventory {
@@ -913,6 +953,8 @@ class _ZohoShellState extends State<ZohoShell> {
           ShellPage.productionBoq,
           ShellPage.productionJobCards,
           ShellPage.productionContractorJobs,
+          ShellPage.productionGalvanizing,
+          ShellPage.productionInspections,
           ShellPage.productionEntries,
         ],
       ),
@@ -1003,6 +1045,8 @@ class _ZohoShellState extends State<ZohoShell> {
         return ModuleIds.service;
       case ModuleIds.inventory:
         return ModuleIds.inventory;
+      case ModuleIds.dispatch:
+        return ModuleIds.dispatch;
       case ModuleIds.finance:
         return ModuleIds.finance;
       case ModuleIds.production:
@@ -1064,6 +1108,7 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.inventoryRawMaterialStock:
       case ShellPage.inventoryMaterialInward:
       case ShellPage.inventoryMaterialIssue:
+      case ShellPage.dispatchReady:
       case ShellPage.salesQuotations:
       case ShellPage.adminUsers:
       case ShellPage.adminModules:
@@ -1081,6 +1126,8 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.productionBoq:
       case ShellPage.productionJobCards:
       case ShellPage.productionContractorJobs:
+      case ShellPage.productionGalvanizing:
+      case ShellPage.productionInspections:
       case ShellPage.productionEntries:
       case ShellPage.hrHome:
       case ShellPage.reportsSales:
@@ -1771,6 +1818,12 @@ class _ZohoShellState extends State<ZohoShell> {
           child: FabricationMaterialIssueScreen(tenantId: widget.companyId),
         );
 
+      case ShellPage.dispatchReady:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: DispatchListScreen(tenantId: widget.companyId),
+        );
+
       case ShellPage.salesQuotations:
         return Padding(
           padding: const EdgeInsets.all(14),
@@ -1903,6 +1956,12 @@ class _ZohoShellState extends State<ZohoShell> {
         return Padding(
           padding: const EdgeInsets.all(14),
           child: ContractorJobListScreen(tenantId: widget.companyId),
+        );
+
+      case ShellPage.productionInspections:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: InspectionListScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.productionEntries:
