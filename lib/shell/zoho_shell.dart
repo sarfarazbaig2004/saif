@@ -16,6 +16,10 @@ import 'package:QUIK/modules/inventory/fabrication/screens/material_issue_screen
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_stock_screen.dart';
 import 'package:QUIK/modules/inventory/products/screens_product_list.dart';
 import 'package:QUIK/modules/purchase/fabrication/screens/purchase_bill_screen.dart';
+import 'package:QUIK/modules/purchase/miraj/screens/vendor_ledger_screen.dart';
+import 'package:QUIK/modules/purchase/miraj/screens/vendor_master_screen.dart';
+import 'package:QUIK/modules/purchase/miraj/screens/vendor_offer_screen.dart';
+import 'package:QUIK/modules/purchase/miraj/screens/vendor_purchase_order_screen.dart';
 import 'package:QUIK/modules/sales/inquiries/screens_inquiry_list.dart';
 import 'package:QUIK/modules/sales/quotations/screens_quotation_list.dart';
 import 'package:QUIK/modules/settings/screen_settings_home.dart';
@@ -59,6 +63,8 @@ enum ShellPage {
   crmCommunication,
 
   purchaseVendors,
+  purchaseVendorOffers,
+  purchasePurchaseOrders,
   purchaseOrders,
   purchaseGrn,
   purchaseLedger,
@@ -146,6 +152,10 @@ extension ShellPageX on ShellPage {
 
       case ShellPage.purchaseVendors:
         return 'Vendors';
+      case ShellPage.purchaseVendorOffers:
+        return 'Vendor Offers';
+      case ShellPage.purchasePurchaseOrders:
+        return 'Purchase Orders';
       case ShellPage.purchaseOrders:
         return 'Purchase Bills';
       case ShellPage.purchaseGrn:
@@ -273,6 +283,10 @@ extension ShellPageX on ShellPage {
         return Icons.chat_bubble_outline;
       case ShellPage.purchaseVendors:
         return Icons.business_outlined;
+      case ShellPage.purchaseVendorOffers:
+        return Icons.attach_file_outlined;
+      case ShellPage.purchasePurchaseOrders:
+        return Icons.shopping_cart_checkout_outlined;
       case ShellPage.purchaseOrders:
         return Icons.shopping_cart_outlined;
       case ShellPage.purchaseGrn:
@@ -487,6 +501,12 @@ class _ZohoShellState extends State<ZohoShell> {
         r == 'manager';
   }
 
+  bool get _isMirajTenant {
+    final name = widget.companyName.toLowerCase();
+    final id = widget.companyId.toLowerCase();
+    return name.contains('miraj') || id.contains('miraj');
+  }
+
   bool _hasPermission(
     String module,
     String submodule, {
@@ -597,12 +617,22 @@ class _ZohoShellState extends State<ZohoShell> {
       // Purchase
       case ShellPage.purchaseVendors:
         return _hasPermission('purchase', 'vendors');
+      case ShellPage.purchaseVendorOffers:
+        return _isMirajTenant &&
+            (_hasPermission('purchase', 'vendorOffers') ||
+                _hasPermission('purchase', 'vendors') ||
+                _hasPermission('purchase', 'purchaseOrders'));
+      case ShellPage.purchasePurchaseOrders:
+        return _isMirajTenant && _hasPermission('purchase', 'purchaseOrders');
       case ShellPage.purchaseOrders:
         return _hasPermission('purchase', 'purchaseOrders');
       case ShellPage.purchaseGrn:
         return _hasPermission('purchase', 'grnMaterialReceipt');
       case ShellPage.purchaseLedger:
-        return _hasPermission('purchase', 'vendorLedger');
+        return _isMirajTenant &&
+            (_hasPermission('purchase', 'vendorLedger') ||
+                _hasPermission('purchase', 'vendors') ||
+                _hasPermission('purchase', 'purchaseOrders'));
       // Inventory
       case ShellPage.inventoryProducts:
         return _hasPermission('inventory', 'products');
@@ -831,6 +861,8 @@ class _ZohoShellState extends State<ZohoShell> {
         icon: Icons.shopping_cart_outlined,
         children: [
           ShellPage.purchaseVendors,
+          ShellPage.purchaseVendorOffers,
+          ShellPage.purchasePurchaseOrders,
           ShellPage.purchaseOrders,
           ShellPage.purchaseGrn,
           ShellPage.purchaseLedger,
@@ -1004,6 +1036,10 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.platformTenantModules:
       case ShellPage.salesInquiries:
       case ShellPage.crmCustomers:
+      case ShellPage.purchaseVendors:
+      case ShellPage.purchaseVendorOffers:
+      case ShellPage.purchasePurchaseOrders:
+      case ShellPage.purchaseLedger:
       case ShellPage.purchaseOrders:
       case ShellPage.purchaseGrn:
       case ShellPage.inventoryProducts:
@@ -1652,10 +1688,40 @@ class _ZohoShellState extends State<ZohoShell> {
           child: ScreensProductList(),
         );
 
+      case ShellPage.purchaseVendors:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: MirajVendorMasterScreen(
+            tenantId: widget.companyId,
+            currentUserUid: widget.userUid,
+          ),
+        );
+
       case ShellPage.purchaseOrders:
         return Padding(
           padding: const EdgeInsets.all(14),
           child: FabricationPurchaseBillScreen(tenantId: widget.companyId),
+        );
+
+      case ShellPage.purchaseVendorOffers:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: MirajVendorOfferScreen(
+            tenantId: widget.companyId,
+            currentUserUid: widget.userUid,
+          ),
+        );
+
+      case ShellPage.purchasePurchaseOrders:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: MirajVendorPurchaseOrderScreen(tenantId: widget.companyId),
+        );
+
+      case ShellPage.purchaseLedger:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: MirajVendorLedgerScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.purchaseGrn:

@@ -61,6 +61,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
   bool _trackInventory = true;
   bool _isSaleable = true;
   bool _isPurchasable = true;
+  bool _useVendorOfferForCosting = false;
 
   String? _selectedCategoryId;
   String? _selectedCategoryName;
@@ -101,9 +102,8 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
           .collection('inventory_categories');
 
   CollectionReference<Map<String, dynamic>> _subcategoriesRef(
-      String categoryId,
-      ) =>
-      _categoriesRef.doc(categoryId).collection('subcategories');
+    String categoryId,
+  ) => _categoriesRef.doc(categoryId).collection('subcategories');
 
   @override
   void initState() {
@@ -135,14 +135,16 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       // Safely migrate legacy single catalog OR load new multi-catalog list
       final existingCatalogs = data['catalogs'];
       if (existingCatalogs is List) {
-        _catalogs = (existingCatalogs).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        _catalogs = (existingCatalogs)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
       } else if ((data['catalogUrl'] ?? '').toString().trim().isNotEmpty) {
         _catalogs = [
           {
             'url': (data['catalogUrl'] ?? '').toString().trim(),
             'name': (data['catalogName'] ?? '').toString().trim(),
             'contentType': (data['catalogContentType'] ?? '').toString().trim(),
-          }
+          },
         ];
       }
 
@@ -154,18 +156,22 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       _selectedCategoryId = categoryId.isEmpty ? null : categoryId;
       _selectedCategoryName = categoryName.isEmpty ? null : categoryName;
       _selectedSubcategoryId = subcategoryId.isEmpty ? null : subcategoryId;
-      _selectedSubcategoryName =
-      subcategoryName.isEmpty ? null : subcategoryName;
+      _selectedSubcategoryName = subcategoryName.isEmpty
+          ? null
+          : subcategoryName;
 
       _productType = (data['type'] ?? 'stock').toString();
       _isActive = data['isActive'] == null ? true : data['isActive'] == true;
       _trackInventory = data['trackInventory'] == null
           ? true
           : data['trackInventory'] == true;
-      _isSaleable =
-      data['isSaleable'] == null ? true : data['isSaleable'] == true;
-      _isPurchasable =
-      data['isPurchasable'] == null ? true : data['isPurchasable'] == true;
+      _isSaleable = data['isSaleable'] == null
+          ? true
+          : data['isSaleable'] == true;
+      _isPurchasable = data['isPurchasable'] == null
+          ? true
+          : data['isPurchasable'] == true;
+      _useVendorOfferForCosting = data['useVendorOfferForCosting'] == true;
 
       final openingStock =
           data['openingStock'] ?? data['stockOnHand'] ?? data['qty'];
@@ -321,10 +327,16 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
     if (lowerType.contains('pdf') || lowerName.endsWith('.pdf')) {
       return Icons.picture_as_pdf_outlined;
     }
-    if (lowerType.contains('msword') || lowerType.contains('word') || lowerName.endsWith('.doc') || lowerName.endsWith('.docx')) {
+    if (lowerType.contains('msword') ||
+        lowerType.contains('word') ||
+        lowerName.endsWith('.doc') ||
+        lowerName.endsWith('.docx')) {
       return Icons.description_outlined;
     }
-    if (lowerType.contains('excel') || lowerType.contains('spreadsheet') || lowerName.endsWith('.xls') || lowerName.endsWith('.xlsx')) {
+    if (lowerType.contains('excel') ||
+        lowerType.contains('spreadsheet') ||
+        lowerName.endsWith('.xls') ||
+        lowerName.endsWith('.xlsx')) {
       return Icons.table_chart_outlined;
     }
     if (lowerType.startsWith('image/') ||
@@ -356,11 +368,12 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
 
         final ext = _safeExt(file.extension, fallback: 'jpg');
         final contentType = _detectContentTypeFromExtension(ext);
-        final fileName = 'product_photo_${DateTime.now().millisecondsSinceEpoch}_${widget.currentUserUid}_${file.name}.$ext';
+        final fileName =
+            'product_photo_${DateTime.now().millisecondsSinceEpoch}_${widget.currentUserUid}_${file.name}.$ext';
 
-        final ref = FirebaseStorage.instance
-            .ref()
-            .child('companies/${widget.companyId}/products/images/$fileName');
+        final ref = FirebaseStorage.instance.ref().child(
+          'companies/${widget.companyId}/products/images/$fileName',
+        );
 
         final metadata = SettableMetadata(
           contentType: contentType,
@@ -373,12 +386,17 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
           },
         );
 
-        final task = await ref.putData(bytes, metadata).timeout(
-          const Duration(seconds: 30),
-          onTimeout: () => throw Exception('Upload timed out after 30 seconds'),
-        );
+        final task = await ref
+            .putData(bytes, metadata)
+            .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () =>
+                  throw Exception('Upload timed out after 30 seconds'),
+            );
 
-        if (task.state != TaskState.success) throw Exception('Image upload did not complete successfully');
+        if (task.state != TaskState.success) {
+          throw Exception('Image upload did not complete successfully');
+        }
 
         final downloadUrl = await ref.getDownloadURL();
 
@@ -391,13 +409,19 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Product photos uploaded successfully'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Product photos uploaded successfully'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Image upload failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Image upload failed: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -411,7 +435,17 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
 
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'doc', 'docx', 'xls', 'xlsx'],
+        allowedExtensions: [
+          'pdf',
+          'jpg',
+          'jpeg',
+          'png',
+          'webp',
+          'doc',
+          'docx',
+          'xls',
+          'xlsx',
+        ],
         allowMultiple: true,
         withData: true,
       );
@@ -424,11 +458,12 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
 
         final ext = _safeExt(file.extension, fallback: 'bin');
         final contentType = _detectContentTypeFromExtension(ext);
-        final fileName = 'product_catalog_${DateTime.now().millisecondsSinceEpoch}_${widget.currentUserUid}_${file.name}.$ext';
+        final fileName =
+            'product_catalog_${DateTime.now().millisecondsSinceEpoch}_${widget.currentUserUid}_${file.name}.$ext';
 
-        final ref = FirebaseStorage.instance
-            .ref()
-            .child('companies/${widget.companyId}/products/catalogs/$fileName');
+        final ref = FirebaseStorage.instance.ref().child(
+          'companies/${widget.companyId}/products/catalogs/$fileName',
+        );
 
         final metadata = SettableMetadata(
           contentType: contentType,
@@ -441,12 +476,17 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
           },
         );
 
-        final task = await ref.putData(bytes, metadata).timeout(
-          const Duration(seconds: 30),
-          onTimeout: () => throw Exception('Upload timed out after 30 seconds'),
-        );
+        final task = await ref
+            .putData(bytes, metadata)
+            .timeout(
+              const Duration(seconds: 30),
+              onTimeout: () =>
+                  throw Exception('Upload timed out after 30 seconds'),
+            );
 
-        if (task.state != TaskState.success) throw Exception('Catalog upload did not complete successfully');
+        if (task.state != TaskState.success) {
+          throw Exception('Catalog upload did not complete successfully');
+        }
 
         final downloadUrl = await ref.getDownloadURL();
 
@@ -463,13 +503,19 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Catalogs uploaded successfully'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Catalogs uploaded successfully'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Catalog upload failed: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Catalog upload failed: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -502,7 +548,9 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Cannot open gs:// URLs directly. Ensure file is uploaded via HTTPS.'),
+            content: Text(
+              'Cannot open gs:// URLs directly. Ensure file is uploaded via HTTPS.',
+            ),
             backgroundColor: Colors.red,
           ),
         );
@@ -526,7 +574,10 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error opening file: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error opening file: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -564,9 +615,20 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                       child: const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.cloud_done_outlined, size: 30, color: Colors.green),
+                          Icon(
+                            Icons.cloud_done_outlined,
+                            size: 30,
+                            color: Colors.green,
+                          ),
                           SizedBox(height: 4),
-                          Text('Uploaded', style: TextStyle(fontSize: 12, color: Colors.green, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Uploaded',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.green,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -583,7 +645,11 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                         color: Colors.black54,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.close, size: 14, color: Colors.white),
+                      child: const Icon(
+                        Icons.close,
+                        size: 14,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ),
@@ -606,7 +672,11 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                           SizedBox(width: 4),
                           Text(
                             'View',
-                            style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -652,7 +722,10 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                       name,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 2),
                     const Text(
@@ -669,7 +742,11 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
               ),
               IconButton(
                 onPressed: () => _removeCatalog(index),
-                icon: const Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                icon: const Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: Colors.red,
+                ),
               ),
             ],
           ),
@@ -697,18 +774,32 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Product Images', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                const Text(
+                  'Product Images',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
                 const SizedBox(height: 4),
-                const Text('Upload one or multiple images.', style: TextStyle(fontSize: 12, color: Color(0xFF667085))),
+                const Text(
+                  'Upload one or multiple images.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF667085)),
+                ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     FilledButton.icon(
-                      onPressed: _isUploadingImage ? null : _pickAndUploadImages,
+                      onPressed: _isUploadingImage
+                          ? null
+                          : _pickAndUploadImages,
                       icon: _isUploadingImage
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Icon(Icons.add_photo_alternate_outlined),
-                      label: Text(_isUploadingImage ? 'Uploading...' : 'Add Images'),
+                      label: Text(
+                        _isUploadingImage ? 'Uploading...' : 'Add Images',
+                      ),
                     ),
                   ],
                 ),
@@ -732,18 +823,32 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Product Catalogs & Attachments', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                const Text(
+                  'Product Catalogs & Attachments',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                ),
                 const SizedBox(height: 4),
-                const Text('Upload PDFs, brochures, or spec sheets.', style: TextStyle(fontSize: 12, color: Color(0xFF667085))),
+                const Text(
+                  'Upload PDFs, brochures, or spec sheets.',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF667085)),
+                ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     FilledButton.icon(
-                      onPressed: _isUploadingCatalog ? null : _pickAndUploadCatalogs,
+                      onPressed: _isUploadingCatalog
+                          ? null
+                          : _pickAndUploadCatalogs,
                       icon: _isUploadingCatalog
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Icon(Icons.attach_file_outlined),
-                      label: Text(_isUploadingCatalog ? 'Uploading...' : 'Add Catalogs'),
+                      label: Text(
+                        _isUploadingCatalog ? 'Uploading...' : 'Add Catalogs',
+                      ),
                     ),
                   ],
                 ),
@@ -857,12 +962,15 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
         'images': _imageUrls,
         'catalogUrl': _catalogs.isNotEmpty ? _catalogs.first['url'] : '',
         'catalogName': _catalogs.isNotEmpty ? _catalogs.first['name'] : '',
-        'catalogContentType': _catalogs.isNotEmpty ? _catalogs.first['contentType'] : '',
+        'catalogContentType': _catalogs.isNotEmpty
+            ? _catalogs.first['contentType']
+            : '',
         'catalogs': _catalogs,
         'notes': cleanNotes,
         'isActive': _isActive,
         'isSaleable': _isSaleable,
         'isPurchasable': _isPurchasable,
+        'useVendorOfferForCosting': _useVendorOfferForCosting,
         'assignedToUid': assigned,
         'assignedByUid': widget.currentUserUid,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -873,8 +981,9 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       if (isEditMode) {
         await _productsRef.doc(widget.productId).update({
           ...data,
-          'stockOnHand':
-          _trackInventory && !_isServiceLike ? _existingStockOnHand : 0.0,
+          'stockOnHand': _trackInventory && !_isServiceLike
+              ? _existingStockOnHand
+              : 0.0,
           'qty': _trackInventory && !_isServiceLike
               ? (_existingQty == 0 ? _existingStockOnHand : _existingQty)
               : 0.0,
@@ -882,7 +991,9 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       } else {
         await _productsRef.add({
           ...data,
-          'stockOnHand': _trackInventory && !_isServiceLike ? openingStock : 0.0,
+          'stockOnHand': _trackInventory && !_isServiceLike
+              ? openingStock
+              : 0.0,
           'qty': _trackInventory && !_isServiceLike ? openingStock : 0.0,
           'isDeleted': false,
           'createdAt': FieldValue.serverTimestamp(),
@@ -1071,10 +1182,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Text(
         title,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.w700,
-        ),
+        style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -1120,10 +1228,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
         title,
         style: TextStyle(fontWeight: FontWeight.w600, fontSize: titleSize),
       ),
-      subtitle: Text(
-        subtitle,
-        style: TextStyle(fontSize: subtitleSize),
-      ),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: subtitleSize)),
     );
   }
 
@@ -1204,8 +1309,8 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
             final selectedDoc = docs.firstWhere((e) => e.id == value);
             setState(() {
               _selectedCategoryId = value;
-              _selectedCategoryName =
-                  (selectedDoc.data()['name'] ?? '').toString();
+              _selectedCategoryName = (selectedDoc.data()['name'] ?? '')
+                  .toString();
               _selectedSubcategoryId = null;
               _selectedSubcategoryName = null;
             });
@@ -1239,9 +1344,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
     }
 
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: _subcategoriesRef(catId)
-          .orderBy('nameLower')
-          .snapshots(),
+      stream: _subcategoriesRef(catId).orderBy('nameLower').snapshots(),
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const LinearProgressIndicator();
@@ -1308,8 +1411,8 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
             final selectedDoc = docs.firstWhere((e) => e.id == value);
             setState(() {
               _selectedSubcategoryId = value;
-              _selectedSubcategoryName =
-                  (selectedDoc.data()['name'] ?? '').toString();
+              _selectedSubcategoryName = (selectedDoc.data()['name'] ?? '')
+                  .toString();
             });
           },
         );
@@ -1325,7 +1428,9 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
     final isLandscape = media.orientation == Orientation.landscape;
 
     final isCompactPhone = screenWidth < 360;
-    final horizontalPadding = isCompactPhone ? 10.0 : (screenWidth < 480 ? 14.0 : 16.0);
+    final horizontalPadding = isCompactPhone
+        ? 10.0
+        : (screenWidth < 480 ? 14.0 : 16.0);
     final sectionPadding = isCompactPhone ? 10.0 : 14.0;
     final sectionGap = isCompactPhone ? 10.0 : 12.0;
     final fieldGap = isCompactPhone ? 8.0 : 10.0;
@@ -1334,10 +1439,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF6F8FB),
-      appBar: AppBar(
-        title: Text(isEditText),
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(isEditText), elevation: 0),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final useTwoCol = _useTwoColumnLayout(
@@ -1591,21 +1693,21 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                       _buildStatusToggleTile(
                         title: 'Track Inventory',
                         subtitle:
-                        'Enable quantity and stock-related control for this item.',
+                            'Enable quantity and stock-related control for this item.',
                         value: _trackInventory,
                         onChanged: _isServiceLike
                             ? (_) {}
                             : (value) {
-                          setState(() {
-                            _trackInventory = value;
-                            if (!value) {
-                              _openingStockController.text = '0';
-                              _reorderLevelController.text = '0';
-                              _minStockLevelController.text = '0';
-                              _maxStockLevelController.text = '0';
-                            }
-                          });
-                        },
+                                setState(() {
+                                  _trackInventory = value;
+                                  if (!value) {
+                                    _openingStockController.text = '0';
+                                    _reorderLevelController.text = '0';
+                                    _minStockLevelController.text = '0';
+                                    _maxStockLevelController.text = '0';
+                                  }
+                                });
+                              },
                       ),
                       if (_isServiceLike)
                         const Padding(
@@ -1631,11 +1733,11 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 label: 'Opening Stock',
                                 icon: Icons.production_quantity_limits_outlined,
                                 keyboardType:
-                                const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 validator: (v) =>
-                                _trackInventory && !_isServiceLike
+                                    _trackInventory && !_isServiceLike
                                     ? _numberValidator(v)
                                     : null,
                                 onChanged: (_) => setState(() {}),
@@ -1649,11 +1751,11 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 label: 'Reorder Level',
                                 icon: Icons.warning_amber_outlined,
                                 keyboardType:
-                                const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 validator: (v) =>
-                                _trackInventory && !_isServiceLike
+                                    _trackInventory && !_isServiceLike
                                     ? _numberValidator(v)
                                     : null,
                                 onChanged: (_) => setState(() {}),
@@ -1701,11 +1803,11 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 label: 'Minimum Stock',
                                 icon: Icons.vertical_align_bottom_outlined,
                                 keyboardType:
-                                const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 validator: (v) =>
-                                _trackInventory && !_isServiceLike
+                                    _trackInventory && !_isServiceLike
                                     ? _numberValidator(v)
                                     : null,
                                 enabled: _trackInventory && !_isServiceLike,
@@ -1718,11 +1820,11 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 label: 'Maximum Stock',
                                 icon: Icons.vertical_align_top_outlined,
                                 keyboardType:
-                                const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 validator: (v) =>
-                                _trackInventory && !_isServiceLike
+                                    _trackInventory && !_isServiceLike
                                     ? _numberValidator(v)
                                     : null,
                                 enabled: _trackInventory && !_isServiceLike,
@@ -1780,9 +1882,9 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 label: 'Cost Price',
                                 icon: Icons.payments_outlined,
                                 keyboardType:
-                                const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 validator: (v) => _numberValidator(v),
                                 onChanged: (_) => setState(() {}),
                               ),
@@ -1794,9 +1896,9 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 label: 'Selling Price *',
                                 icon: Icons.currency_rupee,
                                 keyboardType:
-                                const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 validator: (v) =>
                                     _numberValidator(v, required: true),
                                 onChanged: (_) => setState(() {}),
@@ -1837,9 +1939,9 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 label: 'MRP',
                                 icon: Icons.sell_outlined,
                                 keyboardType:
-                                const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 validator: (v) => _numberValidator(v),
                                 onChanged: (_) => setState(() {}),
                               ),
@@ -1851,9 +1953,9 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                                 label: 'GST % *',
                                 icon: Icons.percent,
                                 keyboardType:
-                                const TextInputType.numberWithOptions(
-                                  decimal: true,
-                                ),
+                                    const TextInputType.numberWithOptions(
+                                      decimal: true,
+                                    ),
                                 validator: (v) =>
                                     _numberValidator(v, required: true),
                                 onChanged: (_) => setState(() {}),
@@ -1913,7 +2015,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                       _buildStatusToggleTile(
                         title: 'Active Product',
                         subtitle:
-                        'Inactive products can be hidden from normal use.',
+                            'Inactive products can be hidden from normal use.',
                         value: _isActive,
                         onChanged: (value) {
                           setState(() {
@@ -1924,7 +2026,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                       _buildStatusToggleTile(
                         title: 'Saleable',
                         subtitle:
-                        'Allow this product to be used in sales and quotations.',
+                            'Allow this product to be used in sales and quotations.',
                         value: _isSaleable,
                         onChanged: (value) {
                           setState(() {
@@ -1935,13 +2037,29 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                       _buildStatusToggleTile(
                         title: 'Purchasable',
                         subtitle:
-                        'Allow this product to be used in purchase workflows.',
+                            'Allow this product to be used in purchase workflows.',
                         value: _isPurchasable,
                         onChanged: (value) {
                           setState(() {
                             _isPurchasable = value;
+                            if (!value) {
+                              _useVendorOfferForCosting = false;
+                            }
                           });
                         },
+                      ),
+                      _buildStatusToggleTile(
+                        title: 'Add Vendor Offer Rate To Cost',
+                        subtitle:
+                            'When a Miraj vendor offer is converted to PO, allow that rate to update this product cost.',
+                        value: _useVendorOfferForCosting,
+                        onChanged: _isPurchasable
+                            ? (value) {
+                                setState(() {
+                                  _useVendorOfferForCosting = value;
+                                });
+                              }
+                            : (_) {},
                       ),
                     ],
                   ),
@@ -1954,32 +2072,41 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                   padding: EdgeInsets.all(sectionPadding),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(isCompactPhone ? 12 : 14),
+                    borderRadius: BorderRadius.circular(
+                      isCompactPhone ? 12 : 14,
+                    ),
                     border: Border.all(color: const Color(0xFFE6EAF0)),
                   ),
                   child: Wrap(
-                    alignment: isCompactPhone ? WrapAlignment.center : WrapAlignment.end,
+                    alignment: isCompactPhone
+                        ? WrapAlignment.center
+                        : WrapAlignment.end,
                     spacing: 10,
                     runSpacing: 10,
                     children: [
                       OutlinedButton(
-                        onPressed: _isSaving ? null : () => Navigator.pop(context),
+                        onPressed: _isSaving
+                            ? null
+                            : () => Navigator.pop(context),
                         child: const Text('Cancel'),
                       ),
                       FilledButton.icon(
                         onPressed: _isSaving ? null : _saveProduct,
                         icon: _isSaving
                             ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child:
-                          CircularProgressIndicator(strokeWidth: 2),
-                        )
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
                             : const Icon(Icons.save_outlined),
                         label: Text(
                           _isSaving
                               ? 'Saving...'
-                              : (isEditMode ? 'Update Product' : 'Save Product'),
+                              : (isEditMode
+                                    ? 'Update Product'
+                                    : 'Save Product'),
                         ),
                       ),
                     ],
