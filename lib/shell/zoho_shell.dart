@@ -40,6 +40,8 @@ import 'package:QUIK/modules/production/bom/screens/bom_list_screen.dart';
 import 'package:QUIK/modules/production/boq/screens/boq_list_screen.dart';
 import 'package:QUIK/modules/production/contractor_jobs/screens/contractor_job_list_screen.dart';
 import 'package:QUIK/modules/production/execution/screens/production_entry_list_screen.dart';
+import 'package:QUIK/modules/production/galvanizing/screens/galvanizing_job_list_screen.dart';
+import 'package:QUIK/modules/production/inspections/screens/inspection_list_screen.dart';
 import 'package:QUIK/modules/production/job_cards/screens/job_card_list_screen.dart';
 import 'package:QUIK/modules/production/masters/screens/item_list_screen.dart';
 import 'package:QUIK/modules/production/masters/screens/process_list_screen.dart';
@@ -93,6 +95,8 @@ enum ShellPage {
   productionBoq,
   productionJobCards,
   productionContractorJobs,
+  productionGalvanizing,
+  productionInspections,
   productionEntries,
 
   hrHome,
@@ -209,6 +213,10 @@ extension ShellPageX on ShellPage {
         return 'Job Cards';
       case ShellPage.productionContractorJobs:
         return 'Contractor Job Work';
+      case ShellPage.productionGalvanizing:
+        return 'Galvanizing';
+      case ShellPage.productionInspections:
+        return 'Inspection & Dispatch Clearance';
       case ShellPage.productionEntries:
         return 'Production Entries';
 
@@ -341,6 +349,10 @@ extension ShellPageX on ShellPage {
         return Icons.assignment_outlined;
       case ShellPage.productionContractorJobs:
         return Icons.engineering_outlined;
+      case ShellPage.productionGalvanizing:
+        return Icons.hot_tub_outlined;
+      case ShellPage.productionInspections:
+        return Icons.fact_check_outlined;
       case ShellPage.productionEntries:
         return Icons.factory_outlined;
       case ShellPage.hrHome:
@@ -679,6 +691,8 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.productionBoq:
       case ShellPage.productionJobCards:
       case ShellPage.productionContractorJobs:
+      case ShellPage.productionGalvanizing:
+      case ShellPage.productionInspections:
       case ShellPage.productionEntries:
         return _isModuleEnabled(ModuleIds.production);
       case ShellPage.hrHome:
@@ -735,6 +749,8 @@ class _ZohoShellState extends State<ZohoShell> {
         page == ShellPage.productionBoq ||
         page == ShellPage.productionJobCards ||
         page == ShellPage.productionContractorJobs ||
+        page == ShellPage.productionGalvanizing ||
+        page == ShellPage.productionInspections ||
         page == ShellPage.productionEntries;
   }
 
@@ -913,6 +929,8 @@ class _ZohoShellState extends State<ZohoShell> {
           ShellPage.productionBoq,
           ShellPage.productionJobCards,
           ShellPage.productionContractorJobs,
+          ShellPage.productionGalvanizing,
+          ShellPage.productionInspections,
           ShellPage.productionEntries,
         ],
       ),
@@ -1081,6 +1099,8 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.productionBoq:
       case ShellPage.productionJobCards:
       case ShellPage.productionContractorJobs:
+      case ShellPage.productionGalvanizing:
+      case ShellPage.productionInspections:
       case ShellPage.productionEntries:
       case ShellPage.hrHome:
       case ShellPage.reportsSales:
@@ -1903,6 +1923,18 @@ class _ZohoShellState extends State<ZohoShell> {
         return Padding(
           padding: const EdgeInsets.all(14),
           child: ContractorJobListScreen(tenantId: widget.companyId),
+        );
+
+      case ShellPage.productionGalvanizing:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: GalvanizingJobListScreen(tenantId: widget.companyId),
+        );
+
+      case ShellPage.productionInspections:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: InspectionListScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.productionEntries:
