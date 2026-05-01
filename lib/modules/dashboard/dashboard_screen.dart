@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:QUIK/modules/dashboard/dashboard_widgets.dart';
 import 'package:QUIK/modules/dashboard/dashboard_service.dart';
 import 'package:QUIK/modules/dashboard/dashboard_charts.dart';
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String companyId;
@@ -28,11 +29,33 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   late DashboardService _service;
+  String _activeTenantId = '';
 
   @override
   void initState() {
     super.initState();
-    _service = DashboardService(companyId: widget.companyId);
+    _activeTenantId = widget.companyId.trim();
+    _service = DashboardService(companyId: _activeTenantId);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tenantId = context.watchTenant.selectedTenantId.trim();
+    if (tenantId.isNotEmpty && tenantId != _activeTenantId) {
+      _activeTenantId = tenantId;
+      _service = DashboardService(companyId: _activeTenantId);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final fallbackTenantId = widget.companyId.trim();
+    if (_activeTenantId.isEmpty && fallbackTenantId.isNotEmpty) {
+      _activeTenantId = fallbackTenantId;
+      _service = DashboardService(companyId: _activeTenantId);
+    }
   }
 
   bool hasPermission(String module, String submodule) {
@@ -51,6 +74,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_activeTenantId.isEmpty) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Select a company workspace to view dashboard data.'),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SingleChildScrollView(

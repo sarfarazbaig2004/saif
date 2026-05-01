@@ -6,6 +6,9 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
+
 class ScreensAddProduct extends StatefulWidget {
   final String companyId;
   final String currentUserUid;
@@ -83,23 +86,21 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
   bool get _isServiceLike =>
       _productType == 'service' || _productType == 'non_stock';
 
+  String get _tenantId {
+    final contextTenantId = context.tenant.selectedTenantId.trim();
+    return contextTenantId.isNotEmpty
+        ? contextTenantId
+        : widget.companyId.trim();
+  }
+
   CollectionReference<Map<String, dynamic>> get _productsRef =>
-      FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('products');
+      TenantFirestore(tenantId: _tenantId).collection('products');
 
   CollectionReference<Map<String, dynamic>> get _companyUsersRef =>
-      FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('users');
+      TenantFirestore(tenantId: _tenantId).collection('users');
 
   CollectionReference<Map<String, dynamic>> get _categoriesRef =>
-      FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('inventory_categories');
+      TenantFirestore(tenantId: _tenantId).collection('inventory_categories');
 
   CollectionReference<Map<String, dynamic>> _subcategoriesRef(
     String categoryId,
@@ -350,6 +351,16 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
   }
 
   Future<void> _pickAndUploadImages() async {
+    if (_tenantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Missing company workspace. Image was not uploaded.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
       if (mounted) setState(() => _isUploadingImage = true);
 
@@ -372,13 +383,14 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
             'product_photo_${DateTime.now().millisecondsSinceEpoch}_${widget.currentUserUid}_${file.name}.$ext';
 
         final ref = FirebaseStorage.instance.ref().child(
-          'companies/${widget.companyId}/products/images/$fileName',
+          'companies/$_tenantId/products/images/$fileName',
         );
 
         final metadata = SettableMetadata(
           contentType: contentType,
           customMetadata: {
-            'companyId': widget.companyId,
+            'companyId': _tenantId,
+            'tenantId': _tenantId,
             'uploadedBy': widget.currentUserUid,
             'originalName': file.name,
             'module': 'products',
@@ -430,6 +442,16 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
   }
 
   Future<void> _pickAndUploadCatalogs() async {
+    if (_tenantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Missing company workspace. Catalog was not uploaded.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     try {
       if (mounted) setState(() => _isUploadingCatalog = true);
 
@@ -462,13 +484,14 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
             'product_catalog_${DateTime.now().millisecondsSinceEpoch}_${widget.currentUserUid}_${file.name}.$ext';
 
         final ref = FirebaseStorage.instance.ref().child(
-          'companies/${widget.companyId}/products/catalogs/$fileName',
+          'companies/$_tenantId/products/catalogs/$fileName',
         );
 
         final metadata = SettableMetadata(
           contentType: contentType,
           customMetadata: {
-            'companyId': widget.companyId,
+            'companyId': _tenantId,
+            'tenantId': _tenantId,
             'uploadedBy': widget.currentUserUid,
             'originalName': file.name,
             'module': 'products',
@@ -874,6 +897,16 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
 
+    if (_tenantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Missing company workspace. Product was not saved.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final assigned = _assignedToUid;
     if (assigned == null || assigned.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -932,7 +965,8 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       final cleanNotes = _notesController.text.trim();
 
       final data = <String, dynamic>{
-        'companyId': widget.companyId,
+        'companyId': _tenantId,
+        'tenantId': _tenantId,
         'name': cleanName,
         'nameLower': cleanName.toLowerCase(),
         'description': cleanDescription,

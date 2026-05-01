@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/production/core/production_list_scaffold.dart';
 import 'package:QUIK/modules/production/masters/models/work_center_model.dart';
 import 'package:QUIK/modules/production/masters/repositories/work_center_repository.dart';
@@ -12,7 +13,12 @@ class WorkCenterListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repository = WorkCenterRepository(tenantId: tenantId);
+    final activeTenantId = context.watchTenant.selectedTenantId.trim();
+    if (activeTenantId.isEmpty) {
+      return const Center(child: Text('Select a company workspace first.'));
+    }
+
+    final repository = WorkCenterRepository(tenantId: activeTenantId);
 
     return ProductionListScaffold<WorkCenterModel>(
       title: 'Work Centers',
@@ -26,7 +32,7 @@ class WorkCenterListScreen extends StatelessWidget {
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => WorkCenterFormScreen(tenantId: tenantId),
+            builder: (_) => WorkCenterFormScreen(tenantId: activeTenantId),
           ),
         ),
         icon: const Icon(Icons.add),
@@ -42,7 +48,7 @@ class WorkCenterListScreen extends StatelessWidget {
             context,
             MaterialPageRoute(
               builder: (_) => WorkCenterFormScreen(
-                tenantId: tenantId,
+                tenantId: activeTenantId,
                 workCenter: workCenter,
               ),
             ),

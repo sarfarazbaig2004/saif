@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/production/masters/models/work_center_model.dart';
 
 class WorkCenterRepository {
@@ -10,10 +11,10 @@ class WorkCenterRepository {
   final String tenantId;
 
   CollectionReference<Map<String, dynamic>> get _ref {
-    return _firestore
-        .collection('tenants')
-        .doc(tenantId)
-        .collection('work_centers');
+    return TenantFirestore(
+      tenantId: tenantId,
+      firestore: _firestore,
+    ).collection('work_centers');
   }
 
   Stream<List<WorkCenterModel>> watchWorkCenters() {
@@ -28,9 +29,11 @@ class WorkCenterRepository {
   }
 
   Future<void> saveWorkCenter(WorkCenterModel workCenter) {
-    return _ref
-        .doc(workCenter.workCenterId)
-        .set(workCenter.toFirestore(), SetOptions(merge: true));
+    return _ref.doc(workCenter.workCenterId).set({
+      ...workCenter.toFirestore(),
+      'companyId': tenantId,
+      'tenantId': tenantId,
+    }, SetOptions(merge: true));
   }
 
   String newWorkCenterId() => _ref.doc().id;

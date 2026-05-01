@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/production/core/production_list_scaffold.dart';
 import 'package:QUIK/modules/production/masters/models/process_model.dart';
 import 'package:QUIK/modules/production/masters/repositories/process_repository.dart';
@@ -12,7 +13,12 @@ class ProcessListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repository = ProcessRepository(tenantId: tenantId);
+    final activeTenantId = context.watchTenant.selectedTenantId.trim();
+    if (activeTenantId.isEmpty) {
+      return const Center(child: Text('Select a company workspace first.'));
+    }
+
+    final repository = ProcessRepository(tenantId: activeTenantId);
 
     return ProductionListScaffold<ProcessModel>(
       title: 'Processes',
@@ -27,7 +33,7 @@ class ProcessListScreen extends StatelessWidget {
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => ProcessFormScreen(tenantId: tenantId),
+            builder: (_) => ProcessFormScreen(tenantId: activeTenantId),
           ),
         ),
         icon: const Icon(Icons.add),
@@ -43,7 +49,7 @@ class ProcessListScreen extends StatelessWidget {
             context,
             MaterialPageRoute(
               builder: (_) =>
-                  ProcessFormScreen(tenantId: tenantId, process: process),
+                  ProcessFormScreen(tenantId: activeTenantId, process: process),
             ),
           ),
         );

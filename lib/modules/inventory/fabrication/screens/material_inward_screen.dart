@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_inward_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/repositories/fabrication_inventory_repository.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_inward_form_screen.dart';
@@ -18,7 +19,15 @@ class FabricationMaterialInwardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repository = FabricationInventoryRepository(tenantId: tenantId);
+    final selectedTenantId = context.watchTenant.selectedTenantId.trim();
+    final activeTenantId = selectedTenantId.isNotEmpty
+        ? selectedTenantId
+        : tenantId.trim();
+    if (activeTenantId.isEmpty) {
+      return const Center(child: Text('Select a company workspace first.'));
+    }
+
+    final repository = FabricationInventoryRepository(tenantId: activeTenantId);
 
     return ProductionListScaffold<RawMaterialInwardModel>(
       title: purchaseView ? 'GRN / Material Receipt' : 'Material Inward',
@@ -44,7 +53,7 @@ class FabricationMaterialInwardScreen extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (_) => MaterialInwardFormScreen(
-              tenantId: tenantId,
+              tenantId: activeTenantId,
               purchaseView: purchaseView,
             ),
           ),

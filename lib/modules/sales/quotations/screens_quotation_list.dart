@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
 import 'quotation_pdf_generator.dart';
 
@@ -54,6 +56,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
 
   Query<Map<String, dynamic>>? _primaryQuery;
   CollectionReference<Map<String, dynamic>>? _quotationCollection;
+  String? _loadedTenantId;
 
   bool get _isAdminOrManager {
     final role = _currentUserRole.trim().toLowerCase().replaceAll('_', '');
@@ -85,7 +88,24 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
   @override
   void initState() {
     super.initState();
-    _loadUserContext();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tenantId = context.watchTenant.selectedTenantId.trim();
+    if (tenantId.isEmpty && _loadedTenantId == null) {
+      _loadedTenantId = '';
+      setState(() {
+        _errorMessage = 'Select a company workspace first.';
+        _isLoadingContext = false;
+      });
+      return;
+    }
+    if (tenantId.isNotEmpty && tenantId != _loadedTenantId) {
+      _loadedTenantId = tenantId;
+      _loadUserContext(tenantId);
+    }
   }
 
   @override
@@ -94,8 +114,9 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
     super.dispose();
   }
 
-  Future<void> _loadUserContext() async {
+  Future<void> _loadUserContext(String tenantId) async {
     try {
+      final safeTenantId = TenantFirestore.requireTenantId(tenantId);
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         setState(() {
@@ -106,45 +127,15 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       }
 
       _currentUserUid = user.uid;
-      final rootUserDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      Map<String, dynamic> userData = rootUserDoc.data() ?? {};
-
-      String resolvedCompanyId = _safeString(userData['activeCompanyId']);
-      if (resolvedCompanyId.isEmpty) {
-        resolvedCompanyId = _safeString(userData['companyId']);
-      }
-      if (resolvedCompanyId.isEmpty &&
-          userData['companyIds'] is List &&
-          (userData['companyIds'] as List).isNotEmpty) {
-        resolvedCompanyId = _safeString((userData['companyIds'] as List).first);
-      }
-      if (resolvedCompanyId.isEmpty &&
-          userData['memberships'] is Map &&
-          (userData['memberships'] as Map).isNotEmpty) {
-        resolvedCompanyId = _safeString(
-          (userData['memberships'] as Map).keys.first,
-        );
-      }
-
-      if (resolvedCompanyId.isEmpty) {
-        setState(() {
-          _errorMessage =
-              'No active workspace linked. Please join a company first.';
-          _isLoadingContext = false;
-        });
-        return;
-      }
-
-      _companyId = resolvedCompanyId;
-      _currentUserName = (userData['name'] ?? userData['fullName'] ?? '')
-          .toString();
+      _companyId = safeTenantId;
+      Map<String, dynamic> userData = {
+        'companyId': safeTenantId,
+        'tenantId': safeTenantId,
+      };
 
       final companyUserDoc = await FirebaseFirestore.instance
           .collection('companies')
-          .doc(resolvedCompanyId)
+          .doc(safeTenantId)
           .collection('users')
           .doc(user.uid)
           .get();
@@ -153,6 +144,14 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       }
 
       _currentUserRole = (userData['role'] ?? 'sales').toString().trim();
+      _currentUserName =
+          (userData['name'] ??
+                  userData['fullName'] ??
+                  userData['displayName'] ??
+                  user.email ??
+                  '')
+              .toString()
+              .trim();
 
       if (!_hasQuotationPermission(userData)) {
         setState(() {
@@ -163,7 +162,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
         return;
       }
 
-      _setupQueries(resolvedCompanyId);
+      _setupQueries(safeTenantId);
 
       setState(() {
         _isLoadingContext = false;
@@ -178,10 +177,9 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
   }
 
   void _setupQueries(String companyId) {
-    _quotationCollection = FirebaseFirestore.instance
-        .collection('companies')
-        .doc(companyId)
-        .collection('quotations');
+    _quotationCollection = TenantFirestore(
+      tenantId: companyId,
+    ).collection('quotations');
     Query<Map<String, dynamic>> query = _quotationCollection!;
 
     // Keep the Firestore query index-safe. Deleted filtering and date sorting
@@ -192,8 +190,6 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
 
     _primaryQuery = query;
   }
-
-  String _safeString(dynamic value) => (value ?? '').toString().trim();
 
   String _formatTimestamp(dynamic value) {
     if (value is Timestamp) {
@@ -355,6 +351,13 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       );
       return;
     }
+    if ((_companyId ?? '').trim().isEmpty) {
+      _showSnack(
+        'Missing company workspace. Sales Order was not created.',
+        isError: true,
+      );
+      return;
+    }
 
     final confirm = await _showConfirmDialog(
       'Convert to Sales Order',
@@ -388,6 +391,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       batch.set(soRef, {
         'id': soRef.id,
         'companyId': _companyId,
+        'tenantId': _companyId,
         'soNumber': generatedSoNo,
         'referenceQuotationId': docId,
         'referenceQuotationNo': data['quoteNumber'],

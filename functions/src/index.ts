@@ -541,7 +541,7 @@ export const importFabricationRawMaterialStockSheet = onCall(
     await assertTenantAccess(uid, tenantId);
 
     const profileSnap = await db
-      .collection("tenants")
+      .collection("companies")
       .doc(tenantId)
       .collection("inventory_config")
       .doc("profile")
@@ -566,7 +566,7 @@ export const importFabricationRawMaterialStockSheet = onCall(
     const parsed = parseFabricationRawMaterialWorkbook(buffer, fileName);
 
     const snapshotRef = db
-      .collection("tenants")
+      .collection("companies")
       .doc(tenantId)
       .collection("raw_material_stock_snapshots")
       .doc(parsed.monthKey);
@@ -614,7 +614,7 @@ export const importFabricationRawMaterialStockSheet = onCall(
         }, {merge: true});
 
         batch.set(
-          db.collection("tenants")
+          db.collection("companies")
             .doc(tenantId)
             .collection("raw_material_items")
             .doc(line.itemId),
@@ -634,7 +634,7 @@ export const importFabricationRawMaterialStockSheet = onCall(
         );
 
         batch.set(
-          db.collection("tenants")
+          db.collection("companies")
             .doc(tenantId)
             .collection("raw_material_stock_summary")
             .doc(line.itemId),

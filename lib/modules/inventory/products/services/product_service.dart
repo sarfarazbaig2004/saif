@@ -2,6 +2,7 @@
 import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import '../../../../models/item_model.dart';
 
 class ProductService {
@@ -9,7 +10,10 @@ class ProductService {
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   CollectionReference<Map<String, dynamic>> _productsRef(String companyId) {
-    return _db.collection('companies').doc(companyId).collection('products');
+    return TenantFirestore(
+      tenantId: companyId,
+      firestore: _db,
+    ).collection('products');
   }
 
   // 🔴 Active products only (filters out soft-deleted)
@@ -25,12 +29,16 @@ class ProductService {
   }
 
   Future<void> saveProduct({required Item product, bool isEdit = false}) async {
+    final tenantId = TenantFirestore.requireTenantId(product.companyId);
+    final data = {
+      ...product.toFirestore(),
+      'companyId': tenantId,
+      'tenantId': tenantId,
+    };
     if (isEdit) {
-      await _productsRef(
-        product.companyId,
-      ).doc(product.id).update(product.toFirestore());
+      await _productsRef(tenantId).doc(product.id).update(data);
     } else {
-      await _productsRef(product.companyId).add(product.toFirestore());
+      await _productsRef(tenantId).add(data);
     }
   }
 
@@ -63,6 +71,7 @@ class ProductService {
       contentType: contentType,
       customMetadata: {
         'companyId': companyId,
+        'tenantId': companyId,
         'uploadedBy': uploaderUid,
         'module': 'products',
       },
@@ -73,30 +82,21 @@ class ProductService {
   }
 
   // User RBAC Fetcher
-  Future<Map<String, dynamic>> loadUserCompanyProfile(String uid) async {
-    final globalDoc = await _db.collection('users').doc(uid).get();
-    final globalData = globalDoc.data() ?? <String, dynamic>{};
-
-    String companyId = (globalData['companyId'] ?? '').toString();
-    if (companyId.isEmpty) {
-      final memberships = globalData['memberships'];
-      if (memberships is Map && memberships.isNotEmpty) {
-        companyId = memberships.keys.first.toString();
-      }
-    }
-
-    if (companyId.isEmpty) return globalData;
-
+  Future<Map<String, dynamic>> loadUserCompanyProfile(
+    String uid,
+    String tenantId,
+  ) async {
+    final safeTenantId = TenantFirestore.requireTenantId(tenantId);
     final companyUserDoc = await _db
         .collection('companies')
-        .doc(companyId)
+        .doc(safeTenantId)
         .collection('users')
         .doc(uid)
         .get();
     return {
-      ...globalData,
       ...(companyUserDoc.data() ?? {}),
-      'companyId': companyId,
+      'companyId': safeTenantId,
+      'tenantId': safeTenantId,
     };
   }
 }

@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
+
 class BomRevisionService {
   BomRevisionService({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
@@ -10,10 +12,10 @@ class BomRevisionService {
     required String tenantId,
     required String sourceBomId,
   }) async {
-    final bomRef = _firestore
-        .collection('tenants')
-        .doc(tenantId)
-        .collection('bom_headers');
+    final bomRef = TenantFirestore(
+      tenantId: tenantId,
+      firestore: _firestore,
+    ).collection('bom_headers');
     final sourceRef = bomRef.doc(sourceBomId);
     final sourceSnap = await sourceRef.get();
 
@@ -37,12 +39,18 @@ class BomRevisionService {
       'bomId': nextRef.id,
       'revisionNo': nextRevision,
       'status': 'draft',
+      'companyId': tenantId,
+      'tenantId': tenantId,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
     for (final line in linesSnap.docs) {
-      batch.set(nextRef.collection('bom_lines').doc(line.id), line.data());
+      batch.set(nextRef.collection('bom_lines').doc(line.id), {
+        ...line.data(),
+        'companyId': tenantId,
+        'tenantId': tenantId,
+      });
     }
 
     await batch.commit();

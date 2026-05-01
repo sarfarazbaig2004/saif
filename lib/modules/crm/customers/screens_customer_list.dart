@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:QUIK/models/customer.dart';
+import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/crm/customers/screens_add_customer.dart';
 import 'package:QUIK/modules/crm/customers/screens_customer_followup_list.dart';
 import 'package:QUIK/modules/crm/contacts/screens_add_contact.dart';
@@ -28,33 +30,22 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
   String _customerStageFilter = '';
   String _followUpFilter = '';
 
-  Future<Map<String, dynamic>?> _loadCurrentUserProfile(String uid) async {
+  Future<Map<String, dynamic>?> _loadCurrentUserProfile({
+    required String uid,
+    required String tenantId,
+  }) async {
     final firestore = FirebaseFirestore.instance;
+    final safeTenantId = tenantId.trim();
+    if (safeTenantId.isEmpty) return null;
 
-    // 1. Fetch Global User
+    // Root users are only used for identity and tenant membership lookup.
     final globalDoc = await firestore.collection('users').doc(uid).get();
     final globalData = globalDoc.data() ?? <String, dynamic>{};
 
-    // 2. Safely extract dynamic companyId
-    String companyId = (globalData['companyId'] ?? '').toString();
-    if (companyId.isEmpty) {
-      final companyIds = globalData['companyIds'];
-      if (companyIds is List && companyIds.isNotEmpty) {
-        companyId = companyIds.first.toString();
-      } else {
-        final memberships = globalData['memberships'];
-        if (memberships is Map && memberships.isNotEmpty) {
-          companyId = memberships.keys.first.toString();
-        }
-      }
-    }
-
-    if (companyId.isEmpty) return globalData;
-
-    // 3. Fetch Company-Scoped User Document (This holds the REAL permissions map)
+    // Permissions and role must come from the selected tenant workspace.
     final companyUserDoc = await firestore
         .collection('companies')
-        .doc(companyId)
+        .doc(safeTenantId)
         .collection('users')
         .doc(uid)
         .get();
@@ -65,7 +56,8 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
     return {
       ...globalData,
       ...companyData,
-      'companyId': companyId,
+      'companyId': safeTenantId,
+      'tenantId': safeTenantId,
     };
   }
 
@@ -79,7 +71,10 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
         r == 'manager';
   }
 
-  bool _hasCustomerPermission(Map<String, dynamic> userData, {String action = 'view'}) {
+  bool _hasCustomerPermission(
+    Map<String, dynamic> userData, {
+    String action = 'view',
+  }) {
     final role = (userData['role'] ?? '').toString();
     if (_isAdminOrManager(role)) return true;
 
@@ -97,7 +92,10 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
 
     // Legacy fallback check
     if (permissions['customers'] == true && action == 'view') return true;
-    if (permissions['customers'] is Map && permissions['customers'][action] == true) return true;
+    if (permissions['customers'] is Map &&
+        permissions['customers'][action] == true) {
+      return true;
+    }
 
     return false;
   }
@@ -111,8 +109,8 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
 
     return docs.where((doc) {
       final data = doc.data();
-      final createdBy =
-      (data['createdByUid'] ?? data['createdBy'] ?? '').toString();
+      final createdBy = (data['createdByUid'] ?? data['createdBy'] ?? '')
+          .toString();
       final assignedToUid = (data['assignedToUid'] ?? '').toString();
 
       return createdBy == currentUserUid || assignedToUid == currentUserUid;
@@ -135,10 +133,12 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
     final filtered = visibleDocs.where((doc) {
       final data = doc.data();
 
-      final companyName =
-      (data['companyName'] ?? data['name'] ?? '').toString().toLowerCase();
-      final phone =
-      (data['companyPhone'] ?? data['phone'] ?? '').toString().toLowerCase();
+      final companyName = (data['companyName'] ?? data['name'] ?? '')
+          .toString()
+          .toLowerCase();
+      final phone = (data['companyPhone'] ?? data['phone'] ?? '')
+          .toString()
+          .toLowerCase();
       final email = (data['businessEmail'] ?? data['email'] ?? '')
           .toString()
           .toLowerCase();
@@ -146,18 +146,22 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
       final state = (data['state'] ?? '').toString().toLowerCase();
       final status = (data['status'] ?? '').toString().toLowerCase();
       final priority = (data['priority'] ?? '').toString().toLowerCase();
-      final customerType =
-      (data['customerType'] ?? '').toString().toLowerCase();
-      final customerStage =
-      (data['customerStage'] ?? '').toString().toLowerCase();
+      final customerType = (data['customerType'] ?? '')
+          .toString()
+          .toLowerCase();
+      final customerStage = (data['customerStage'] ?? '')
+          .toString()
+          .toLowerCase();
       final industry = (data['industry'] ?? '').toString().toLowerCase();
       final leadSource = (data['leadSource'] ?? '').toString().toLowerCase();
-      final lastFollowUpSummary =
-      (data['lastFollowUpSummary'] ?? '').toString().toLowerCase();
-      final lastFollowUpMode =
-      (data['lastFollowUpMode'] ?? '').toString().toLowerCase();
-      final createdBy =
-      (data['createdByUid'] ?? data['createdBy'] ?? '').toString();
+      final lastFollowUpSummary = (data['lastFollowUpSummary'] ?? '')
+          .toString()
+          .toLowerCase();
+      final lastFollowUpMode = (data['lastFollowUpMode'] ?? '')
+          .toString()
+          .toLowerCase();
+      final createdBy = (data['createdByUid'] ?? data['createdBy'] ?? '')
+          .toString();
       final assignedToUid = (data['assignedToUid'] ?? '').toString();
 
       final followUpCountRaw = data['followUpCount'];
@@ -170,15 +174,14 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
 
       final hasPendingFollowUp =
           nextFollowUpDate != null &&
-              DateTime(
-                nextFollowUpDate.year,
-                nextFollowUpDate.month,
-                nextFollowUpDate.day,
-              ).isBefore(
-                DateTime(now.year, now.month, now.day + 1),
-              );
+          DateTime(
+            nextFollowUpDate.year,
+            nextFollowUpDate.month,
+            nextFollowUpDate.day,
+          ).isBefore(DateTime(now.year, now.month, now.day + 1));
 
-      final matchesSearch = query.isEmpty ||
+      final matchesSearch =
+          query.isEmpty ||
           companyName.contains(query) ||
           phone.contains(query) ||
           email.contains(query) ||
@@ -199,20 +202,24 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
         _ => true,
       };
 
-      final matchesStatus = _statusFilter.isEmpty ||
-          status == _statusFilter.trim().toLowerCase();
+      final matchesStatus =
+          _statusFilter.isEmpty || status == _statusFilter.trim().toLowerCase();
 
-      final matchesPriority = _priorityFilter.isEmpty ||
+      final matchesPriority =
+          _priorityFilter.isEmpty ||
           priority == _priorityFilter.trim().toLowerCase();
 
-      final matchesCustomerType = _customerTypeFilter.isEmpty ||
+      final matchesCustomerType =
+          _customerTypeFilter.isEmpty ||
           customerType == _customerTypeFilter.trim().toLowerCase();
 
-      final matchesCity = _cityFilter.isEmpty ||
+      final matchesCity =
+          _cityFilter.isEmpty ||
           city.contains(_cityFilter.trim().toLowerCase()) ||
           state.contains(_cityFilter.trim().toLowerCase());
 
-      final matchesCustomerStage = _customerStageFilter.isEmpty ||
+      final matchesCustomerStage =
+          _customerStageFilter.isEmpty ||
           customerStage == _customerStageFilter.trim().toLowerCase();
 
       final matchesFollowUp = switch (_followUpFilter) {
@@ -245,10 +252,12 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
       if (aNext != null) return -1;
       if (bNext != null) return 1;
 
-      final aName =
-      (aData['companyName'] ?? aData['name'] ?? '').toString().toLowerCase();
-      final bName =
-      (bData['companyName'] ?? bData['name'] ?? '').toString().toLowerCase();
+      final aName = (aData['companyName'] ?? aData['name'] ?? '')
+          .toString()
+          .toLowerCase();
+      final bName = (bData['companyName'] ?? bData['name'] ?? '')
+          .toString()
+          .toLowerCase();
 
       return aName.compareTo(bName);
     });
@@ -316,10 +325,7 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -328,11 +334,13 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
     if (confirm != true) return;
 
     try {
-      final contactsSnap =
-      await customerDoc.reference.collection('contacts').get();
+      final contactsSnap = await customerDoc.reference
+          .collection('contacts')
+          .get();
 
-      final followUpsSnap =
-      await customerDoc.reference.collection('followUps').get();
+      final followUpsSnap = await customerDoc.reference
+          .collection('followUps')
+          .get();
 
       final batch = FirebaseFirestore.instance.batch();
 
@@ -394,10 +402,7 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
               children: [
                 const Text(
                   'Filters',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
@@ -424,7 +429,9 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  initialValue: tempCustomerStage.isEmpty ? null : tempCustomerStage,
+                  initialValue: tempCustomerStage.isEmpty
+                      ? null
+                      : tempCustomerStage,
                   decoration: const InputDecoration(
                     labelText: 'Customer Stage',
                     isDense: true,
@@ -454,7 +461,10 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                   ),
                   items: const [
                     DropdownMenuItem(value: 'active', child: Text('Active')),
-                    DropdownMenuItem(value: 'prospect', child: Text('Prospect')),
+                    DropdownMenuItem(
+                      value: 'prospect',
+                      child: Text('Prospect'),
+                    ),
                     DropdownMenuItem(value: 'lead', child: Text('Lead')),
                     DropdownMenuItem(value: 'dormant', child: Text('Dormant')),
                     DropdownMenuItem(value: 'blocked', child: Text('Blocked')),
@@ -473,7 +483,9 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                   ),
                   items: const [
                     DropdownMenuItem(
-                        value: 'critical', child: Text('Critical')),
+                      value: 'critical',
+                      child: Text('Critical'),
+                    ),
                     DropdownMenuItem(value: 'high', child: Text('High')),
                     DropdownMenuItem(value: 'medium', child: Text('Medium')),
                     DropdownMenuItem(value: 'low', child: Text('Low')),
@@ -484,8 +496,9 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  initialValue:
-                  tempCustomerType.isEmpty ? null : tempCustomerType,
+                  initialValue: tempCustomerType.isEmpty
+                      ? null
+                      : tempCustomerType,
                   decoration: const InputDecoration(
                     labelText: 'Customer Type',
                     isDense: true,
@@ -493,37 +506,59 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                   ),
                   items: const [
                     DropdownMenuItem(
-                        value: 'end customer', child: Text('End Customer')),
+                      value: 'end customer',
+                      child: Text('End Customer'),
+                    ),
                     DropdownMenuItem(
-                        value: 'distributor', child: Text('Distributor')),
+                      value: 'distributor',
+                      child: Text('Distributor'),
+                    ),
                     DropdownMenuItem(value: 'dealer', child: Text('Dealer')),
                     DropdownMenuItem(
-                        value: 'channel partner',
-                        child: Text('Channel Partner')),
+                      value: 'channel partner',
+                      child: Text('Channel Partner'),
+                    ),
                     DropdownMenuItem(value: 'oem', child: Text('OEM')),
                     DropdownMenuItem(
-                        value: 'system integrator',
-                        child: Text('System Integrator')),
+                      value: 'system integrator',
+                      child: Text('System Integrator'),
+                    ),
                     DropdownMenuItem(
-                        value: 'contractor', child: Text('Contractor')),
+                      value: 'contractor',
+                      child: Text('Contractor'),
+                    ),
                     DropdownMenuItem(
-                        value: 'fabricator', child: Text('Fabricator')),
+                      value: 'fabricator',
+                      child: Text('Fabricator'),
+                    ),
                     DropdownMenuItem(
-                        value: 'manufacturer', child: Text('Manufacturer')),
+                      value: 'manufacturer',
+                      child: Text('Manufacturer'),
+                    ),
                     DropdownMenuItem(
-                        value: 'consultant', child: Text('Consultant')),
+                      value: 'consultant',
+                      child: Text('Consultant'),
+                    ),
                     DropdownMenuItem(
-                        value: 'government', child: Text('Government')),
+                      value: 'government',
+                      child: Text('Government'),
+                    ),
                     DropdownMenuItem(
-                        value: 'public sector', child: Text('Public Sector')),
+                      value: 'public sector',
+                      child: Text('Public Sector'),
+                    ),
                     DropdownMenuItem(
-                        value: 'educational institution',
-                        child: Text('Educational Institution')),
+                      value: 'educational institution',
+                      child: Text('Educational Institution'),
+                    ),
                     DropdownMenuItem(
-                        value: 'service provider',
-                        child: Text('Service Provider')),
+                      value: 'service provider',
+                      child: Text('Service Provider'),
+                    ),
                     DropdownMenuItem(
-                        value: 'retailer', child: Text('Retailer')),
+                      value: 'retailer',
+                      child: Text('Retailer'),
+                    ),
                     DropdownMenuItem(value: 'trader', child: Text('Trader')),
                     DropdownMenuItem(value: 'other', child: Text('Other')),
                   ],
@@ -533,8 +568,9 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  initialValue:
-                  tempFollowUpFilter.isEmpty ? null : tempFollowUpFilter,
+                  initialValue: tempFollowUpFilter.isEmpty
+                      ? null
+                      : tempFollowUpFilter,
                   decoration: const InputDecoration(
                     labelText: 'Follow-up',
                     isDense: true,
@@ -636,17 +672,19 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
   @override
   Widget build(BuildContext context) {
     final firebaseUser = FirebaseAuth.instance.currentUser;
+    final selectedTenantId = context.watchTenant.selectedTenantId;
 
     if (firebaseUser == null) {
       return const Scaffold(
-        body: Center(
-          child: Text('Please log in again. No user found.'),
-        ),
+        body: Center(child: Text('Please log in again. No user found.')),
       );
     }
 
     return FutureBuilder<Map<String, dynamic>?>(
-      future: _loadCurrentUserProfile(firebaseUser.uid),
+      future: _loadCurrentUserProfile(
+        uid: firebaseUser.uid,
+        tenantId: selectedTenantId,
+      ),
       builder: (context, userSnap) {
         if (userSnap.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -672,27 +710,26 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
         final userData = userSnap.data;
         if (userData == null) {
           return const Scaffold(
-            body: Center(
-              child: Text('User profile not found'),
-            ),
+            body: Center(child: Text('User profile not found')),
           );
         }
 
-        final companyId = (userData['companyId'] ?? '').toString();
+        final companyId = (userData['tenantId'] ?? userData['companyId'] ?? '')
+            .toString()
+            .trim();
         final role = (userData['role'] ?? 'sales').toString();
-        final currentUserName = (userData['name'] ??
-            userData['userName'] ??
-            userData['fullName'] ??
-            userData['displayName'] ??
-            userData['email'] ??
-            firebaseUser.uid)
-            .toString();
+        final currentUserName =
+            (userData['name'] ??
+                    userData['userName'] ??
+                    userData['fullName'] ??
+                    userData['displayName'] ??
+                    userData['email'] ??
+                    firebaseUser.uid)
+                .toString();
 
         if (companyId.isEmpty) {
           return const Scaffold(
-            body: Center(
-              child: Text('No company linked to this user'),
-            ),
+            body: Center(child: Text('No company linked to this user')),
           );
         }
 
@@ -706,19 +743,19 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
         }
 
         // 2. Resolve Create, Edit, Delete Permissions
-        final bool canCreate = _hasCustomerPermission(userData, action: 'create');
+        final bool canCreate = _hasCustomerPermission(
+          userData,
+          action: 'create',
+        );
         final bool canEdit = _hasCustomerPermission(userData, action: 'edit');
-        final bool canDelete = _hasCustomerPermission(userData, action: 'delete');
+        final bool canDelete = _hasCustomerPermission(
+          userData,
+          action: 'delete',
+        );
 
-        final customersRef = FirebaseFirestore.instance
-            .collection('companies')
-            .doc(companyId)
-            .collection('customers');
-
-        final companyUsersRef = FirebaseFirestore.instance
-            .collection('companies')
-            .doc(companyId)
-            .collection('users');
+        final tenantDb = TenantFirestore(tenantId: companyId);
+        final customersRef = tenantDb.collection('customers');
+        final companyUsersRef = tenantDb.collection('users');
 
         return Scaffold(
           appBar: AppBar(
@@ -728,15 +765,15 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
           ),
           floatingActionButton: canCreate
               ? FloatingActionButton(
-            tooltip: 'Add Customer',
-            onPressed: () => _openAddCustomer(
-              context: context,
-              companyId: companyId,
-              userUid: firebaseUser.uid,
-              role: role,
-            ),
-            child: const Icon(Icons.add),
-          )
+                  tooltip: 'Add Customer',
+                  onPressed: () => _openAddCustomer(
+                    context: context,
+                    companyId: companyId,
+                    userUid: firebaseUser.uid,
+                    role: role,
+                  ),
+                  child: const Icon(Icons.add),
+                )
               : null,
           body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: companyUsersRef.snapshots(),
@@ -747,13 +784,14 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                 for (final doc in usersSnap.data!.docs) {
                   final data = doc.data();
                   final uid = (data['uid'] ?? doc.id).toString();
-                  final name = (data['name'] ??
-                      data['userName'] ??
-                      data['fullName'] ??
-                      data['displayName'] ??
-                      data['email'] ??
-                      '')
-                      .toString();
+                  final name =
+                      (data['name'] ??
+                              data['userName'] ??
+                              data['fullName'] ??
+                              data['displayName'] ??
+                              data['email'] ??
+                              '')
+                          .toString();
                   if (uid.isNotEmpty && name.isNotEmpty) {
                     userNameMap[uid] = name;
                   }
@@ -780,7 +818,8 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final allDocs = snapshot.data?.docs.toList() ??
+                  final allDocs =
+                      snapshot.data?.docs.toList() ??
                       <QueryDocumentSnapshot<Map<String, dynamic>>>[];
 
                   final visibleDocs = _visibleDocsByRole(
@@ -797,18 +836,18 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
 
                   final assignedCount = visibleDocs.where((doc) {
                     final data = doc.data();
-                    final assignedToUid =
-                    (data['assignedToUid'] ?? '').toString();
+                    final assignedToUid = (data['assignedToUid'] ?? '')
+                        .toString();
                     return assignedToUid.isNotEmpty;
                   }).length;
 
                   final myCustomersCount = visibleDocs.where((doc) {
                     final data = doc.data();
                     final createdBy =
-                    (data['createdByUid'] ?? data['createdBy'] ?? '')
+                        (data['createdByUid'] ?? data['createdBy'] ?? '')
+                            .toString();
+                    final assignedToUid = (data['assignedToUid'] ?? '')
                         .toString();
-                    final assignedToUid =
-                    (data['assignedToUid'] ?? '').toString();
                     return createdBy == firebaseUser.uid ||
                         assignedToUid == firebaseUser.uid;
                   }).length;
@@ -832,22 +871,26 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                                   },
                                   decoration: InputDecoration(
                                     hintText:
-                                    'Search customer, stage, follow-up',
-                                    prefixIcon:
-                                    const Icon(Icons.search, size: 18),
+                                        'Search customer, stage, follow-up',
+                                    prefixIcon: const Icon(
+                                      Icons.search,
+                                      size: 18,
+                                    ),
                                     suffixIcon: _searchQuery.trim().isEmpty
                                         ? null
                                         : IconButton(
-                                      tooltip: 'Clear',
-                                      icon: const Icon(Icons.close,
-                                          size: 17),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                        setState(() {
-                                          _searchQuery = '';
-                                        });
-                                      },
-                                    ),
+                                            tooltip: 'Clear',
+                                            icon: const Icon(
+                                              Icons.close,
+                                              size: 17,
+                                            ),
+                                            onPressed: () {
+                                              _searchController.clear();
+                                              setState(() {
+                                                _searchQuery = '';
+                                              });
+                                            },
+                                          ),
                                     isDense: true,
                                     filled: true,
                                     fillColor: Colors.grey.shade100,
@@ -950,659 +993,714 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                       Expanded(
                         child: filteredDocs.isEmpty
                             ? _EmptyCustomersState(
-                          hasSearch: _searchQuery.trim().isNotEmpty ||
-                              _hasActiveFilters,
-                          onReset: () {
-                            _searchController.clear();
-                            setState(() {
-                              _searchQuery = '';
-                            });
-                            _resetFilters();
-                          },
-                        )
+                                hasSearch:
+                                    _searchQuery.trim().isNotEmpty ||
+                                    _hasActiveFilters,
+                                onReset: () {
+                                  _searchController.clear();
+                                  setState(() {
+                                    _searchQuery = '';
+                                  });
+                                  _resetFilters();
+                                },
+                              )
                             : ListView.separated(
-                          padding:
-                          const EdgeInsets.fromLTRB(16, 4, 16, 90),
-                          itemCount: filteredDocs.length,
-                          separatorBuilder: (_, __) =>
-                          const SizedBox(height: 8),
-                          itemBuilder: (context, index) {
-                            final doc = filteredDocs[index];
-                            final data = doc.data();
-                            final customer = _mapFirestoreToCustomer(doc);
-
-                            final assignedToUid =
-                            (data['assignedToUid'] ?? '').toString();
-                            final assignedToName =
-                            (data['assignedToName'] ?? '').toString();
-
-                            final updatedByUid =
-                            (data['updatedByUid'] ??
-                                data['updatedBy'] ??
-                                '')
-                                .toString();
-                            final updatedByName =
-                            (data['updatedByName'] ?? '').toString();
-
-                            final contactName =
-                            (data['contactName'] ?? '').toString();
-                            final updatedAt = data['updatedAt'];
-
-                            final customerStage =
-                            (data['customerStage'] ?? '').toString();
-                            final status =
-                            (data['status'] ?? '').toString();
-                            final priority =
-                            (data['priority'] ?? '').toString();
-                            final customerType =
-                            (data['customerType'] ?? '').toString();
-                            final city = (data['city'] ?? '').toString();
-                            final state =
-                            (data['state'] ?? '').toString();
-                            final industry =
-                            (data['industry'] ?? '').toString();
-
-                            final lastFollowUpAt =
-                            _extractDate(data['lastFollowUpAt']);
-                            final nextFollowUpDate =
-                            _extractDate(data['nextFollowUpDate']);
-                            final lastFollowUpMode =
-                            (data['lastFollowUpMode'] ?? '').toString();
-                            final lastFollowUpSummary =
-                            (data['lastFollowUpSummary'] ?? '')
-                                .toString();
-                            final lastFollowUpOutcome =
-                            (data['lastFollowUpOutcome'] ?? '')
-                                .toString();
-
-                            final followUpCountRaw = data['followUpCount'];
-                            final int followUpCount = followUpCountRaw
-                            is int
-                                ? followUpCountRaw
-                                : int.tryParse(
-                                followUpCountRaw?.toString() ??
-                                    '0') ??
-                                0;
-
-                            final displayName =
-                            customer.companyName.isNotEmpty
-                                ? customer.companyName
-                                : customer.name;
-
-                            final phone = customer.companyPhone.isEmpty
-                                ? (customer.phone.isEmpty
-                                ? '-'
-                                : customer.phone)
-                                : customer.companyPhone;
-
-                            final email = customer.businessEmail.isEmpty
-                                ? (customer.email.isEmpty
-                                ? '-'
-                                : customer.email)
-                                : customer.businessEmail;
-
-                            final assignedDisplay = assignedToUid.isEmpty
-                                ? ''
-                                : _resolveUserName(
-                              uid: assignedToUid,
-                              userNameMap: userNameMap,
-                              fallbackName: assignedToName,
-                              isCurrentUser:
-                              assignedToUid == firebaseUser.uid,
-                            );
-
-                            final updatedByDisplay = updatedByUid.isEmpty
-                                ? ''
-                                : _resolveUserName(
-                              uid: updatedByUid,
-                              userNameMap: userNameMap,
-                              fallbackName: updatedByName,
-                              isCurrentUser:
-                              updatedByUid == firebaseUser.uid,
-                            );
-
-                            final locationText = [
-                              city.trim(),
-                              state.trim(),
-                            ].where((e) => e.isNotEmpty).join(', ');
-
-                            // 🔴 STRICT RBAC OVERRIDE REMOVED HERE
-                            // If they don't have the global 'edit' box checked,
-                            // they cannot edit, even if they own the record.
-                            final userCanEdit = canEdit;
-                            final userCanDelete = canDelete;
-
-                            return InkWell(
-                              borderRadius: BorderRadius.circular(14),
-                              onTap: () {
-                                if (!userCanEdit) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('You do not have permission to edit this customer.')),
-                                  );
-                                  return;
-                                }
-
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ScreensAddCustomer(
-                                      existingDoc: doc.reference,
-                                      companyId: companyId,
-                                      currentUserUid: firebaseUser.uid,
-                                      currentUserRole: role,
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius:
-                                  BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: Colors.grey.shade200,
-                                    width: 0.8,
-                                  ),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  4,
+                                  16,
+                                  90,
                                 ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(12),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                    CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                        children: [
-                                          CircleAvatar(
-                                            radius: 20,
-                                            backgroundColor:
-                                            Colors.blue.shade50,
-                                            child: Text(
-                                              displayName.isNotEmpty
-                                                  ? displayName[0]
-                                                  .toUpperCase()
-                                                  : '?',
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight:
-                                                FontWeight.w700,
-                                                color: Colors
-                                                    .blue.shade800,
-                                              ),
+                                itemCount: filteredDocs.length,
+                                separatorBuilder: (_, __) =>
+                                    const SizedBox(height: 8),
+                                itemBuilder: (context, index) {
+                                  final doc = filteredDocs[index];
+                                  final data = doc.data();
+                                  final customer = _mapFirestoreToCustomer(doc);
+
+                                  final assignedToUid =
+                                      (data['assignedToUid'] ?? '').toString();
+                                  final assignedToName =
+                                      (data['assignedToName'] ?? '').toString();
+
+                                  final updatedByUid =
+                                      (data['updatedByUid'] ??
+                                              data['updatedBy'] ??
+                                              '')
+                                          .toString();
+                                  final updatedByName =
+                                      (data['updatedByName'] ?? '').toString();
+
+                                  final contactName =
+                                      (data['contactName'] ?? '').toString();
+                                  final updatedAt = data['updatedAt'];
+
+                                  final customerStage =
+                                      (data['customerStage'] ?? '').toString();
+                                  final status = (data['status'] ?? '')
+                                      .toString();
+                                  final priority = (data['priority'] ?? '')
+                                      .toString();
+                                  final customerType =
+                                      (data['customerType'] ?? '').toString();
+                                  final city = (data['city'] ?? '').toString();
+                                  final state = (data['state'] ?? '')
+                                      .toString();
+                                  final industry = (data['industry'] ?? '')
+                                      .toString();
+
+                                  final lastFollowUpAt = _extractDate(
+                                    data['lastFollowUpAt'],
+                                  );
+                                  final nextFollowUpDate = _extractDate(
+                                    data['nextFollowUpDate'],
+                                  );
+                                  final lastFollowUpMode =
+                                      (data['lastFollowUpMode'] ?? '')
+                                          .toString();
+                                  final lastFollowUpSummary =
+                                      (data['lastFollowUpSummary'] ?? '')
+                                          .toString();
+                                  final lastFollowUpOutcome =
+                                      (data['lastFollowUpOutcome'] ?? '')
+                                          .toString();
+
+                                  final followUpCountRaw =
+                                      data['followUpCount'];
+                                  final int followUpCount =
+                                      followUpCountRaw is int
+                                      ? followUpCountRaw
+                                      : int.tryParse(
+                                              followUpCountRaw?.toString() ??
+                                                  '0',
+                                            ) ??
+                                            0;
+
+                                  final displayName =
+                                      customer.companyName.isNotEmpty
+                                      ? customer.companyName
+                                      : customer.name;
+
+                                  final phone = customer.companyPhone.isEmpty
+                                      ? (customer.phone.isEmpty
+                                            ? '-'
+                                            : customer.phone)
+                                      : customer.companyPhone;
+
+                                  final email = customer.businessEmail.isEmpty
+                                      ? (customer.email.isEmpty
+                                            ? '-'
+                                            : customer.email)
+                                      : customer.businessEmail;
+
+                                  final assignedDisplay = assignedToUid.isEmpty
+                                      ? ''
+                                      : _resolveUserName(
+                                          uid: assignedToUid,
+                                          userNameMap: userNameMap,
+                                          fallbackName: assignedToName,
+                                          isCurrentUser:
+                                              assignedToUid == firebaseUser.uid,
+                                        );
+
+                                  final updatedByDisplay = updatedByUid.isEmpty
+                                      ? ''
+                                      : _resolveUserName(
+                                          uid: updatedByUid,
+                                          userNameMap: userNameMap,
+                                          fallbackName: updatedByName,
+                                          isCurrentUser:
+                                              updatedByUid == firebaseUser.uid,
+                                        );
+
+                                  final locationText = [
+                                    city.trim(),
+                                    state.trim(),
+                                  ].where((e) => e.isNotEmpty).join(', ');
+
+                                  // 🔴 STRICT RBAC OVERRIDE REMOVED HERE
+                                  // If they don't have the global 'edit' box checked,
+                                  // they cannot edit, even if they own the record.
+                                  final userCanEdit = canEdit;
+                                  final userCanDelete = canDelete;
+
+                                  return InkWell(
+                                    borderRadius: BorderRadius.circular(14),
+                                    onTap: () {
+                                      if (!userCanEdit) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'You do not have permission to edit this customer.',
                                             ),
                                           ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
+                                        );
+                                        return;
+                                      }
+
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ScreensAddCustomer(
+                                            existingDoc: doc.reference,
+                                            companyId: companyId,
+                                            currentUserUid: firebaseUser.uid,
+                                            currentUserRole: role,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(
+                                          color: Colors.grey.shade200,
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(12),
+                                        child: Column(
+                                          crossAxisAlignment:
                                               CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
-                                                Text(
-                                                  displayName.isNotEmpty
-                                                      ? displayName
-                                                      : '(No Company Name)',
-                                                  maxLines: 1,
-                                                  overflow:
-                                                  TextOverflow.ellipsis,
-                                                  style: const TextStyle(
-                                                    fontSize: 15,
-                                                    fontWeight:
-                                                    FontWeight.w700,
+                                                CircleAvatar(
+                                                  radius: 20,
+                                                  backgroundColor:
+                                                      Colors.blue.shade50,
+                                                  child: Text(
+                                                    displayName.isNotEmpty
+                                                        ? displayName[0]
+                                                              .toUpperCase()
+                                                        : '?',
+                                                    style: TextStyle(
+                                                      fontSize: 15,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color:
+                                                          Colors.blue.shade800,
+                                                    ),
                                                   ),
                                                 ),
-                                                if (industry.isNotEmpty) ...[
-                                                  const SizedBox(
-                                                      height: 3),
-                                                  Text(
-                                                    industry,
-                                                    maxLines: 1,
-                                                    overflow: TextOverflow
-                                                        .ellipsis,
-                                                    style: TextStyle(
-                                                      fontSize: 12.5,
-                                                      color: Colors
-                                                          .grey.shade700,
-                                                      fontWeight:
-                                                      FontWeight.w500,
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      Text(
+                                                        displayName.isNotEmpty
+                                                            ? displayName
+                                                            : '(No Company Name)',
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style: const TextStyle(
+                                                          fontSize: 15,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                        ),
+                                                      ),
+                                                      if (industry
+                                                          .isNotEmpty) ...[
+                                                        const SizedBox(
+                                                          height: 3,
+                                                        ),
+                                                        Text(
+                                                          industry,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: TextStyle(
+                                                            fontSize: 12.5,
+                                                            color: Colors
+                                                                .grey
+                                                                .shade700,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                ),
+                                                PopupMenuButton<String>(
+                                                  tooltip: 'Actions',
+                                                  onSelected: (value) {
+                                                    if (value == 'edit') {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (_) =>
+                                                              ScreensAddCustomer(
+                                                                existingDoc: doc
+                                                                    .reference,
+                                                                companyId:
+                                                                    companyId,
+                                                                currentUserUid:
+                                                                    firebaseUser
+                                                                        .uid,
+                                                                currentUserRole:
+                                                                    role,
+                                                              ),
+                                                        ),
+                                                      );
+                                                    } else if (value ==
+                                                        'contacts') {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (_) =>
+                                                              ScreensContactList(
+                                                                companyRef: doc
+                                                                    .reference,
+                                                                companyName:
+                                                                    displayName,
+                                                              ),
+                                                        ),
+                                                      );
+                                                    } else if (value ==
+                                                        'follow_ups') {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (_) =>
+                                                              ScreensCustomerFollowUpList(
+                                                                customerRef: doc
+                                                                    .reference,
+                                                                companyId:
+                                                                    companyId,
+                                                                currentUserUid:
+                                                                    firebaseUser
+                                                                        .uid,
+                                                                currentUserName:
+                                                                    currentUserName,
+                                                                customerName:
+                                                                    displayName,
+                                                              ),
+                                                        ),
+                                                      );
+                                                    } else if (value ==
+                                                        'add_contact') {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (_) =>
+                                                              ScreensAddContact(
+                                                                companyRef: doc
+                                                                    .reference,
+                                                              ),
+                                                        ),
+                                                      );
+                                                    } else if (value ==
+                                                        'delete') {
+                                                      _deleteCustomer(
+                                                        context: context,
+                                                        customerDoc: doc,
+                                                        customerName:
+                                                            displayName,
+                                                      );
+                                                    }
+                                                  },
+                                                  itemBuilder: (context) => [
+                                                    if (userCanEdit)
+                                                      const PopupMenuItem(
+                                                        value: 'edit',
+                                                        child: Text(
+                                                          'Edit Customer',
+                                                        ),
+                                                      ),
+                                                    const PopupMenuItem(
+                                                      value: 'contacts',
+                                                      child: Text(
+                                                        'View Contacts',
+                                                      ),
+                                                    ),
+                                                    const PopupMenuItem(
+                                                      value: 'follow_ups',
+                                                      child: Text(
+                                                        'View Follow-ups',
+                                                      ),
+                                                    ),
+                                                    if (userCanEdit)
+                                                      const PopupMenuItem(
+                                                        value: 'add_contact',
+                                                        child: Text(
+                                                          'Add Contact',
+                                                        ),
+                                                      ),
+                                                    if (userCanDelete)
+                                                      const PopupMenuDivider(),
+                                                    if (userCanDelete)
+                                                      const PopupMenuItem(
+                                                        value: 'delete',
+                                                        child: Text(
+                                                          'Delete Customer',
+                                                          style: TextStyle(
+                                                            color: Colors.red,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 10),
+                                            Wrap(
+                                              spacing: 8,
+                                              runSpacing: 8,
+                                              children: [
+                                                if (customerStage.isNotEmpty)
+                                                  _InfoChip(
+                                                    label: customerStage,
+                                                    backgroundColor:
+                                                        customerStage
+                                                                .toLowerCase() ==
+                                                            'existing customer'
+                                                        ? Colors.green.shade50
+                                                        : Colors.orange.shade50,
+                                                    textColor:
+                                                        customerStage
+                                                                .toLowerCase() ==
+                                                            'existing customer'
+                                                        ? Colors.green.shade800
+                                                        : Colors
+                                                              .orange
+                                                              .shade800,
+                                                  ),
+                                                if (status.isNotEmpty)
+                                                  _InfoChip(
+                                                    label: status,
+                                                    backgroundColor: _statusBg(
+                                                      status,
+                                                    ),
+                                                    textColor: _statusFg(
+                                                      status,
+                                                    ),
+                                                  ),
+                                                if (priority.isNotEmpty)
+                                                  _InfoChip(
+                                                    label: priority,
+                                                    backgroundColor:
+                                                        _priorityBg(priority),
+                                                    textColor: _priorityFg(
+                                                      priority,
+                                                    ),
+                                                  ),
+                                                if (customerType.isNotEmpty)
+                                                  _InfoChip(
+                                                    label: customerType,
+                                                    backgroundColor:
+                                                        Colors.blue.shade50,
+                                                    textColor:
+                                                        Colors.blue.shade800,
+                                                  ),
+                                                if (locationText.isNotEmpty)
+                                                  _InfoChip(
+                                                    label: locationText,
+                                                    backgroundColor:
+                                                        Colors.grey.shade100,
+                                                    textColor:
+                                                        Colors.grey.shade800,
+                                                  ),
+                                                _InfoChip(
+                                                  label:
+                                                      'Follow-ups: $followUpCount',
+                                                  backgroundColor:
+                                                      Colors.purple.shade50,
+                                                  textColor:
+                                                      Colors.purple.shade800,
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 10),
+                                            Wrap(
+                                              spacing: 14,
+                                              runSpacing: 8,
+                                              children: [
+                                                _InlineInfo(
+                                                  icon: Icons.phone_outlined,
+                                                  text: phone,
+                                                ),
+                                                _InlineInfo(
+                                                  icon: Icons.email_outlined,
+                                                  text: email,
+                                                ),
+                                                if (contactName.isNotEmpty)
+                                                  _InlineInfo(
+                                                    icon: Icons.person_outline,
+                                                    text: contactName,
+                                                  ),
+                                                _CustomerContactsCount(
+                                                  customerRef: doc.reference,
+                                                ),
+                                                if (assignedDisplay.isNotEmpty)
+                                                  _InlineInfo(
+                                                    icon: Icons
+                                                        .assignment_ind_outlined,
+                                                    text:
+                                                        'Assigned: $assignedDisplay',
+                                                  ),
+                                                if (updatedByDisplay.isNotEmpty)
+                                                  _InlineInfo(
+                                                    icon: Icons.edit_outlined,
+                                                    text:
+                                                        'Updated by: $updatedByDisplay',
+                                                  ),
+                                                _InlineInfo(
+                                                  icon: Icons.update_outlined,
+                                                  text:
+                                                      'Updated ${_formatAnyTimestamp(updatedAt)}',
+                                                ),
+                                              ],
+                                            ),
+                                            if (lastFollowUpSummary
+                                                    .isNotEmpty ||
+                                                lastFollowUpAt != null ||
+                                                nextFollowUpDate != null) ...[
+                                              const SizedBox(height: 12),
+                                              Container(
+                                                width: double.infinity,
+                                                padding: const EdgeInsets.all(
+                                                  12,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.grey.shade50,
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  border: Border.all(
+                                                    color: Colors.grey.shade200,
+                                                  ),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons
+                                                              .timeline_outlined,
+                                                          size: 16,
+                                                          color: Colors
+                                                              .grey
+                                                              .shade800,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 6,
+                                                        ),
+                                                        Text(
+                                                          'Follow-up Summary',
+                                                          style: TextStyle(
+                                                            fontSize: 12.8,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                            color: Colors
+                                                                .grey
+                                                                .shade800,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    const SizedBox(height: 8),
+                                                    if (lastFollowUpAt != null)
+                                                      _InlineInfo(
+                                                        icon:
+                                                            Icons.call_outlined,
+                                                        text:
+                                                            'Last Follow-up: ${_formatAnyTimestamp(lastFollowUpAt)}'
+                                                            '${lastFollowUpMode.isNotEmpty ? ' • $lastFollowUpMode' : ''}',
+                                                      ),
+                                                    if (lastFollowUpOutcome
+                                                        .isNotEmpty)
+                                                      _InlineInfo(
+                                                        icon: Icons
+                                                            .track_changes_outlined,
+                                                        text:
+                                                            'Outcome: $lastFollowUpOutcome',
+                                                      ),
+                                                    if (lastFollowUpSummary
+                                                        .isNotEmpty)
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets.only(
+                                                              top: 6,
+                                                            ),
+                                                        child: Text(
+                                                          lastFollowUpSummary,
+                                                          maxLines: 2,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: TextStyle(
+                                                            fontSize: 12.8,
+                                                            color: Colors
+                                                                .grey
+                                                                .shade800,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    if (nextFollowUpDate !=
+                                                        null)
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets.only(
+                                                              top: 8,
+                                                            ),
+                                                        child: _InlineInfo(
+                                                          icon: Icons
+                                                              .event_repeat_outlined,
+                                                          text:
+                                                              'Next Follow-up: ${_formatAnyTimestamp(nextFollowUpDate)}',
+                                                        ),
+                                                      ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                            const SizedBox(height: 10),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: OutlinedButton.icon(
+                                                    style: OutlinedButton.styleFrom(
+                                                      elevation: 0,
+                                                      side: BorderSide(
+                                                        color: Colors
+                                                            .grey
+                                                            .shade300,
+                                                      ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              10,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    icon: const Icon(
+                                                      Icons.people_alt_outlined,
+                                                      size: 18,
+                                                    ),
+                                                    label: const Text(
+                                                      'Contacts',
+                                                    ),
+                                                    onPressed: () {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (_) =>
+                                                              ScreensContactList(
+                                                                companyRef: doc
+                                                                    .reference,
+                                                                companyName:
+                                                                    displayName,
+                                                              ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Expanded(
+                                                  child: OutlinedButton.icon(
+                                                    style: OutlinedButton.styleFrom(
+                                                      elevation: 0,
+                                                      side: BorderSide(
+                                                        color: Colors
+                                                            .grey
+                                                            .shade300,
+                                                      ),
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              10,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    icon: const Icon(
+                                                      Icons.timeline_outlined,
+                                                      size: 18,
+                                                    ),
+                                                    label: const Text(
+                                                      'Follow-ups',
+                                                    ),
+                                                    onPressed: () {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (_) =>
+                                                              ScreensCustomerFollowUpList(
+                                                                customerRef: doc
+                                                                    .reference,
+                                                                companyId:
+                                                                    companyId,
+                                                                currentUserUid:
+                                                                    firebaseUser
+                                                                        .uid,
+                                                                currentUserName:
+                                                                    currentUserName,
+                                                                customerName:
+                                                                    displayName,
+                                                              ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+                                                if (userCanEdit) ...[
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: ElevatedButton.icon(
+                                                      style: ElevatedButton.styleFrom(
+                                                        elevation: 0,
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                10,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      icon: const Icon(
+                                                        Icons.person_add_alt_1,
+                                                        size: 18,
+                                                      ),
+                                                      label: const Text(
+                                                        'Add Contact',
+                                                      ),
+                                                      onPressed: () {
+                                                        Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                            builder: (_) =>
+                                                                ScreensAddContact(
+                                                                  companyRef: doc
+                                                                      .reference,
+                                                                ),
+                                                          ),
+                                                        );
+                                                      },
                                                     ),
                                                   ),
                                                 ],
                                               ],
                                             ),
-                                          ),
-                                          PopupMenuButton<String>(
-                                            tooltip: 'Actions',
-                                            onSelected: (value) {
-                                              if (value == 'edit') {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        ScreensAddCustomer(
-                                                          existingDoc:
-                                                          doc.reference,
-                                                          companyId: companyId,
-                                                          currentUserUid:
-                                                          firebaseUser.uid,
-                                                          currentUserRole:
-                                                          role,
-                                                        ),
-                                                  ),
-                                                );
-                                              } else if (value ==
-                                                  'contacts') {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        ScreensContactList(
-                                                          companyRef:
-                                                          doc.reference,
-                                                          companyName:
-                                                          displayName,
-                                                        ),
-                                                  ),
-                                                );
-                                              } else if (value ==
-                                                  'follow_ups') {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        ScreensCustomerFollowUpList(
-                                                          customerRef:
-                                                          doc.reference,
-                                                          companyId: companyId,
-                                                          currentUserUid:
-                                                          firebaseUser.uid,
-                                                          currentUserName:
-                                                          currentUserName,
-                                                          customerName:
-                                                          displayName,
-                                                        ),
-                                                  ),
-                                                );
-                                              } else if (value ==
-                                                  'add_contact') {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        ScreensAddContact(
-                                                          companyRef:
-                                                          doc.reference,
-                                                        ),
-                                                  ),
-                                                );
-                                              } else if (value ==
-                                                  'delete') {
-                                                _deleteCustomer(
-                                                  context: context,
-                                                  customerDoc: doc,
-                                                  customerName:
-                                                  displayName,
-                                                );
-                                              }
-                                            },
-                                            itemBuilder: (context) =>
-                                            [
-                                              if (userCanEdit)
-                                                const PopupMenuItem(
-                                                  value: 'edit',
-                                                  child: Text('Edit Customer'),
-                                                ),
-                                              const PopupMenuItem(
-                                                value: 'contacts',
-                                                child: Text('View Contacts'),
-                                              ),
-                                              const PopupMenuItem(
-                                                value: 'follow_ups',
-                                                child: Text('View Follow-ups'),
-                                              ),
-                                              if (userCanEdit)
-                                                const PopupMenuItem(
-                                                  value: 'add_contact',
-                                                  child: Text('Add Contact'),
-                                                ),
-                                              if (userCanDelete)
-                                                const PopupMenuDivider(),
-                                              if (userCanDelete)
-                                                const PopupMenuItem(
-                                                  value: 'delete',
-                                                  child: Text(
-                                                    'Delete Customer',
-                                                    style: TextStyle(color: Colors.red),
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Wrap(
-                                        spacing: 8,
-                                        runSpacing: 8,
-                                        children: [
-                                          if (customerStage.isNotEmpty)
-                                            _InfoChip(
-                                              label: customerStage,
-                                              backgroundColor: customerStage
-                                                  .toLowerCase() ==
-                                                  'existing customer'
-                                                  ? Colors.green.shade50
-                                                  : Colors.orange.shade50,
-                                              textColor: customerStage
-                                                  .toLowerCase() ==
-                                                  'existing customer'
-                                                  ? Colors.green.shade800
-                                                  : Colors.orange.shade800,
-                                            ),
-                                          if (status.isNotEmpty)
-                                            _InfoChip(
-                                              label: status,
-                                              backgroundColor:
-                                              _statusBg(status),
-                                              textColor:
-                                              _statusFg(status),
-                                            ),
-                                          if (priority.isNotEmpty)
-                                            _InfoChip(
-                                              label: priority,
-                                              backgroundColor:
-                                              _priorityBg(priority),
-                                              textColor:
-                                              _priorityFg(priority),
-                                            ),
-                                          if (customerType.isNotEmpty)
-                                            _InfoChip(
-                                              label: customerType,
-                                              backgroundColor:
-                                              Colors.blue.shade50,
-                                              textColor:
-                                              Colors.blue.shade800,
-                                            ),
-                                          if (locationText.isNotEmpty)
-                                            _InfoChip(
-                                              label: locationText,
-                                              backgroundColor:
-                                              Colors.grey.shade100,
-                                              textColor:
-                                              Colors.grey.shade800,
-                                            ),
-                                          _InfoChip(
-                                            label:
-                                            'Follow-ups: $followUpCount',
-                                            backgroundColor:
-                                            Colors.purple.shade50,
-                                            textColor:
-                                            Colors.purple.shade800,
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Wrap(
-                                        spacing: 14,
-                                        runSpacing: 8,
-                                        children: [
-                                          _InlineInfo(
-                                            icon: Icons.phone_outlined,
-                                            text: phone,
-                                          ),
-                                          _InlineInfo(
-                                            icon: Icons.email_outlined,
-                                            text: email,
-                                          ),
-                                          if (contactName.isNotEmpty)
-                                            _InlineInfo(
-                                              icon: Icons.person_outline,
-                                              text: contactName,
-                                            ),
-                                          _CustomerContactsCount(
-                                            customerRef: doc.reference,
-                                          ),
-                                          if (assignedDisplay.isNotEmpty)
-                                            _InlineInfo(
-                                              icon: Icons
-                                                  .assignment_ind_outlined,
-                                              text:
-                                              'Assigned: $assignedDisplay',
-                                            ),
-                                          if (updatedByDisplay.isNotEmpty)
-                                            _InlineInfo(
-                                              icon: Icons.edit_outlined,
-                                              text:
-                                              'Updated by: $updatedByDisplay',
-                                            ),
-                                          _InlineInfo(
-                                            icon: Icons.update_outlined,
-                                            text:
-                                            'Updated ${_formatAnyTimestamp(updatedAt)}',
-                                          ),
-                                        ],
-                                      ),
-                                      if (lastFollowUpSummary.isNotEmpty ||
-                                          lastFollowUpAt != null ||
-                                          nextFollowUpDate != null) ...[
-                                        const SizedBox(height: 12),
-                                        Container(
-                                          width: double.infinity,
-                                          padding:
-                                          const EdgeInsets.all(12),
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey.shade50,
-                                            borderRadius:
-                                            BorderRadius.circular(12),
-                                            border: Border.all(
-                                              color:
-                                              Colors.grey.shade200,
-                                            ),
-                                          ),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.timeline_outlined,
-                                                    size: 16,
-                                                    color: Colors
-                                                        .grey.shade800,
-                                                  ),
-                                                  const SizedBox(width: 6),
-                                                  Text(
-                                                    'Follow-up Summary',
-                                                    style: TextStyle(
-                                                      fontSize: 12.8,
-                                                      fontWeight:
-                                                      FontWeight.w700,
-                                                      color: Colors
-                                                          .grey.shade800,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                              if (lastFollowUpAt != null)
-                                                _InlineInfo(
-                                                  icon: Icons.call_outlined,
-                                                  text:
-                                                  'Last Follow-up: ${_formatAnyTimestamp(lastFollowUpAt)}'
-                                                      '${lastFollowUpMode.isNotEmpty ? ' • $lastFollowUpMode' : ''}',
-                                                ),
-                                              if (lastFollowUpOutcome
-                                                  .isNotEmpty)
-                                                _InlineInfo(
-                                                  icon: Icons
-                                                      .track_changes_outlined,
-                                                  text:
-                                                  'Outcome: $lastFollowUpOutcome',
-                                                ),
-                                              if (lastFollowUpSummary
-                                                  .isNotEmpty)
-                                                Padding(
-                                                  padding:
-                                                  const EdgeInsets.only(
-                                                      top: 6),
-                                                  child: Text(
-                                                    lastFollowUpSummary,
-                                                    maxLines: 2,
-                                                    overflow: TextOverflow
-                                                        .ellipsis,
-                                                    style: TextStyle(
-                                                      fontSize: 12.8,
-                                                      color: Colors
-                                                          .grey.shade800,
-                                                      fontWeight:
-                                                      FontWeight.w500,
-                                                    ),
-                                                  ),
-                                                ),
-                                              if (nextFollowUpDate != null)
-                                                Padding(
-                                                  padding:
-                                                  const EdgeInsets.only(
-                                                      top: 8),
-                                                  child: _InlineInfo(
-                                                    icon: Icons
-                                                        .event_repeat_outlined,
-                                                    text:
-                                                    'Next Follow-up: ${_formatAnyTimestamp(nextFollowUpDate)}',
-                                                  ),
-                                                ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: OutlinedButton.icon(
-                                              style: OutlinedButton
-                                                  .styleFrom(
-                                                elevation: 0,
-                                                side: BorderSide(
-                                                  color:
-                                                  Colors.grey.shade300,
-                                                ),
-                                                shape:
-                                                RoundedRectangleBorder(
-                                                  borderRadius:
-                                                  BorderRadius
-                                                      .circular(10),
-                                                ),
-                                              ),
-                                              icon: const Icon(
-                                                Icons.people_alt_outlined,
-                                                size: 18,
-                                              ),
-                                              label:
-                                              const Text('Contacts'),
-                                              onPressed: () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        ScreensContactList(
-                                                          companyRef:
-                                                          doc.reference,
-                                                          companyName:
-                                                          displayName,
-                                                        ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: OutlinedButton.icon(
-                                              style: OutlinedButton
-                                                  .styleFrom(
-                                                elevation: 0,
-                                                side: BorderSide(
-                                                  color:
-                                                  Colors.grey.shade300,
-                                                ),
-                                                shape:
-                                                RoundedRectangleBorder(
-                                                  borderRadius:
-                                                  BorderRadius
-                                                      .circular(10),
-                                                ),
-                                              ),
-                                              icon: const Icon(
-                                                Icons.timeline_outlined,
-                                                size: 18,
-                                              ),
-                                              label: const Text('Follow-ups'),
-                                              onPressed: () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        ScreensCustomerFollowUpList(
-                                                          customerRef:
-                                                          doc.reference,
-                                                          companyId: companyId,
-                                                          currentUserUid:
-                                                          firebaseUser.uid,
-                                                          currentUserName:
-                                                          currentUserName,
-                                                          customerName:
-                                                          displayName,
-                                                        ),
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                          if (userCanEdit) ...[
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: ElevatedButton.icon(
-                                                style: ElevatedButton
-                                                    .styleFrom(
-                                                  elevation: 0,
-                                                  shape:
-                                                  RoundedRectangleBorder(
-                                                    borderRadius:
-                                                    BorderRadius
-                                                        .circular(10),
-                                                  ),
-                                                ),
-                                                icon: const Icon(
-                                                  Icons.person_add_alt_1,
-                                                  size: 18,
-                                                ),
-                                                label:
-                                                const Text('Add Contact'),
-                                                onPressed: () {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (_) =>
-                                                          ScreensAddContact(
-                                                            companyRef:
-                                                            doc.reference,
-                                                          ),
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                            ),
                                           ],
-                                        ],
+                                        ),
                                       ),
-                                    ],
-                                  ),
-                                ),
+                                    ),
+                                  );
+                                },
                               ),
-                            );
-                          },
-                        ),
                       ),
                     ],
                   );
@@ -1619,9 +1717,7 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
 class _CustomerContactsCount extends StatelessWidget {
   final DocumentReference<Map<String, dynamic>> customerRef;
 
-  const _CustomerContactsCount({
-    required this.customerRef,
-  });
+  const _CustomerContactsCount({required this.customerRef});
 
   @override
   Widget build(BuildContext context) {
@@ -1642,10 +1738,7 @@ class _MiniStatText extends StatelessWidget {
   final String label;
   final String value;
 
-  const _MiniStatText({
-    required this.label,
-    required this.value,
-  });
+  const _MiniStatText({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -1664,10 +1757,7 @@ class _InlineInfo extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _InlineInfo({
-    required this.icon,
-    required this.text,
-  });
+  const _InlineInfo({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -1730,10 +1820,7 @@ class _EmptyCustomersState extends StatelessWidget {
   final bool hasSearch;
   final VoidCallback onReset;
 
-  const _EmptyCustomersState({
-    required this.hasSearch,
-    required this.onReset,
-  });
+  const _EmptyCustomersState({required this.hasSearch, required this.onReset});
 
   @override
   Widget build(BuildContext context) {
@@ -1742,9 +1829,7 @@ class _EmptyCustomersState extends StatelessWidget {
         return SingleChildScrollView(
           padding: const EdgeInsets.all(28),
           child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight: constraints.maxHeight - 40,
-            ),
+            constraints: BoxConstraints(minHeight: constraints.maxHeight - 40),
             child: IntrinsicHeight(
               child: Center(
                 child: Column(

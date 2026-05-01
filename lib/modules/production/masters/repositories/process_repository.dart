@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/production/masters/models/process_model.dart';
 
 class ProcessRepository {
@@ -10,10 +11,10 @@ class ProcessRepository {
   final String tenantId;
 
   CollectionReference<Map<String, dynamic>> get _ref {
-    return _firestore
-        .collection('tenants')
-        .doc(tenantId)
-        .collection('processes');
+    return TenantFirestore(
+      tenantId: tenantId,
+      firestore: _firestore,
+    ).collection('processes');
   }
 
   Stream<List<ProcessModel>> watchProcesses() {
@@ -28,9 +29,11 @@ class ProcessRepository {
   }
 
   Future<void> saveProcess(ProcessModel process) {
-    return _ref
-        .doc(process.processId)
-        .set(process.toFirestore(), SetOptions(merge: true));
+    return _ref.doc(process.processId).set({
+      ...process.toFirestore(),
+      'companyId': tenantId,
+      'tenantId': tenantId,
+    }, SetOptions(merge: true));
   }
 
   String newProcessId() => _ref.doc().id;

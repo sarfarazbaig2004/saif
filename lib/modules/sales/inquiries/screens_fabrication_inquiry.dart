@@ -4,6 +4,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
+
 class ScreensFabricationInquiry extends StatefulWidget {
   final String companyId;
   final String currentUserUid;
@@ -34,7 +36,9 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
   final _moduleMakeCtrl = TextEditingController();
   final _moduleWpCtrl = TextEditingController();
   final _projectCapacityCtrl = TextEditingController();
-  final _structureTypeCtrl = TextEditingController(text: 'Ground mounted solar structure');
+  final _structureTypeCtrl = TextEditingController(
+    text: 'Ground mounted solar structure',
+  );
   final _tableConfigCtrl = TextEditingController();
   final _pileDepthCtrl = TextEditingController();
   final _groundClearanceCtrl = TextEditingController();
@@ -55,11 +59,10 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
   bool _extractingDocument = false;
   final List<Map<String, dynamic>> _uploadedDocuments = [];
 
+  String get _tenantId => widget.companyId.trim();
+
   CollectionReference<Map<String, dynamic>> get _inquiriesRef {
-    return FirebaseFirestore.instance
-        .collection('companies')
-        .doc(widget.companyId)
-        .collection('inquiries');
+    return TenantFirestore(tenantId: _tenantId).collection('inquiries');
   }
 
   @override
@@ -137,6 +140,11 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
   }
 
   Future<void> _pickAndUploadDocuments() async {
+    if (_tenantId.isEmpty) {
+      _infoSnack('Missing company workspace. Document was not uploaded.');
+      return;
+    }
+
     setState(() => _uploadingDocument = true);
 
     try {
@@ -160,13 +168,14 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
 
         final safeName = _safeFileName(file.name);
         final storagePath =
-            'tenant_inquiries/${widget.companyId}/source_documents/$timestamp-$safeName';
+            'tenant_inquiries/$_tenantId/source_documents/$timestamp-$safeName';
         final ref = FirebaseStorage.instance.ref(storagePath);
         final contentType = _contentTypeFor(file.extension ?? '');
         final metadata = SettableMetadata(
           contentType: contentType,
           customMetadata: {
-            'companyId': widget.companyId,
+            'companyId': _tenantId,
+            'tenantId': _tenantId,
             'uploadedBy': widget.currentUserUid,
             'source': 'fabrication_inquiry_upload',
           },
@@ -225,7 +234,8 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
         'extractFabricationInquiryFromDocument',
       );
       final result = await callable.call<Map<String, dynamic>>({
-        'companyId': widget.companyId,
+        'companyId': _tenantId,
+        'tenantId': _tenantId,
         'storagePath': document['storagePath'].toString(),
         'contentType': contentType,
       });
@@ -269,9 +279,7 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
 
       _infoSnack('Document read. Please review the auto-filled fields.');
     } on FirebaseFunctionsException catch (e) {
-      _infoSnack(
-        'File attached. Auto-fill failed: ${e.message ?? e.code}',
-      );
+      _infoSnack('File attached. Auto-fill failed: ${e.message ?? e.code}');
     } catch (e) {
       _infoSnack('File attached. Auto-fill failed: $e');
     } finally {
@@ -281,6 +289,16 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_tenantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Missing company workspace. Inquiry was not saved.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     if (_clientNameCtrl.text.trim().isEmpty && _uploadedDocuments.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -300,7 +318,8 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
       final clientName = _clientNameCtrl.text.trim();
 
       await _inquiriesRef.add({
-        'companyId': widget.companyId,
+        'companyId': _tenantId,
+        'tenantId': _tenantId,
         'inquiryNumber': inquiryNumber,
         'inquiryCode': inquiryNumber,
         'inquiryProfile': 'fabrication_solar',
@@ -423,7 +442,8 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
             _uploadCard(),
             _section(
               title: 'Client & Project',
-              subtitle: 'Capture who sent the inquiry and where the structure is required.',
+              subtitle:
+                  'Capture who sent the inquiry and where the structure is required.',
               icon: Icons.business_center_outlined,
               children: [
                 _grid([
@@ -462,14 +482,21 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
             ),
             _section(
               title: 'Commercial & Follow-up',
-              subtitle: 'Keep costing and next action information ready for quotation.',
+              subtitle:
+                  'Keep costing and next action information ready for quotation.',
               icon: Icons.request_quote_outlined,
               children: [
                 _grid([
                   _dropdown(
                     label: 'Source',
                     value: _source,
-                    values: const ['Email', 'WhatsApp', 'Phone', 'Tender', 'Visit'],
+                    values: const [
+                      'Email',
+                      'WhatsApp',
+                      'Phone',
+                      'Tender',
+                      'Visit',
+                    ],
                     onChanged: (value) => setState(() => _source = value),
                   ),
                   _dropdown(
@@ -495,17 +522,9 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
                   _field(_expectedValueCtrl, 'Expected Value'),
                 ]),
                 const SizedBox(height: 12),
-                _field(
-                  _notesCtrl,
-                  'Customer Requirement Notes',
-                  maxLines: 4,
-                ),
+                _field(_notesCtrl, 'Customer Requirement Notes', maxLines: 4),
                 const SizedBox(height: 12),
-                _field(
-                  _internalNotesCtrl,
-                  'Internal Notes',
-                  maxLines: 3,
-                ),
+                _field(_internalNotesCtrl, 'Internal Notes', maxLines: 3),
               ],
             ),
           ],
@@ -576,7 +595,7 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
                 ),
                 const SizedBox(height: 4),
                 const Text(
-          'Upload the customer BOQ, Excel sheet, PDF, or drawing. Image uploads can auto-fill key fields after OCR; all files stay attached for costing and review.',
+                  'Upload the customer BOQ, Excel sheet, PDF, or drawing. Image uploads can auto-fill key fields after OCR; all files stay attached for costing and review.',
                   style: TextStyle(
                     color: Color(0xFF64748B),
                     fontWeight: FontWeight.w600,
@@ -738,7 +757,8 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
       controller: controller,
       maxLines: maxLines,
       validator: required
-          ? (value) => (value ?? '').trim().isEmpty ? '$label is required' : null
+          ? (value) =>
+                (value ?? '').trim().isEmpty ? '$label is required' : null
           : null,
       decoration: InputDecoration(
         labelText: label,
@@ -783,8 +803,8 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
 
   void _infoSnack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }

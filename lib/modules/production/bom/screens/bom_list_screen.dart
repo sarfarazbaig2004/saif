@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/production/bom/models/bom_header_model.dart';
 import 'package:QUIK/modules/production/bom/repositories/bom_repository.dart';
 import 'package:QUIK/modules/production/bom/screens/bom_editor_screen.dart';
@@ -12,7 +13,12 @@ class BomListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repository = BomRepository(tenantId: tenantId);
+    final activeTenantId = context.watchTenant.selectedTenantId.trim();
+    if (activeTenantId.isEmpty) {
+      return const Center(child: Text('Select a company workspace first.'));
+    }
+
+    final repository = BomRepository(tenantId: activeTenantId);
 
     return ProductionListScaffold<BomHeaderModel>(
       title: 'BOM',
@@ -27,7 +33,7 @@ class BomListScreen extends StatelessWidget {
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => BomEditorScreen(tenantId: tenantId),
+            builder: (_) => BomEditorScreen(tenantId: activeTenantId),
           ),
         ),
         icon: const Icon(Icons.add),
@@ -42,7 +48,8 @@ class BomListScreen extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => BomEditorScreen(tenantId: tenantId, bom: bom),
+              builder: (_) =>
+                  BomEditorScreen(tenantId: activeTenantId, bom: bom),
             ),
           ),
         );

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/production/boq/models/boq_item_model.dart';
 import 'package:QUIK/modules/production/boq/models/boq_model.dart';
 
@@ -11,7 +12,10 @@ class BoqRepository {
   final String tenantId;
 
   CollectionReference<Map<String, dynamic>> get _ref {
-    return _firestore.collection('tenants').doc(tenantId).collection('boqs');
+    return TenantFirestore(
+      tenantId: tenantId,
+      firestore: _firestore,
+    ).collection('boqs');
   }
 
   Stream<List<BoqModel>> watchBoqs() {
@@ -50,7 +54,11 @@ class BoqRepository {
   }
 
   Future<void> saveBoq(BoqModel boq) {
-    return _ref.doc(boq.boqId).set(boq.toFirestore(), SetOptions(merge: true));
+    return _ref.doc(boq.boqId).set({
+      ...boq.toFirestore(),
+      'companyId': tenantId,
+      'tenantId': tenantId,
+    }, SetOptions(merge: true));
   }
 
   String newBoqId() => _ref.doc().id;
@@ -62,11 +70,11 @@ class BoqRepository {
     required String boqId,
     required BoqItemModel item,
   }) {
-    return _ref
-        .doc(boqId)
-        .collection('items')
-        .doc(item.itemId)
-        .set(item.toFirestore(), SetOptions(merge: true));
+    return _ref.doc(boqId).collection('items').doc(item.itemId).set({
+      ...item.toFirestore(),
+      'companyId': tenantId,
+      'tenantId': tenantId,
+    }, SetOptions(merge: true));
   }
 
   Future<void> replaceBoqItems({
@@ -82,7 +90,11 @@ class BoqRepository {
     }
 
     for (final item in items) {
-      batch.set(itemsRef.doc(item.itemId), item.toFirestore());
+      batch.set(itemsRef.doc(item.itemId), {
+        ...item.toFirestore(),
+        'companyId': tenantId,
+        'tenantId': tenantId,
+      });
     }
 
     await batch.commit();

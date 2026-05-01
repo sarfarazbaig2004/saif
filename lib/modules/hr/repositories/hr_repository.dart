@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/hr/models/hr_attendance_model.dart';
 import 'package:QUIK/modules/hr/models/hr_employee_model.dart';
 import 'package:QUIK/modules/hr/models/hr_wage_entry_model.dart';
@@ -12,7 +13,10 @@ class HrRepository {
   final String tenantId;
 
   DocumentReference<Map<String, dynamic>> get _tenantRef {
-    return _firestore.collection('tenants').doc(tenantId);
+    return TenantFirestore(
+      tenantId: tenantId,
+      firestore: _firestore,
+    ).companyRef;
   }
 
   CollectionReference<Map<String, dynamic>> get _employeesRef {

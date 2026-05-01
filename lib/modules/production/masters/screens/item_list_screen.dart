@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/production/core/production_list_scaffold.dart';
 import 'package:QUIK/modules/production/masters/models/fabrication_item_model.dart';
 import 'package:QUIK/modules/production/masters/repositories/item_repository.dart';
@@ -12,7 +13,12 @@ class ProductionItemListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repository = ItemRepository(tenantId: tenantId);
+    final activeTenantId = context.watchTenant.selectedTenantId.trim();
+    if (activeTenantId.isEmpty) {
+      return const Center(child: Text('Select a company workspace first.'));
+    }
+
+    final repository = ItemRepository(tenantId: activeTenantId);
 
     return ProductionListScaffold<FabricationItemModel>(
       title: 'Items',
@@ -25,7 +31,9 @@ class ProductionItemListScreen extends StatelessWidget {
       headerAction: FilledButton.icon(
         onPressed: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ItemFormScreen(tenantId: tenantId)),
+          MaterialPageRoute(
+            builder: (_) => ItemFormScreen(tenantId: activeTenantId),
+          ),
         ),
         icon: const Icon(Icons.add),
         label: const Text('New Item'),
@@ -39,7 +47,8 @@ class ProductionItemListScreen extends StatelessWidget {
           onTap: () => Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ItemFormScreen(tenantId: tenantId, item: item),
+              builder: (_) =>
+                  ItemFormScreen(tenantId: activeTenantId, item: item),
             ),
           ),
         );

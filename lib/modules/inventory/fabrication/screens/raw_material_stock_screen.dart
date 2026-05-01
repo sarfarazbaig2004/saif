@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_stock_summary_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/repositories/fabrication_inventory_repository.dart';
 import 'package:QUIK/modules/inventory/fabrication/widgets/fabrication_inventory_flow_card.dart';
@@ -12,7 +13,15 @@ class FabricationRawMaterialStockScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repository = FabricationInventoryRepository(tenantId: tenantId);
+    final selectedTenantId = context.watchTenant.selectedTenantId.trim();
+    final activeTenantId = selectedTenantId.isNotEmpty
+        ? selectedTenantId
+        : tenantId.trim();
+    if (activeTenantId.isEmpty) {
+      return const Center(child: Text('Select a company workspace first.'));
+    }
+
+    final repository = FabricationInventoryRepository(tenantId: activeTenantId);
 
     return StreamBuilder<List<RawMaterialStockSummaryModel>>(
       stream: repository.watchStockSummary(),

@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/inventory/products/screens_add_product.dart';
 
 class ScreensProductList extends StatefulWidget {
@@ -28,14 +30,11 @@ class _ScreensProductListState extends State<ScreensProductList> {
   Future<List<_CategoryMaster>>? _categoryMasterFuture;
   Stream<QuerySnapshot<Map<String, dynamic>>>? _productsStream;
   String? _currentCompanyId;
+  String? _loadedTenantId;
 
   @override
   void initState() {
     super.initState();
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      _userProfileFuture = _loadCurrentUserProfile(user.uid);
-    }
 
     _searchController.addListener(() {
       setState(() {
@@ -53,7 +52,9 @@ class _ScreensProductListState extends State<ScreensProductList> {
 
   // Reloads Category Master Data for the main UI
   void _refreshCategoryMaster() {
-    if (!mounted || _currentCompanyId == null || _currentCompanyId!.isEmpty) return;
+    if (!mounted || _currentCompanyId == null || _currentCompanyId!.isEmpty) {
+      return;
+    }
     setState(() {
       _categoryMasterFuture = _loadCategoryMaster(_currentCompanyId!);
     });
@@ -83,13 +84,15 @@ class _ScreensProductListState extends State<ScreensProductList> {
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
                     value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                        ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
                         : null,
                   ),
                 ),
               );
             },
-            errorBuilder: (context, error, stackTrace) => _buildInitialsFallback(name, size),
+            errorBuilder: (context, error, stackTrace) =>
+                _buildInitialsFallback(name, size),
           ),
         ),
       );
@@ -112,30 +115,16 @@ class _ScreensProductListState extends State<ScreensProductList> {
     );
   }
 
-  Future<Map<String, dynamic>?> _loadCurrentUserProfile(String uid) async {
+  Future<Map<String, dynamic>?> _loadCurrentUserProfile(
+    String uid,
+    String tenantId,
+  ) async {
     final firestore = FirebaseFirestore.instance;
-
-    final globalDoc = await firestore.collection('users').doc(uid).get();
-    final globalData = globalDoc.data() ?? <String, dynamic>{};
-
-    String companyId = (globalData['companyId'] ?? '').toString();
-    if (companyId.isEmpty) {
-      final companyIds = globalData['companyIds'];
-      if (companyIds is List && companyIds.isNotEmpty) {
-        companyId = companyIds.first.toString();
-      } else {
-        final memberships = globalData['memberships'];
-        if (memberships is Map && memberships.isNotEmpty) {
-          companyId = memberships.keys.first.toString();
-        }
-      }
-    }
-
-    if (companyId.isEmpty) return globalData;
+    final safeTenantId = TenantFirestore.requireTenantId(tenantId);
 
     final companyUserDoc = await firestore
         .collection('companies')
-        .doc(companyId)
+        .doc(safeTenantId)
         .collection('users')
         .doc(uid)
         .get();
@@ -143,9 +132,9 @@ class _ScreensProductListState extends State<ScreensProductList> {
     final companyData = companyUserDoc.data() ?? <String, dynamic>{};
 
     return {
-      ...globalData,
       ...companyData,
-      'companyId': companyId,
+      'companyId': safeTenantId,
+      'tenantId': safeTenantId,
     };
   }
 
@@ -159,7 +148,10 @@ class _ScreensProductListState extends State<ScreensProductList> {
         r == 'manager';
   }
 
-  bool _hasProductPermission(Map<String, dynamic> userData, {String action = 'view'}) {
+  bool _hasProductPermission(
+    Map<String, dynamic> userData, {
+    String action = 'view',
+  }) {
     final role = (userData['role'] ?? '').toString();
     if (_isAdminOrManager(role)) return true;
 
@@ -175,7 +167,10 @@ class _ScreensProductListState extends State<ScreensProductList> {
     }
 
     if (permissions['products'] == true && action == 'view') return true;
-    if (permissions['products'] is Map && permissions['products'][action] == true) return true;
+    if (permissions['products'] is Map &&
+        permissions['products'][action] == true) {
+      return true;
+    }
 
     return false;
   }
@@ -274,7 +269,7 @@ class _ScreensProductListState extends State<ScreensProductList> {
     ];
 
     return fields.any(
-          (e) => (e ?? '').toString().toLowerCase().contains(_searchText),
+      (e) => (e ?? '').toString().toLowerCase().contains(_searchText),
     );
   }
 
@@ -292,7 +287,9 @@ class _ScreensProductListState extends State<ScreensProductList> {
 
   bool _matchesStockFilter(Map<String, dynamic> data) {
     final stock = _stockOnHand(data);
-    final threshold = _minStockLevel(data) > 0 ? _minStockLevel(data) : _reorderLevel(data);
+    final threshold = _minStockLevel(data) > 0
+        ? _minStockLevel(data)
+        : _reorderLevel(data);
 
     switch (_stockFilter) {
       case 'in_stock':
@@ -319,7 +316,9 @@ class _ScreensProductListState extends State<ScreensProductList> {
 
   String _stockStatus(Map<String, dynamic> data) {
     final stock = _stockOnHand(data);
-    final threshold = _minStockLevel(data) > 0 ? _minStockLevel(data) : _reorderLevel(data);
+    final threshold = _minStockLevel(data) > 0
+        ? _minStockLevel(data)
+        : _reorderLevel(data);
 
     if (stock <= 0) return 'Out of Stock';
     if (threshold > 0 && stock <= threshold) return 'Low Stock';
@@ -340,15 +339,15 @@ class _ScreensProductListState extends State<ScreensProductList> {
   }
 
   CollectionReference<Map<String, dynamic>> _categoriesRef(String companyId) {
-    return FirebaseFirestore.instance
-        .collection('companies')
-        .doc(companyId)
-        .collection('inventory_categories');
+    return TenantFirestore(
+      tenantId: companyId,
+    ).collection('inventory_categories');
   }
 
   Future<List<_CategoryMaster>> _loadCategoryMaster(String companyId) async {
-    final categorySnap =
-    await _categoriesRef(companyId).orderBy('nameLower').get();
+    final categorySnap = await _categoriesRef(
+      companyId,
+    ).orderBy('nameLower').get();
 
     final List<_CategoryMaster> result = [];
 
@@ -356,18 +355,13 @@ class _ScreensProductListState extends State<ScreensProductList> {
       final catData = catDoc.data();
       final catName = (catData['name'] ?? '').toString();
 
-      final subSnap = await _categoriesRef(companyId)
-          .doc(catDoc.id)
-          .collection('subcategories')
-          .orderBy('nameLower')
-          .get();
+      final subSnap = await _categoriesRef(
+        companyId,
+      ).doc(catDoc.id).collection('subcategories').orderBy('nameLower').get();
 
       final subs = subSnap.docs.map((s) {
         final d = s.data();
-        return _SubcategoryMaster(
-          id: s.id,
-          name: (d['name'] ?? '').toString(),
-        );
+        return _SubcategoryMaster(id: s.id, name: (d['name'] ?? '').toString());
       }).toList();
 
       result.add(
@@ -427,26 +421,27 @@ class _ScreensProductListState extends State<ScreensProductList> {
     required String productName,
     required String currentUserUid,
   }) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Product'),
-        content: Text(
-          'Are you sure you want to delete "$productName"?\n\nThis action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+    final confirm =
+        await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Delete Product'),
+            content: Text(
+              'Are you sure you want to delete "$productName"?\n\nThis action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Delete'),
+              ),
+            ],
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    ) ??
+        ) ??
         false;
 
     if (!confirm) return;
@@ -458,11 +453,11 @@ class _ScreensProductListState extends State<ScreensProductList> {
           .collection('products')
           .doc(productId)
           .update({
-        'isDeleted': true,
-        'isActive': false,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'updatedByUid': currentUserUid,
-      });
+            'isDeleted': true,
+            'isActive': false,
+            'updatedAt': FieldValue.serverTimestamp(),
+            'updatedByUid': currentUserUid,
+          });
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -492,7 +487,7 @@ class _ScreensProductListState extends State<ScreensProductList> {
 
     final RenderBox button = ctx.findRenderObject() as RenderBox;
     final RenderBox overlay =
-    Overlay.of(context).context.findRenderObject() as RenderBox;
+        Overlay.of(context).context.findRenderObject() as RenderBox;
     final Offset topLeft = button.localToGlobal(Offset.zero, ancestor: overlay);
     final Offset bottomRight = button.localToGlobal(
       button.size.bottomRight(Offset.zero),
@@ -646,10 +641,7 @@ class _ScreensProductListState extends State<ScreensProductList> {
                             child: Text('All Categories'),
                           ),
                           ...categoryOptions.map(
-                                (e) => DropdownMenuItem(
-                              value: e,
-                              child: Text(e),
-                            ),
+                            (e) => DropdownMenuItem(value: e, child: Text(e)),
                           ),
                         ],
                         onChanged: (value) {
@@ -674,16 +666,11 @@ class _ScreensProductListState extends State<ScreensProductList> {
                             child: Text('All Subcategories'),
                           ),
                           ...availableSubs.map(
-                                (e) => DropdownMenuItem(
-                              value: e,
-                              child: Text(e),
-                            ),
+                            (e) => DropdownMenuItem(value: e, child: Text(e)),
                           ),
                         ],
                         onChanged: (value) {
-                          modalSetState(
-                                () => tempSubcategory = value ?? 'all',
-                          );
+                          modalSetState(() => tempSubcategory = value ?? 'all');
                         },
                       ),
                       const SizedBox(height: 14),
@@ -750,8 +737,9 @@ class _ScreensProductListState extends State<ScreensProductList> {
             controller: controller,
             autofocus: true,
             decoration: InputDecoration(
-              labelText:
-              categoryId == null ? 'Category Name' : 'Subcategory Name',
+              labelText: categoryId == null
+                  ? 'Category Name'
+                  : 'Subcategory Name',
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
@@ -770,6 +758,8 @@ class _ScreensProductListState extends State<ScreensProductList> {
                 try {
                   if (categoryId == null) {
                     await _categoriesRef(companyId).add({
+                      'companyId': companyId,
+                      'tenantId': companyId,
                       'name': name,
                       'nameLower': name.toLowerCase(),
                       'isActive': true,
@@ -779,10 +769,11 @@ class _ScreensProductListState extends State<ScreensProductList> {
                       'updatedBy': currentUserUid,
                     });
                   } else {
-                    await _categoriesRef(companyId)
-                        .doc(categoryId)
-                        .collection('subcategories')
-                        .add({
+                    await _categoriesRef(
+                      companyId,
+                    ).doc(categoryId).collection('subcategories').add({
+                      'companyId': companyId,
+                      'tenantId': companyId,
                       'name': name,
                       'nameLower': name.toLowerCase(),
                       'categoryId': categoryId,
@@ -870,11 +861,11 @@ class _ScreensProductListState extends State<ScreensProductList> {
                   });
 
                   // Update subcategories' reference to categoryName
-                  final subsSnap = await catRef.collection('subcategories').get();
+                  final subsSnap = await catRef
+                      .collection('subcategories')
+                      .get();
                   for (final subDoc in subsSnap.docs) {
-                    batch.update(subDoc.reference, {
-                      'categoryName': name,
-                    });
+                    batch.update(subDoc.reference, {'categoryName': name});
                   }
 
                   await batch.commit();
@@ -962,11 +953,11 @@ class _ScreensProductListState extends State<ScreensProductList> {
                       .collection('subcategories')
                       .doc(subcategoryId)
                       .update({
-                    'name': name,
-                    'nameLower': name.toLowerCase(),
-                    'updatedAt': FieldValue.serverTimestamp(),
-                    'updatedBy': currentUserUid,
-                  });
+                        'name': name,
+                        'nameLower': name.toLowerCase(),
+                        'updatedAt': FieldValue.serverTimestamp(),
+                        'updatedBy': currentUserUid,
+                      });
 
                   // Cascade to products
                   final productsSnap = await FirebaseFirestore.instance
@@ -1016,28 +1007,27 @@ class _ScreensProductListState extends State<ScreensProductList> {
     required String message,
     required Future<void> Function() onConfirm,
   }) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Text(message),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Delete'),
-            ),
-          ],
-        );
-      },
-    ) ??
+    final ok =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text(title),
+              content: Text(message),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Delete'),
+                ),
+              ],
+            );
+          },
+        ) ??
         false;
 
     if (ok) {
@@ -1056,10 +1046,14 @@ class _ScreensProductListState extends State<ScreensProductList> {
         .collection('products');
 
     // Filtering isDeleted locally prevents silent crashes caused by missing composite indexes
-    final byId = await productsRef.where('categoryId', isEqualTo: categoryId).get();
+    final byId = await productsRef
+        .where('categoryId', isEqualTo: categoryId)
+        .get();
     if (byId.docs.any((d) => d.data()['isDeleted'] != true)) return true;
 
-    final byName = await productsRef.where('category', isEqualTo: categoryName).get();
+    final byName = await productsRef
+        .where('category', isEqualTo: categoryName)
+        .get();
     if (byName.docs.any((d) => d.data()['isDeleted'] != true)) return true;
 
     return false;
@@ -1075,10 +1069,14 @@ class _ScreensProductListState extends State<ScreensProductList> {
         .doc(companyId)
         .collection('products');
 
-    final byId = await productsRef.where('subcategoryId', isEqualTo: subcategoryId).get();
+    final byId = await productsRef
+        .where('subcategoryId', isEqualTo: subcategoryId)
+        .get();
     if (byId.docs.any((d) => d.data()['isDeleted'] != true)) return true;
 
-    final byName = await productsRef.where('subcategory', isEqualTo: subcategoryName).get();
+    final byName = await productsRef
+        .where('subcategory', isEqualTo: subcategoryName)
+        .get();
     if (byName.docs.any((d) => d.data()['isDeleted'] != true)) return true;
 
     return false;
@@ -1109,10 +1107,9 @@ class _ScreensProductListState extends State<ScreensProductList> {
         return;
       }
 
-      final subsSnap = await _categoriesRef(companyId)
-          .doc(categoryId)
-          .collection('subcategories')
-          .get();
+      final subsSnap = await _categoriesRef(
+        companyId,
+      ).doc(categoryId).collection('subcategories').get();
 
       for (final subDoc in subsSnap.docs) {
         final subName = (subDoc.data()['name'] ?? '').toString();
@@ -1185,11 +1182,9 @@ class _ScreensProductListState extends State<ScreensProductList> {
         return;
       }
 
-      await _categoriesRef(companyId)
-          .doc(categoryId)
-          .collection('subcategories')
-          .doc(subcategoryId)
-          .delete();
+      await _categoriesRef(
+        companyId,
+      ).doc(categoryId).collection('subcategories').doc(subcategoryId).delete();
 
       if (!mounted) return;
       _refreshCategoryMaster();
@@ -1259,8 +1254,9 @@ class _ScreensProductListState extends State<ScreensProductList> {
                 const SizedBox(height: 12),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                    stream:
-                    _categoriesRef(companyId).orderBy('nameLower').snapshots(),
+                    stream: _categoriesRef(
+                      companyId,
+                    ).orderBy('nameLower').snapshots(),
                     builder: (context, snap) {
                       if (snap.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
@@ -1342,7 +1338,7 @@ class _ScreensProductListState extends State<ScreensProductList> {
                                           await _confirmDeleteDialog(
                                             title: 'Delete Category',
                                             message:
-                                            'Delete "$categoryName"? This will remove the category only if it is not linked to any product.',
+                                                'Delete "$categoryName"? This will remove the category only if it is not linked to any product.',
                                             onConfirm: () => _deleteCategory(
                                               companyId: companyId,
                                               categoryId: doc.id,
@@ -1372,7 +1368,9 @@ class _ScreensProductListState extends State<ScreensProductList> {
                                             ),
                                             title: Text(
                                               'Delete',
-                                              style: TextStyle(color: Colors.red),
+                                              style: TextStyle(
+                                                color: Colors.red,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -1381,7 +1379,9 @@ class _ScreensProductListState extends State<ScreensProductList> {
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-                                StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                                StreamBuilder<
+                                  QuerySnapshot<Map<String, dynamic>>
+                                >(
                                   stream: _categoriesRef(companyId)
                                       .doc(doc.id)
                                       .collection('subcategories')
@@ -1425,28 +1425,32 @@ class _ScreensProductListState extends State<ScreensProductList> {
                                     return Align(
                                       alignment: Alignment.centerLeft,
                                       child: Padding(
-                                        padding: const EdgeInsets.only(left: 32),
+                                        padding: const EdgeInsets.only(
+                                          left: 32,
+                                        ),
                                         child: Wrap(
                                           spacing: 8,
                                           runSpacing: 8,
                                           children: subs.map((s) {
                                             final subData = s.data();
                                             final subName =
-                                            (subData['name'] ?? '').toString();
+                                                (subData['name'] ?? '')
+                                                    .toString();
 
                                             return Container(
                                               padding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 10,
-                                                vertical: 6,
-                                              ),
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 6,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: Colors.white,
                                                 borderRadius:
-                                                BorderRadius.circular(20),
+                                                    BorderRadius.circular(20),
                                                 border: Border.all(
-                                                  color:
-                                                  const Color(0xFFE4E7EC),
+                                                  color: const Color(
+                                                    0xFFE4E7EC,
+                                                  ),
                                                 ),
                                               ),
                                               child: Row(
@@ -1464,14 +1468,14 @@ class _ScreensProductListState extends State<ScreensProductList> {
                                                     style: const TextStyle(
                                                       fontSize: 12,
                                                       fontWeight:
-                                                      FontWeight.w500,
+                                                          FontWeight.w500,
                                                     ),
                                                   ),
                                                   const SizedBox(width: 4),
                                                   PopupMenuButton<String>(
                                                     padding: EdgeInsets.zero,
                                                     constraints:
-                                                    const BoxConstraints(),
+                                                        const BoxConstraints(),
                                                     onSelected: (value) async {
                                                       if (value == 'rename') {
                                                         await _renameSubcategory(
@@ -1480,34 +1484,36 @@ class _ScreensProductListState extends State<ScreensProductList> {
                                                           subcategoryId: s.id,
                                                           currentName: subName,
                                                           currentUserUid:
-                                                          currentUserUid,
+                                                              currentUserUid,
                                                         );
                                                       } else if (value ==
                                                           'delete') {
                                                         await _confirmDeleteDialog(
                                                           title:
-                                                          'Delete Subcategory',
+                                                              'Delete Subcategory',
                                                           message:
-                                                          'Delete "$subName"? This will remove the subcategory only if it is not linked to any product.',
+                                                              'Delete "$subName"? This will remove the subcategory only if it is not linked to any product.',
                                                           onConfirm: () =>
                                                               _deleteSubcategory(
-                                                                companyId: companyId,
-                                                                categoryId: doc.id,
-                                                                subcategoryId: s.id,
+                                                                companyId:
+                                                                    companyId,
+                                                                categoryId:
+                                                                    doc.id,
+                                                                subcategoryId:
+                                                                    s.id,
                                                                 subcategoryName:
-                                                                subName,
+                                                                    subName,
                                                               ),
                                                         );
                                                       }
                                                     },
-                                                    itemBuilder: (context) =>
-                                                    const [
+                                                    itemBuilder: (context) => const [
                                                       PopupMenuItem(
                                                         value: 'rename',
                                                         child: ListTile(
                                                           dense: true,
                                                           contentPadding:
-                                                          EdgeInsets.zero,
+                                                              EdgeInsets.zero,
                                                           leading: Icon(
                                                             Icons.edit_outlined,
                                                           ),
@@ -1519,9 +1525,10 @@ class _ScreensProductListState extends State<ScreensProductList> {
                                                         child: ListTile(
                                                           dense: true,
                                                           contentPadding:
-                                                          EdgeInsets.zero,
+                                                              EdgeInsets.zero,
                                                           leading: Icon(
-                                                            Icons.delete_outline,
+                                                            Icons
+                                                                .delete_outline,
                                                             color: Colors.red,
                                                           ),
                                                           title: Text(
@@ -1559,10 +1566,7 @@ class _ScreensProductListState extends State<ScreensProductList> {
     );
   }
 
-  Widget _iconBoxButton({
-    required IconData icon,
-    required VoidCallback onTap,
-  }) {
+  Widget _iconBoxButton({required IconData icon, required VoidCallback onTap}) {
     return OutlinedButton(
       onPressed: onTap,
       style: OutlinedButton.styleFrom(
@@ -1571,9 +1575,7 @@ class _ScreensProductListState extends State<ScreensProductList> {
         foregroundColor: const Color(0xFF111827),
         side: const BorderSide(color: Color(0xFFE4E7EC)),
         padding: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       child: Icon(icon, size: 20),
     );
@@ -1598,26 +1600,26 @@ class _ScreensProductListState extends State<ScreensProductList> {
 
     final categoryButton = canCreate
         ? SizedBox(
-      height: rowHeight,
-      child: OutlinedButton.icon(
-        onPressed: () => _showCategoryManager(
-          companyId: companyId,
-          currentUserUid: currentUserUid,
-        ),
-        icon: const Icon(Icons.create_new_folder_outlined, size: 16),
-        label: const Text('Category Manager'),
-        style: OutlinedButton.styleFrom(
-          elevation: 0,
-          backgroundColor: Colors.white,
-          foregroundColor: const Color(0xFF111827),
-          side: const BorderSide(color: Color(0xFFE4E7EC)),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
-    )
+            height: rowHeight,
+            child: OutlinedButton.icon(
+              onPressed: () => _showCategoryManager(
+                companyId: companyId,
+                currentUserUid: currentUserUid,
+              ),
+              icon: const Icon(Icons.create_new_folder_outlined, size: 16),
+              label: const Text('Category Manager'),
+              style: OutlinedButton.styleFrom(
+                elevation: 0,
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF111827),
+                side: const BorderSide(color: Color(0xFFE4E7EC)),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          )
         : const SizedBox.shrink();
 
     final statsText = Text.rich(
@@ -1631,12 +1633,18 @@ class _ScreensProductListState extends State<ScreensProductList> {
           const TextSpan(text: 'Products: '),
           TextSpan(
             text: '$totalProducts',
-            style: const TextStyle(color: Color(0xFF111827), fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Color(0xFF111827),
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const TextSpan(text: '   Active: '),
           TextSpan(
             text: '$activeProducts',
-            style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.green,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const TextSpan(text: '   Low Stock: '),
           TextSpan(
@@ -1646,17 +1654,26 @@ class _ScreensProductListState extends State<ScreensProductList> {
           const TextSpan(text: '   Out of Stock: '),
           TextSpan(
             text: '$outOfStockProducts',
-            style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const TextSpan(text: '   Categories: '),
           TextSpan(
             text: '$totalCategories',
-            style: const TextStyle(color: Color(0xFF111827), fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Color(0xFF111827),
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const TextSpan(text: '   Subcategories: '),
           TextSpan(
             text: '$totalSubcategories',
-            style: const TextStyle(color: Color(0xFF111827), fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Color(0xFF111827),
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -1666,11 +1683,7 @@ class _ScreensProductListState extends State<ScreensProductList> {
 
     final innerContent = Row(
       children: [
-        SizedBox(
-          width: 260,
-          height: rowHeight,
-          child: _searchField(),
-        ),
+        SizedBox(width: 260, height: rowHeight, child: _searchField()),
         const SizedBox(width: 8),
         SizedBox(
           width: 42,
@@ -1685,10 +1698,7 @@ class _ScreensProductListState extends State<ScreensProductList> {
           ),
         ),
         const SizedBox(width: 8),
-        if (canCreate) ...[
-          categoryButton,
-          const SizedBox(width: 8),
-        ],
+        if (canCreate) ...[categoryButton, const SizedBox(width: 8)],
         SizedBox(
           width: 42,
           height: rowHeight,
@@ -1717,9 +1727,9 @@ class _ScreensProductListState extends State<ScreensProductList> {
       child: isWide
           ? innerContent
           : SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: innerContent,
-      ),
+              scrollDirection: Axis.horizontal,
+              child: innerContent,
+            ),
     );
   }
 
@@ -1733,19 +1743,21 @@ class _ScreensProductListState extends State<ScreensProductList> {
         suffixIcon: _searchText.isEmpty
             ? null
             : IconButton(
-          icon: const Icon(Icons.close, size: 18),
-          onPressed: () {
-            _searchController.clear();
-            setState(() {
-              _searchText = '';
-            });
-          },
-        ),
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {
+                    _searchText = '';
+                  });
+                },
+              ),
         isDense: true,
         filled: true,
         fillColor: Colors.white,
-        contentPadding:
-        const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 10,
+          vertical: 10,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFE4E7EC)),
@@ -1766,27 +1778,35 @@ class _ScreensProductListState extends State<ScreensProductList> {
     final chips = <Widget>[];
 
     if (_statusFilter != 'all') {
-      chips.add(_filterChip('Status: $_statusFilter', () {
-        setState(() => _statusFilter = 'all');
-      }));
+      chips.add(
+        _filterChip('Status: $_statusFilter', () {
+          setState(() => _statusFilter = 'all');
+        }),
+      );
     }
     if (_stockFilter != 'all') {
-      chips.add(_filterChip('Stock: $_stockFilter', () {
-        setState(() => _stockFilter = 'all');
-      }));
+      chips.add(
+        _filterChip('Stock: $_stockFilter', () {
+          setState(() => _stockFilter = 'all');
+        }),
+      );
     }
     if (_categoryFilter != 'all') {
-      chips.add(_filterChip('Category: $_categoryFilter', () {
-        setState(() {
-          _categoryFilter = 'all';
-          _subcategoryFilter = 'all';
-        });
-      }));
+      chips.add(
+        _filterChip('Category: $_categoryFilter', () {
+          setState(() {
+            _categoryFilter = 'all';
+            _subcategoryFilter = 'all';
+          });
+        }),
+      );
     }
     if (_subcategoryFilter != 'all') {
-      chips.add(_filterChip('Subcategory: $_subcategoryFilter', () {
-        setState(() => _subcategoryFilter = 'all');
-      }));
+      chips.add(
+        _filterChip('Subcategory: $_subcategoryFilter', () {
+          setState(() => _subcategoryFilter = 'all');
+        }),
+      );
     }
 
     if (chips.isEmpty) return const SizedBox.shrink();
@@ -1851,26 +1871,26 @@ class _ScreensProductListState extends State<ScreensProductList> {
       ),
       child: docs.isEmpty
           ? const Padding(
-        padding: EdgeInsets.symmetric(vertical: 50),
-        child: Center(child: Text('No products found')),
-      )
+              padding: EdgeInsets.symmetric(vertical: 50),
+              child: Center(child: Text('No products found')),
+            )
           : showTable
           ? _buildTableView(
-        docs: docs,
-        canEdit: canEdit,
-        canDelete: canDelete,
-        companyId: companyId,
-        firebaseUserUid: firebaseUserUid,
-        role: role,
-      )
+              docs: docs,
+              canEdit: canEdit,
+              canDelete: canDelete,
+              companyId: companyId,
+              firebaseUserUid: firebaseUserUid,
+              role: role,
+            )
           : _buildCardView(
-        docs: docs,
-        canEdit: canEdit,
-        canDelete: canDelete,
-        companyId: companyId,
-        firebaseUserUid: firebaseUserUid,
-        role: role,
-      ),
+              docs: docs,
+              canEdit: canEdit,
+              canDelete: canDelete,
+              companyId: companyId,
+              firebaseUserUid: firebaseUserUid,
+              role: role,
+            ),
     );
   }
 
@@ -1967,55 +1987,55 @@ class _ScreensProductListState extends State<ScreensProductList> {
               DataCell(
                 (canEdit || canDelete)
                     ? PopupMenuButton<String>(
-                  tooltip: 'Actions',
-                  onSelected: (value) async {
-                    if (value == 'edit' && canEdit) {
-                      _openEditProduct(
-                        productId: doc.id,
-                        initialData: data,
-                        companyId: companyId,
-                        currentUserUid: firebaseUserUid,
-                        currentUserRole: role,
-                      );
-                    } else if (value == 'delete' && canDelete) {
-                      await _deleteProduct(
-                        companyId: companyId,
-                        productId: doc.id,
-                        productName: name.isEmpty ? 'Product' : name,
-                        currentUserUid: firebaseUserUid,
-                      );
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    if (canEdit)
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(Icons.edit_outlined),
-                          title: Text('Edit'),
-                        ),
-                      ),
-                    if (canDelete) const PopupMenuDivider(),
-                    if (canDelete)
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: ListTile(
-                          dense: true,
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(
-                            Icons.delete_outline,
-                            color: Colors.red,
-                          ),
-                          title: Text(
-                            'Delete',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ),
-                  ],
-                )
+                        tooltip: 'Actions',
+                        onSelected: (value) async {
+                          if (value == 'edit' && canEdit) {
+                            _openEditProduct(
+                              productId: doc.id,
+                              initialData: data,
+                              companyId: companyId,
+                              currentUserUid: firebaseUserUid,
+                              currentUserRole: role,
+                            );
+                          } else if (value == 'delete' && canDelete) {
+                            await _deleteProduct(
+                              companyId: companyId,
+                              productId: doc.id,
+                              productName: name.isEmpty ? 'Product' : name,
+                              currentUserUid: firebaseUserUid,
+                            );
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          if (canEdit)
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                leading: Icon(Icons.edit_outlined),
+                                title: Text('Edit'),
+                              ),
+                            ),
+                          if (canDelete) const PopupMenuDivider(),
+                          if (canDelete)
+                            const PopupMenuItem(
+                              value: 'delete',
+                              child: ListTile(
+                                dense: true,
+                                contentPadding: EdgeInsets.zero,
+                                leading: Icon(
+                                  Icons.delete_outline,
+                                  color: Colors.red,
+                                ),
+                                title: Text(
+                                  'Delete',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ),
+                            ),
+                        ],
+                      )
                     : const SizedBox.shrink(),
               ),
             ],
@@ -2104,60 +2124,64 @@ class _ScreensProductListState extends State<ScreensProductList> {
             ),
             trailing: (canEdit || canDelete)
                 ? PopupMenuButton<String>(
-              tooltip: 'Actions',
-              onSelected: (value) async {
-                if (value == 'edit' && canEdit) {
-                  _openEditProduct(
-                    productId: doc.id,
-                    initialData: data,
-                    companyId: companyId,
-                    currentUserUid: firebaseUserUid,
-                    currentUserRole: role,
-                  );
-                } else if (value == 'delete' && canDelete) {
-                  await _deleteProduct(
-                    companyId: companyId,
-                    productId: doc.id,
-                    productName: name.isEmpty ? 'Product' : name,
-                    currentUserUid: firebaseUserUid,
-                  );
-                }
-              },
-              itemBuilder: (context) => [
-                if (canEdit)
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.edit_outlined),
-                      title: Text('Edit'),
-                    ),
-                  ),
-                if (canDelete) const PopupMenuDivider(),
-                if (canDelete)
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        Icons.delete_outline,
-                        color: Colors.red,
-                      ),
-                      title: Text(
-                        'Delete',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  ),
-              ],
-            )
+                    tooltip: 'Actions',
+                    onSelected: (value) async {
+                      if (value == 'edit' && canEdit) {
+                        _openEditProduct(
+                          productId: doc.id,
+                          initialData: data,
+                          companyId: companyId,
+                          currentUserUid: firebaseUserUid,
+                          currentUserRole: role,
+                        );
+                      } else if (value == 'delete' && canDelete) {
+                        await _deleteProduct(
+                          companyId: companyId,
+                          productId: doc.id,
+                          productName: name.isEmpty ? 'Product' : name,
+                          currentUserUid: firebaseUserUid,
+                        );
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      if (canEdit)
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(Icons.edit_outlined),
+                            title: Text('Edit'),
+                          ),
+                        ),
+                      if (canDelete) const PopupMenuDivider(),
+                      if (canDelete)
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: Icon(
+                              Icons.delete_outline,
+                              color: Colors.red,
+                            ),
+                            title: Text(
+                              'Delete',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ),
+                    ],
+                  )
                 : null,
             onTap: () {
               if (!canEdit) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('You do not have permission to edit this product.')),
+                  const SnackBar(
+                    content: Text(
+                      'You do not have permission to edit this product.',
+                    ),
+                  ),
                 );
                 return;
               }
@@ -2233,6 +2257,7 @@ class _ScreensProductListState extends State<ScreensProductList> {
   @override
   Widget build(BuildContext context) {
     final firebaseUser = FirebaseAuth.instance.currentUser;
+    final selectedTenantId = context.watchTenant.selectedTenantId.trim();
 
     if (firebaseUser == null) {
       return const Scaffold(
@@ -2240,7 +2265,19 @@ class _ScreensProductListState extends State<ScreensProductList> {
       );
     }
 
-    _userProfileFuture ??= _loadCurrentUserProfile(firebaseUser.uid);
+    if (selectedTenantId.isEmpty) {
+      return const Scaffold(
+        body: Center(child: Text('Select a company workspace first.')),
+      );
+    }
+
+    if (_userProfileFuture == null || _loadedTenantId != selectedTenantId) {
+      _loadedTenantId = selectedTenantId;
+      _userProfileFuture = _loadCurrentUserProfile(
+        firebaseUser.uid,
+        selectedTenantId,
+      );
+    }
 
     return FutureBuilder<Map<String, dynamic>?>(
       future: _userProfileFuture,
@@ -2269,7 +2306,9 @@ class _ScreensProductListState extends State<ScreensProductList> {
           );
         }
 
-        final companyId = (userData['companyId'] ?? '').toString();
+        final companyId = (userData['tenantId'] ?? userData['companyId'] ?? '')
+            .toString()
+            .trim();
         final role = (userData['role'] ?? 'sales').toString();
 
         if (companyId.isEmpty) {
@@ -2289,32 +2328,36 @@ class _ScreensProductListState extends State<ScreensProductList> {
         if (_currentCompanyId != companyId && companyId.isNotEmpty) {
           _currentCompanyId = companyId;
           _categoryMasterFuture = _loadCategoryMaster(companyId);
-          _productsStream = FirebaseFirestore.instance
-              .collection('companies')
-              .doc(companyId)
-              .collection('products')
-              .snapshots();
+          _productsStream = TenantFirestore(
+            tenantId: companyId,
+          ).collection('products').snapshots();
         }
 
-        final bool canCreate = _hasProductPermission(userData, action: 'create');
+        final bool canCreate = _hasProductPermission(
+          userData,
+          action: 'create',
+        );
         final bool canEdit = _hasProductPermission(userData, action: 'edit');
-        final bool canDelete = _hasProductPermission(userData, action: 'delete');
+        final bool canDelete = _hasProductPermission(
+          userData,
+          action: 'delete',
+        );
 
         return Scaffold(
           backgroundColor: const Color(0xFFF6F8FB),
 
           floatingActionButton: canCreate
               ? FloatingActionButton(
-            key: _fabKey,
-            onPressed: () {
-              _showFabMenu(
-                companyId: companyId,
-                currentUserUid: firebaseUser.uid,
-                currentUserRole: role,
-              );
-            },
-            child: const Icon(Icons.add),
-          )
+                  key: _fabKey,
+                  onPressed: () {
+                    _showFabMenu(
+                      companyId: companyId,
+                      currentUserUid: firebaseUser.uid,
+                      currentUserRole: role,
+                    );
+                  },
+                  child: const Icon(Icons.add),
+                )
               : null,
 
           body: FutureBuilder<List<_CategoryMaster>>(
@@ -2335,37 +2378,39 @@ class _ScreensProductListState extends State<ScreensProductList> {
 
               final categoryMasters = masterSnap.data ?? [];
 
-              final categoryOptions = categoryMasters
-                  .where((e) => e.name.trim().isNotEmpty)
-                  .map((e) => e.name)
-                  .toList()
-                ..sort();
+              final categoryOptions =
+                  categoryMasters
+                      .where((e) => e.name.trim().isNotEmpty)
+                      .map((e) => e.name)
+                      .toList()
+                    ..sort();
 
               final Map<String, List<String>> subcategoryMap = {
                 for (final cat in categoryMasters)
-                  cat.name: (cat.subcategories
-                    ..sort(
-                          (a, b) => a.name.toLowerCase().compareTo(
-                        b.name.toLowerCase(),
-                      ),
-                    ))
-                      .where((s) => s.name.trim().isNotEmpty)
-                      .map((s) => s.name)
-                      .toList(),
+                  cat.name:
+                      (cat.subcategories..sort(
+                            (a, b) => a.name.toLowerCase().compareTo(
+                              b.name.toLowerCase(),
+                            ),
+                          ))
+                          .where((s) => s.name.trim().isNotEmpty)
+                          .map((s) => s.name)
+                          .toList(),
               };
 
-              final subcategoryOptions = categoryMasters
-                  .expand((e) => e.subcategories)
-                  .map((e) => e.name)
-                  .where((e) => e.trim().isNotEmpty)
-                  .toSet()
-                  .toList()
-                ..sort();
+              final subcategoryOptions =
+                  categoryMasters
+                      .expand((e) => e.subcategories)
+                      .map((e) => e.name)
+                      .where((e) => e.trim().isNotEmpty)
+                      .toSet()
+                      .toList()
+                    ..sort();
 
               final totalCategories = categoryMasters.length;
               final totalSubcategories = categoryMasters.fold<int>(
                 0,
-                    (total, e) => total + e.subcategories.length,
+                (total, e) => total + e.subcategories.length,
               );
 
               if (_categoryFilter != 'all' &&
@@ -2409,10 +2454,12 @@ class _ScreensProductListState extends State<ScreensProductList> {
                     return const Center(child: CircularProgressIndicator());
                   }
 
-                  final allDocs = productSnap.data?.docs.where((doc) {
-                    final data = doc.data();
-                    return data['isDeleted'] != true;
-                  }).toList() ?? <QueryDocumentSnapshot<Map<String, dynamic>>>[];
+                  final allDocs =
+                      productSnap.data?.docs.where((doc) {
+                        final data = doc.data();
+                        return data['isDeleted'] != true;
+                      }).toList() ??
+                      <QueryDocumentSnapshot<Map<String, dynamic>>>[];
 
                   allDocs.sort((a, b) {
                     final aTs = a.data()['createdAt'] as Timestamp?;
@@ -2434,18 +2481,22 @@ class _ScreensProductListState extends State<ScreensProductList> {
                   }).toList();
 
                   final totalProducts = allDocs.length;
-                  final activeProducts =
-                      allDocs.where((e) => _isProductActive(e.data())).length;
+                  final activeProducts = allDocs
+                      .where((e) => _isProductActive(e.data()))
+                      .length;
 
                   final lowStockProducts = allDocs.where((e) {
                     final data = e.data();
                     final stock = _stockOnHand(data);
-                    final threshold = _minStockLevel(data) > 0 ? _minStockLevel(data) : _reorderLevel(data);
+                    final threshold = _minStockLevel(data) > 0
+                        ? _minStockLevel(data)
+                        : _reorderLevel(data);
                     return stock > 0 && threshold > 0 && stock <= threshold;
                   }).length;
 
-                  final outOfStockProducts =
-                      allDocs.where((e) => _stockOnHand(e.data()) <= 0).length;
+                  final outOfStockProducts = allDocs
+                      .where((e) => _stockOnHand(e.data()) <= 0)
+                      .length;
 
                   return LayoutBuilder(
                     builder: (context, constraints) {
@@ -2520,8 +2571,5 @@ class _SubcategoryMaster {
   final String id;
   final String name;
 
-  _SubcategoryMaster({
-    required this.id,
-    required this.name,
-  });
+  _SubcategoryMaster({required this.id, required this.name});
 }

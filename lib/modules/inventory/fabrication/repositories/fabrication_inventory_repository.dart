@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_inward_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_issue_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_purchase_bill_model.dart';
@@ -18,7 +19,10 @@ class FabricationInventoryRepository {
   final String tenantId;
 
   DocumentReference<Map<String, dynamic>> get _tenantRef {
-    return _firestore.collection('tenants').doc(tenantId);
+    return TenantFirestore(
+      tenantId: tenantId,
+      firestore: _firestore,
+    ).companyRef;
   }
 
   CollectionReference<Map<String, dynamic>> get _snapshotsRef {
@@ -151,8 +155,14 @@ class FabricationInventoryRepository {
       final currentStockKg = doubleFromValue(summaryData['closingStockKg']);
       final updatedStockKg = currentStockKg + entry.quantityKg;
 
-      transaction.set(inwardRef, entry.toFirestore(), SetOptions(merge: true));
+      transaction.set(inwardRef, {
+        ...entry.toFirestore(),
+        'companyId': tenantId,
+        'tenantId': tenantId,
+      }, SetOptions(merge: true));
       transaction.set(summaryRef, {
+        'companyId': tenantId,
+        'tenantId': tenantId,
         'itemId': summaryId,
         'materialDescription': entry.materialDescription,
         'grade': entry.grade,
@@ -188,8 +198,14 @@ class FabricationInventoryRepository {
 
       final updatedStockKg = currentStockKg - entry.quantityKg;
 
-      transaction.set(issueRef, entry.toFirestore(), SetOptions(merge: true));
+      transaction.set(issueRef, {
+        ...entry.toFirestore(),
+        'companyId': tenantId,
+        'tenantId': tenantId,
+      }, SetOptions(merge: true));
       transaction.set(summaryRef, {
+        'companyId': tenantId,
+        'tenantId': tenantId,
         'itemId': summaryId,
         'materialDescription': entry.materialDescription,
         'grade': entry.grade,
@@ -204,9 +220,11 @@ class FabricationInventoryRepository {
   }
 
   Future<void> savePurchaseBill(RawMaterialPurchaseBillModel bill) {
-    return _purchaseBillRef
-        .doc(bill.billId)
-        .set(bill.toFirestore(), SetOptions(merge: true));
+    return _purchaseBillRef.doc(bill.billId).set({
+      ...bill.toFirestore(),
+      'companyId': tenantId,
+      'tenantId': tenantId,
+    }, SetOptions(merge: true));
   }
 
   Future<String> _resolveSummaryDocId({

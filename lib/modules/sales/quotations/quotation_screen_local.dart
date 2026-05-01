@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'quotation_pdf_generator.dart';
 
 const Color primaryColor = Color(0xFF1E3A8A);
@@ -57,6 +59,9 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
   bool _isInterState = false;
   bool _isReadOnly = false;
   int _currentVersion = 1;
+  bool _initialized = false;
+
+  String get _tenantId => (_companyId ?? '').trim();
 
   bool get _isAdminOrManager => [
     'admin',
@@ -140,7 +145,18 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
   @override
   void initState() {
     super.initState();
-    _initializeScreen();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    final tenantId = context.watchTenant.selectedTenantId.trim();
+    if (tenantId.isNotEmpty) {
+      _companyId = tenantId;
+      _initialized = true;
+      _initializeScreen();
+    }
   }
 
   Future<void> _initializeScreen() async {
@@ -282,23 +298,38 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
 
   Future<void> _loadUserContext() async {
     try {
+      final tenantId = TenantFirestore.requireTenantId(
+        widget.companyId?.trim().isNotEmpty == true
+            ? widget.companyId
+            : _companyId,
+      );
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) throw Exception('No logged-in user.');
 
-      final rootUserDoc = await FirebaseFirestore.instance
+      _currentUserUid = user.uid;
+      _companyId = tenantId;
+      _currentUserRole = 'sales';
+      _currentUserName = (user.displayName ?? user.email ?? '').trim();
+
+      final companyUserDoc = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(tenantId)
           .collection('users')
           .doc(user.uid)
           .get();
-      final data = rootUserDoc.data() ?? {};
-
-      _currentUserUid = user.uid;
-      _companyId = widget.companyId?.trim().isNotEmpty == true
-          ? widget.companyId!.trim()
-          : (data['companyId'] ?? '').toString().trim();
-      _currentUserRole = (data['role'] ?? 'sales').toString().trim();
-      _currentUserName = (data['name'] ?? data['fullName'] ?? '')
-          .toString()
-          .trim();
+      final companyUserData = companyUserDoc.data();
+      if (companyUserData != null) {
+        _currentUserRole = (companyUserData['role'] ?? _currentUserRole)
+            .toString()
+            .trim();
+        _currentUserName =
+            (companyUserData['name'] ??
+                    companyUserData['fullName'] ??
+                    companyUserData['displayName'] ??
+                    _currentUserName)
+                .toString()
+                .trim();
+      }
 
       if (_signNameController.text.isEmpty) {
         _signNameController.text = _currentUserName;
@@ -620,9 +651,11 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
   }
 
   Future<void> _loadUserSettings() async {
-    if (_currentUserUid == null) return;
+    if (_currentUserUid == null || _tenantId.isEmpty) return;
     try {
       final doc = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(_tenantId)
           .collection('quotationSettings')
           .doc(_currentUserUid)
           .get();
@@ -883,8 +916,9 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
 
       for (final doc in inquirySnap.docs) {
         final d = doc.data();
-        final name =
-            (d['customerName'] ?? d['companyName'] ?? '').toString().trim();
+        final name = (d['customerName'] ?? d['companyName'] ?? '')
+            .toString()
+            .trim();
         if (name.isEmpty) continue;
         final normalized = _normalizeName(name);
         final canonical = _canonicalCompanyName(name);
@@ -900,8 +934,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
 
         final assignedToName = (d['assignedToName'] ?? '').toString().trim();
         final assignedToUid = (d['assignedToUid'] ?? '').toString().trim();
-        final inquiryNo =
-            (d['inquiryNumber'] ?? d['inquiryCode'] ?? doc.id).toString();
+        final inquiryNo = (d['inquiryNumber'] ?? d['inquiryCode'] ?? doc.id)
+            .toString();
         byName[normalized] = {
           'name': name,
           'inquiryNumber': inquiryNo,
@@ -941,7 +975,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
           'ownerUid': ownerUid,
           'ownerName': ownerName,
           'inquiryNumber':
-              existing?['inquiryNumber'] ?? (d['inquiryNumber'] ?? '').toString(),
+              existing?['inquiryNumber'] ??
+              (d['inquiryNumber'] ?? '').toString(),
           'assignedToName': existing?['assignedToName'] ?? ownerName,
           'assignedToUid': existing?['assignedToUid'] ?? ownerUid,
           'source': 'quotation',
@@ -993,8 +1028,9 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
       if (ownerUid.isNotEmpty &&
           ownerUid != _currentUserUid &&
           !_isAdminOrManager) {
-        final ownerName =
-            (d['assignedToName'] ?? d['createdByName'] ?? '').toString().trim();
+        final ownerName = (d['assignedToName'] ?? d['createdByName'] ?? '')
+            .toString()
+            .trim();
         throw Exception(
           ownerName.isEmpty
               ? 'This customer already has an active quotation assigned to another salesperson.'
@@ -1079,8 +1115,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
       _setError('Add at least one item.');
       return;
     }
-    if (_companyId == null || _currentUserUid == null) {
-      _setError('System Error: Context missing.');
+    if (_tenantId.isEmpty || _currentUserUid == null) {
+      _setError('Missing company workspace. Quotation was not saved.');
       return;
     }
 
@@ -1153,7 +1189,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
 
       final payload = {
         'id': quoteRef.id,
-        'companyId': _companyId,
+        'companyId': _tenantId,
+        'tenantId': _tenantId,
         'subject': _subjectController.text.trim(),
         'quoteDate': Timestamp.fromDate(_quoteDate),
         'status': _quotationStatus,
@@ -1309,7 +1346,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
             tx.set(numberRef, {
               'quoteNumber': finalQuoteNumber,
               'quotationId': quoteRef.id,
-              'companyId': _companyId,
+              'companyId': _tenantId,
+              'tenantId': _tenantId,
               'sequence': _extractQuoteSequence(finalQuoteNumber),
               'financialYear': finalQuoteNumber.split('/').last,
               'prefix': finalQuoteNumber.split('/').first,
@@ -1348,10 +1386,13 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                     .collection('inquiries')
                     .doc(_linkedInquiryId);
                 final inquiryDoc = await tx.get(inquiryRef);
-                final assignedUid =
-                    (inquiryDoc.data()?['assignedToUid'] ?? '').toString().trim();
+                final assignedUid = (inquiryDoc.data()?['assignedToUid'] ?? '')
+                    .toString()
+                    .trim();
                 final assignedName =
-                    (inquiryDoc.data()?['assignedToName'] ?? '').toString().trim();
+                    (inquiryDoc.data()?['assignedToName'] ?? '')
+                        .toString()
+                        .trim();
 
                 if (!_isAdminOrManager &&
                     assignedUid.isNotEmpty &&
@@ -1362,7 +1403,6 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                         : 'This inquiry is assigned to $assignedName. Only assigned user can create quotation.',
                   );
                 }
-
               }
 
               tx.set(quoteRef, payloadWithNumber);
@@ -1391,6 +1431,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
 
       if (!_isReadOnly) {
         await FirebaseFirestore.instance
+            .collection('companies')
+            .doc(_tenantId)
             .collection('quotationSettings')
             .doc(_currentUserUid)
             .set({
@@ -1426,6 +1468,13 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
       );
       return;
     }
+    if (_tenantId.isEmpty) {
+      _showSnack(
+        'Missing company workspace. Invoice was not created.',
+        isError: true,
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
     try {
@@ -1433,18 +1482,19 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
 
       final invoiceRef = FirebaseFirestore.instance
           .collection('companies')
-          .doc(_companyId)
+          .doc(_tenantId)
           .collection('tax_invoices')
           .doc();
       final quoteRef = FirebaseFirestore.instance
           .collection('companies')
-          .doc(_companyId)
+          .doc(_tenantId)
           .collection('quotations')
           .doc(widget.quotationId);
 
       final invoicePayload = {
         'id': invoiceRef.id,
-        'companyId': _companyId,
+        'companyId': _tenantId,
+        'tenantId': _tenantId,
         'referenceQuotationId': widget.quotationId,
         'referenceQuotationNo': _quoteNumberController.text,
         'customerId': _selectedCustomerId,
@@ -2408,7 +2458,9 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                                 decoration: BoxDecoration(
                                   color: Colors.amber.shade50,
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: Colors.amber.shade200),
+                                  border: Border.all(
+                                    color: Colors.amber.shade200,
+                                  ),
                                 ),
                                 child: Column(
                                   children: _customerNameSuggestions.map((s) {
@@ -2416,12 +2468,13 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                                     final assignee = (s['assignedToName'] ?? '')
                                         .toString()
                                         .trim();
-                                    final inq =
-                                        (s['inquiryNumber'] ?? '').toString();
-                                    final quoteNo =
-                                        (s['quoteNumber'] ?? '').toString();
-                                    final status =
-                                        (s['status'] ?? '').toString().trim();
+                                    final inq = (s['inquiryNumber'] ?? '')
+                                        .toString();
+                                    final quoteNo = (s['quoteNumber'] ?? '')
+                                        .toString();
+                                    final status = (s['status'] ?? '')
+                                        .toString()
+                                        .trim();
                                     final subtitleParts = <String>[
                                       if (inq.isNotEmpty) 'INQ: $inq',
                                       if (quoteNo.isNotEmpty) 'Quote: $quoteNo',
@@ -2457,8 +2510,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                                           _clientNameController.text = name;
                                           _clientNameController.selection =
                                               TextSelection.collapsed(
-                                            offset: name.length,
-                                          );
+                                                offset: name.length,
+                                              );
                                           final customerId =
                                               (s['customerId'] ?? '')
                                                   .toString()

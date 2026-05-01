@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/core/production_list_scaffold.dart';
 import 'package:QUIK/modules/production/execution/models/production_entry_model.dart';
@@ -21,7 +22,12 @@ class _ProductionEntryListScreenState extends State<ProductionEntryListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final repository = ProductionRepository(tenantId: widget.tenantId);
+    final activeTenantId = context.watchTenant.selectedTenantId.trim();
+    if (activeTenantId.isEmpty) {
+      return const Center(child: Text('Select a company workspace first.'));
+    }
+
+    final repository = ProductionRepository(tenantId: activeTenantId);
     final stream = _selectedDate == null
         ? repository.watchEntries()
         : repository.watchEntriesForDate(_selectedDate!);
@@ -39,7 +45,7 @@ class _ProductionEntryListScreenState extends State<ProductionEntryListScreen> {
             context,
             MaterialPageRoute(
               builder: (_) =>
-                  ProductionEntryEditorScreen(tenantId: widget.tenantId),
+                  ProductionEntryEditorScreen(tenantId: activeTenantId),
             ),
           ),
         ),
@@ -81,7 +87,7 @@ class _ProductionEntryListScreenState extends State<ProductionEntryListScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (_) => ProductionEntryEditorScreen(
-                      tenantId: widget.tenantId,
+                      tenantId: activeTenantId,
                       entry: entry,
                     ),
                   ),

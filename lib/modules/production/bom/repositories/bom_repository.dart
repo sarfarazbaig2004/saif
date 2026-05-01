@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/production/bom/models/bom_header_model.dart';
 import 'package:QUIK/modules/production/bom/models/bom_line_model.dart';
 
@@ -11,10 +12,10 @@ class BomRepository {
   final String tenantId;
 
   CollectionReference<Map<String, dynamic>> get _ref {
-    return _firestore
-        .collection('tenants')
-        .doc(tenantId)
-        .collection('bom_headers');
+    return TenantFirestore(
+      tenantId: tenantId,
+      firestore: _firestore,
+    ).collection('bom_headers');
   }
 
   Stream<List<BomHeaderModel>> watchBomHeaders() {
@@ -54,9 +55,11 @@ class BomRepository {
   }
 
   Future<void> saveBomHeader(BomHeaderModel header) {
-    return _ref
-        .doc(header.bomId)
-        .set(header.toFirestore(), SetOptions(merge: true));
+    return _ref.doc(header.bomId).set({
+      ...header.toFirestore(),
+      'companyId': tenantId,
+      'tenantId': tenantId,
+    }, SetOptions(merge: true));
   }
 
   String newBomId() => _ref.doc().id;
@@ -68,11 +71,11 @@ class BomRepository {
     required String bomId,
     required BomLineModel line,
   }) {
-    return _ref
-        .doc(bomId)
-        .collection('bom_lines')
-        .doc(line.lineId)
-        .set(line.toFirestore(), SetOptions(merge: true));
+    return _ref.doc(bomId).collection('bom_lines').doc(line.lineId).set({
+      ...line.toFirestore(),
+      'companyId': tenantId,
+      'tenantId': tenantId,
+    }, SetOptions(merge: true));
   }
 
   Future<void> replaceBomLines({
@@ -88,7 +91,11 @@ class BomRepository {
     }
 
     for (final line in lines) {
-      batch.set(linesRef.doc(line.lineId), line.toFirestore());
+      batch.set(linesRef.doc(line.lineId), {
+        ...line.toFirestore(),
+        'companyId': tenantId,
+        'tenantId': tenantId,
+      });
     }
 
     await batch.commit();

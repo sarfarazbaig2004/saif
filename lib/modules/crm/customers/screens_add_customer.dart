@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 
 class ScreensAddCustomer extends StatefulWidget {
   final DocumentReference<Map<String, dynamic>>? existingDoc;
@@ -62,26 +63,22 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
   final Map<String, String> _cachedUserNames = {};
 
   bool get _canAssignOthers {
-  final role = widget.currentUserRole.trim().toLowerCase();
-  return role == 'director' ||
-      role == 'md' ||
-      role == 'ceo' ||
-      role == 'sales_manager';
-}
+    final role = widget.currentUserRole.trim().toLowerCase();
+    return role == 'director' ||
+        role == 'md' ||
+        role == 'ceo' ||
+        role == 'sales_manager';
+  }
 
   bool get _isEdit => widget.existingDoc != null;
 
+  String get _tenantId => widget.companyId.trim();
+
   CollectionReference<Map<String, dynamic>> get _customersCol =>
-      FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('customers');
+      TenantFirestore(tenantId: _tenantId).collection('customers');
 
   CollectionReference<Map<String, dynamic>> get _companyUsersCol =>
-      FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('users');
+      TenantFirestore(tenantId: _tenantId).collection('users');
 
   @override
   void initState() {
@@ -126,8 +123,10 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
     try {
       final doc = await _companyUsersCol.doc(widget.currentUserUid).get();
       final data = doc.data() ?? {};
-      _currentUserName =
-          _extractUserName(data, fallbackUid: widget.currentUserUid);
+      _currentUserName = _extractUserName(
+        data,
+        fallbackUid: widget.currentUserUid,
+      );
       if (mounted) {
         setState(() {});
       }
@@ -135,17 +134,18 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
   }
 
   String _extractUserName(
-      Map<String, dynamic> data, {
-        required String fallbackUid,
-      }) {
-    final name = (data['name'] ??
-        data['fullName'] ??
-        data['displayName'] ??
-        data['userName'] ??
-        data['email'] ??
-        '')
-        .toString()
-        .trim();
+    Map<String, dynamic> data, {
+    required String fallbackUid,
+  }) {
+    final name =
+        (data['name'] ??
+                data['fullName'] ??
+                data['displayName'] ??
+                data['userName'] ??
+                data['email'] ??
+                '')
+            .toString()
+            .trim();
 
     return name.isEmpty ? fallbackUid : name;
   }
@@ -160,10 +160,10 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
       final snapshot = await docRef.get();
       final data = snapshot.data() ?? {};
 
-      _companyController.text =
-          (data['companyName'] ?? data['name'] ?? '').toString();
-      _phoneController.text =
-          (data['companyPhone'] ?? data['phone'] ?? '').toString();
+      _companyController.text = (data['companyName'] ?? data['name'] ?? '')
+          .toString();
+      _phoneController.text = (data['companyPhone'] ?? data['phone'] ?? '')
+          .toString();
       _altPhoneController.text = (data['alternatePhone'] ?? '').toString();
       _businessEmailController.text =
           (data['businessEmail'] ?? data['email'] ?? '').toString();
@@ -216,27 +216,30 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
       }
 
       final priorityValue = (data['priority'] ?? '').toString().trim();
-      if (priorityValue.isNotEmpty && _priorityOptions.contains(priorityValue)) {
+      if (priorityValue.isNotEmpty &&
+          _priorityOptions.contains(priorityValue)) {
         _priority = priorityValue;
       }
 
-      final stageValue =
-      (data['customerStage'] ?? 'Potential Customer').toString().trim();
+      final stageValue = (data['customerStage'] ?? 'Potential Customer')
+          .toString()
+          .trim();
       if (_customerStageOptions.contains(stageValue)) {
         _customerStage = stageValue;
       } else {
         _customerStage = 'Potential Customer';
       }
 
-      _notesController.text = (data['notes'] ?? data['remarks'] ?? '').toString();
+      _notesController.text = (data['notes'] ?? data['remarks'] ?? '')
+          .toString();
 
       final assigned = (data['assignedToUid'] ?? '').toString().trim();
       if (assigned.isNotEmpty) {
         _assignedToUid = assigned;
       }
 
-      _existingCreatedByUid =
-          (data['createdByUid'] ?? data['createdBy'] ?? '').toString();
+      _existingCreatedByUid = (data['createdByUid'] ?? data['createdBy'] ?? '')
+          .toString();
       _existingCreatedAt = data['createdAt'] as Timestamp?;
 
       if (mounted) {
@@ -276,6 +279,16 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
     if (!_formKey.currentState!.validate()) return;
 
     FocusScope.of(context).unfocus();
+
+    if (_tenantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Missing company workspace. Customer was not saved.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
 
     final assignedTo = _canAssignOthers
         ? (_assignedToUid ?? '').trim()
@@ -350,7 +363,8 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
           : await _getUserNameByUid(widget.currentUserUid);
 
       final nowUpdateData = <String, dynamic>{
-        'companyId': widget.companyId,
+        'companyId': _tenantId,
+        'tenantId': _tenantId,
 
         'name': name,
         'companyName': name,
@@ -421,7 +435,8 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
         final contactPhone = _phoneController.text.trim();
         final contactEmail = _businessEmailController.text.trim();
 
-        final hasContactData = contactName.isNotEmpty ||
+        final hasContactData =
+            contactName.isNotEmpty ||
             _designationController.text.trim().isNotEmpty ||
             _departmentController.text.trim().isNotEmpty ||
             contactPhone.isNotEmpty ||
@@ -429,7 +444,8 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
 
         if (hasContactData) {
           await companyDocRef.collection('contacts').add({
-            'companyId': widget.companyId,
+            'companyId': _tenantId,
+            'tenantId': _tenantId,
             'customerId': companyDocRef.id,
             'name': contactName,
             'designation': _designationController.text.trim(),
@@ -507,17 +523,27 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
           );
         }
 
-        final docs = snap.data?.docs.toList() ??
+        final docs =
+            snap.data?.docs.toList() ??
             <QueryDocumentSnapshot<Map<String, dynamic>>>[];
 
         docs.sort((a, b) {
-          final an = _extractUserName(a.data(), fallbackUid: a.id).toLowerCase();
-          final bn = _extractUserName(b.data(), fallbackUid: b.id).toLowerCase();
+          final an = _extractUserName(
+            a.data(),
+            fallbackUid: a.id,
+          ).toLowerCase();
+          final bn = _extractUserName(
+            b.data(),
+            fallbackUid: b.id,
+          ).toLowerCase();
           return an.compareTo(bn);
         });
 
         for (final d in docs) {
-          _cachedUserNames[d.id] = _extractUserName(d.data(), fallbackUid: d.id);
+          _cachedUserNames[d.id] = _extractUserName(
+            d.data(),
+            fallbackUid: d.id,
+          );
         }
 
         if (docs.isEmpty) {
@@ -533,8 +559,9 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
         } else if (_canAssignOthers) {
           safeAssignedValue = null;
         } else {
-          final currentUserExists =
-          docs.any((doc) => doc.id == widget.currentUserUid);
+          final currentUserExists = docs.any(
+            (doc) => doc.id == widget.currentUserUid,
+          );
           safeAssignedValue = currentUserExists ? widget.currentUserUid : null;
         }
 
@@ -559,10 +586,10 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
           }).toList(),
           onChanged: _canAssignOthers
               ? (value) {
-            setState(() {
-              _assignedToUid = value;
-            });
-          }
+                  setState(() {
+                    _assignedToUid = value;
+                  });
+                }
               : null,
           validator: (value) {
             final finalValue = _canAssignOthers ? value : widget.currentUserUid;
@@ -587,77 +614,77 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
       body: _isLoadingExisting
           ? const Center(child: CircularProgressIndicator())
           : Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1180),
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final isWide = constraints.maxWidth >= 980;
+              key: _formKey,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1180),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final isWide = constraints.maxWidth >= 980;
 
-                        if (isWide) {
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                flex: 7,
-                                child: Column(
+                              if (isWide) {
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    _buildAccountSection(),
-                                    const SizedBox(height: 14),
-                                    _buildPrimaryContactSection(),
-                                    const SizedBox(height: 14),
-                                    _buildAddressSection(),
+                                    Expanded(
+                                      flex: 7,
+                                      child: Column(
+                                        children: [
+                                          _buildAccountSection(),
+                                          const SizedBox(height: 14),
+                                          _buildPrimaryContactSection(),
+                                          const SizedBox(height: 14),
+                                          _buildAddressSection(),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      flex: 5,
+                                      child: Column(
+                                        children: [
+                                          _buildClassificationSection(),
+                                          const SizedBox(height: 14),
+                                          _buildAssignmentSection(),
+                                          const SizedBox(height: 14),
+                                          _buildNotesSection(),
+                                        ],
+                                      ),
+                                    ),
                                   ],
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                flex: 5,
-                                child: Column(
-                                  children: [
-                                    _buildClassificationSection(),
-                                    const SizedBox(height: 14),
-                                    _buildAssignmentSection(),
-                                    const SizedBox(height: 14),
-                                    _buildNotesSection(),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          );
-                        }
+                                );
+                              }
 
-                        return Column(
-                          children: [
-                            _buildAccountSection(),
-                            const SizedBox(height: 14),
-                            _buildClassificationSection(),
-                            const SizedBox(height: 14),
-                            _buildAssignmentSection(),
-                            const SizedBox(height: 14),
-                            _buildPrimaryContactSection(),
-                            const SizedBox(height: 14),
-                            _buildAddressSection(),
-                            const SizedBox(height: 14),
-                            _buildNotesSection(),
-                          ],
-                        );
-                      },
+                              return Column(
+                                children: [
+                                  _buildAccountSection(),
+                                  const SizedBox(height: 14),
+                                  _buildClassificationSection(),
+                                  const SizedBox(height: 14),
+                                  _buildAssignmentSection(),
+                                  const SizedBox(height: 14),
+                                  _buildPrimaryContactSection(),
+                                  const SizedBox(height: 14),
+                                  _buildAddressSection(),
+                                  const SizedBox(height: 14),
+                                  _buildNotesSection(),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  _buildBottomSaveBar(),
+                ],
               ),
             ),
-            _buildBottomSaveBar(),
-          ],
-        ),
-      ),
     );
   }
 
@@ -674,7 +701,7 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
                 label: 'Company / Firm Name *',
                 icon: Icons.apartment_outlined,
                 validator: (v) =>
-                v == null || v.trim().isEmpty ? 'Required' : null,
+                    v == null || v.trim().isEmpty ? 'Required' : null,
               ),
               _buildTextField(
                 controller: _websiteController,
@@ -693,7 +720,7 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
                 validator: (v) =>
-                v == null || v.trim().isEmpty ? 'Required' : null,
+                    v == null || v.trim().isEmpty ? 'Required' : null,
               ),
               _buildTextField(
                 controller: _altPhoneController,
@@ -761,11 +788,8 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
                 ),
                 items: _customerStageOptions
                     .map(
-                      (t) => DropdownMenuItem<String>(
-                    value: t,
-                    child: Text(t),
-                  ),
-                )
+                      (t) => DropdownMenuItem<String>(value: t, child: Text(t)),
+                    )
                     .toList(),
                 onChanged: (value) {
                   setState(() => _customerStage = value);
@@ -780,10 +804,10 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
                 items: _customerTypeOptions
                     .map(
                       (t) => DropdownMenuItem<String>(
-                    value: t,
-                    child: Text(t, overflow: TextOverflow.ellipsis),
-                  ),
-                )
+                        value: t,
+                        child: Text(t, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
                     .toList(),
                 onChanged: (value) {
                   setState(() {
@@ -808,10 +832,10 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
                 items: _industryOptions
                     .map(
                       (t) => DropdownMenuItem<String>(
-                    value: t,
-                    child: Text(t, overflow: TextOverflow.ellipsis),
-                  ),
-                )
+                        value: t,
+                        child: Text(t, overflow: TextOverflow.ellipsis),
+                      ),
+                    )
                     .toList(),
                 onChanged: (value) {
                   setState(() {
@@ -830,11 +854,8 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
                 ),
                 items: _leadSourceOptions
                     .map(
-                      (t) => DropdownMenuItem<String>(
-                    value: t,
-                    child: Text(t),
-                  ),
-                )
+                      (t) => DropdownMenuItem<String>(value: t, child: Text(t)),
+                    )
                     .toList(),
                 onChanged: (value) => setState(() => _leadSource = value),
               ),
@@ -846,17 +867,17 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
               children: [
                 _customerType == 'Other'
                     ? _buildTextField(
-                  controller: _customerTypeCustomController,
-                  label: 'Custom Customer Type',
-                  icon: Icons.edit_outlined,
-                )
+                        controller: _customerTypeCustomController,
+                        label: 'Custom Customer Type',
+                        icon: Icons.edit_outlined,
+                      )
                     : const SizedBox.shrink(),
                 _industry == 'Other'
                     ? _buildTextField(
-                  controller: _industryCustomController,
-                  label: 'Custom Industry',
-                  icon: Icons.tune_outlined,
-                )
+                        controller: _industryCustomController,
+                        label: 'Custom Industry',
+                        icon: Icons.tune_outlined,
+                      )
                     : const SizedBox.shrink(),
               ],
             ),
@@ -872,11 +893,8 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
                 ),
                 items: _statusOptions
                     .map(
-                      (t) => DropdownMenuItem<String>(
-                    value: t,
-                    child: Text(t),
-                  ),
-                )
+                      (t) => DropdownMenuItem<String>(value: t, child: Text(t)),
+                    )
                     .toList(),
                 onChanged: (value) => setState(() => _status = value),
               ),
@@ -888,11 +906,8 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
                 ),
                 items: _priorityOptions
                     .map(
-                      (t) => DropdownMenuItem<String>(
-                    value: t,
-                    child: Text(t),
-                  ),
-                )
+                      (t) => DropdownMenuItem<String>(value: t, child: Text(t)),
+                    )
                     .toList(),
                 onChanged: (value) => setState(() => _priority = value),
               ),
@@ -915,10 +930,7 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
             const SizedBox(height: 10),
             Text(
               'You can create customer only for yourself.',
-              style: TextStyle(
-                fontSize: 12.5,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
             ),
           ],
         ],
@@ -977,7 +989,7 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
                 label: 'City *',
                 icon: Icons.location_city_outlined,
                 validator: (v) =>
-                v == null || v.trim().isEmpty ? 'Required' : null,
+                    v == null || v.trim().isEmpty ? 'Required' : null,
               ),
               _buildTextField(
                 controller: _stateController,
@@ -1025,9 +1037,7 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade200),
-        ),
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
       ),
       child: SafeArea(
         top: false,
@@ -1041,10 +1051,7 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
                     _isEdit
                         ? 'Update the customer record after reviewing the details.'
                         : 'Save this new customer record to CRM.',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade700,
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -1055,19 +1062,19 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
                     onPressed: _isSaving ? null : _saveCustomer,
                     icon: _isSaving
                         ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        color: Colors.white,
-                      ),
-                    )
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.2,
+                              color: Colors.white,
+                            ),
+                          )
                         : Icon(
-                      _isEdit
-                          ? Icons.save_outlined
-                          : Icons.add_circle_outline,
-                      size: 18,
-                    ),
+                            _isEdit
+                                ? Icons.save_outlined
+                                : Icons.add_circle_outline,
+                            size: 18,
+                          ),
                     label: Text(_isEdit ? 'Update' : 'Save Customer'),
                     style: ElevatedButton.styleFrom(
                       elevation: 0,
@@ -1085,9 +1092,7 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
     );
   }
 
-  Widget _buildResponsiveRow({
-    required List<Widget> children,
-  }) {
+  Widget _buildResponsiveRow({required List<Widget> children}) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isStacked = constraints.maxWidth < 700;
@@ -1189,28 +1194,19 @@ class _SectionBlock extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.grey.shade200,
-          width: 0.9,
-        ),
+        border: Border.all(color: Colors.grey.shade200, width: 0.9),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 15.5,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 3),
           Text(
             subtitle,
-            style: TextStyle(
-              fontSize: 12.5,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 16),
           child,
@@ -1295,9 +1291,4 @@ const List<String> _statusOptions = [
   'Blocked',
 ];
 
-const List<String> _priorityOptions = [
-  'Low',
-  'Medium',
-  'High',
-  'Critical',
-];
+const List<String> _priorityOptions = ['Low', 'Medium', 'High', 'Critical'];

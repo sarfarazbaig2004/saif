@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/masters/models/work_center_model.dart';
 import 'package:QUIK/modules/production/masters/repositories/work_center_repository.dart';
@@ -20,7 +21,6 @@ class WorkCenterFormScreen extends StatefulWidget {
 
 class _WorkCenterFormScreenState extends State<WorkCenterFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final WorkCenterRepository _repository;
   late final String _workCenterId;
 
   final _workCenterCode = TextEditingController();
@@ -33,11 +33,18 @@ class _WorkCenterFormScreenState extends State<WorkCenterFormScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = WorkCenterRepository(tenantId: widget.tenantId);
     _workCenterId =
-        widget.workCenter?.workCenterId ?? _repository.newWorkCenterId();
+        widget.workCenter?.workCenterId ??
+        (_activeTenantId.isEmpty ? '' : _repository.newWorkCenterId());
     _hydrate();
   }
+
+  String get _activeTenantId {
+    return context.tenant.selectedTenantId.trim();
+  }
+
+  WorkCenterRepository get _repository =>
+      WorkCenterRepository(tenantId: _activeTenantId);
 
   void _hydrate() {
     final workCenter = widget.workCenter;
@@ -51,6 +58,16 @@ class _WorkCenterFormScreenState extends State<WorkCenterFormScreen> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_activeTenantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Missing company workspace. Work center was not saved.',
+          ),
+        ),
+      );
+      return;
+    }
     setState(() => _saving = true);
 
     try {

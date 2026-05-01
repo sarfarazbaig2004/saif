@@ -11,7 +11,7 @@ class InventoryConfigService {
 
   DocumentReference<Map<String, dynamic>> _profileRef(String tenantId) {
     return _firestore
-        .collection('tenants')
+        .collection('companies')
         .doc(tenantId)
         .collection('inventory_config')
         .doc('profile');
@@ -59,6 +59,8 @@ class InventoryConfigService {
             existingProfileType != defaultProfile.profileType) {
           transaction.set(ref, {
             ...defaultProfile.toFirestore(),
+            'companyId': normalizedTenantId,
+            'tenantId': normalizedTenantId,
             'updatedBy': source,
           }, SetOptions(merge: true));
           debugPrint(
@@ -75,6 +77,8 @@ class InventoryConfigService {
 
       transaction.set(ref, {
         ...defaultProfile.toFirestore(),
+        'companyId': normalizedTenantId,
+        'tenantId': normalizedTenantId,
         'createdBy': source,
         'updatedBy': source,
       });
@@ -126,6 +130,8 @@ class InventoryConfigService {
 
     await _profileRef(normalizedTenantId).set({
       ...profile.toFirestore(),
+      'companyId': normalizedTenantId,
+      'tenantId': normalizedTenantId,
       'updatedBy': source,
     }, SetOptions(merge: true));
   }

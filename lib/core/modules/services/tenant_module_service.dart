@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/core/modules/models/tenant_module_access.dart';
 import 'package:QUIK/core/modules/module_registry.dart';
 
@@ -27,11 +28,17 @@ class TenantModuleService {
   };
 
   CollectionReference<Map<String, dynamic>> _modulesRef(String tenantId) {
-    return _firestore.collection('tenants').doc(tenantId).collection('modules');
+    return TenantFirestore(
+      tenantId: tenantId,
+      firestore: _firestore,
+    ).collection('modules');
   }
 
   DocumentReference<Map<String, dynamic>> _tenantRef(String tenantId) {
-    return _firestore.collection('tenants').doc(tenantId);
+    return TenantFirestore(
+      tenantId: tenantId,
+      firestore: _firestore,
+    ).companyRef;
   }
 
   Future<TenantModuleSeedResult> ensureTenantModulesInitialized({

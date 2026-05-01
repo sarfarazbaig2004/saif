@@ -127,25 +127,28 @@ class TermRow {
 // ==========================================
 
 class QuotationDataService {
-  static Future<Map<String, dynamic>> fetchWorkspaceAndSignatureData() async {
+  static Future<Map<String, dynamic>> fetchWorkspaceAndSignatureData({
+    required String tenantId,
+  }) async {
     try {
+      final safeTenantId = tenantId.trim();
+      if (safeTenantId.isEmpty) return {};
+
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return {};
 
       final userDoc = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(safeTenantId)
           .collection('users')
           .doc(user.uid)
           .get();
-      if (!userDoc.exists) return {};
 
       final userData = userDoc.data() ?? {};
 
-      final companyId = userData['companyId']?.toString() ?? '';
-      if (companyId.trim().isEmpty || companyId.trim() == 'null') return {};
-
       final wsDoc = await FirebaseFirestore.instance
-          .collection('workspaces')
-          .doc(companyId)
+          .collection('companies')
+          .doc(safeTenantId)
           .get();
       final workspaceData = wsDoc.exists ? (wsDoc.data() ?? {}) : {};
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/execution/models/production_entry_model.dart';
 import 'package:QUIK/modules/production/execution/models/production_line_model.dart';
@@ -28,7 +29,6 @@ class _ProductionEntryEditorScreenState
   static const double _gridWidth = 1358;
 
   final _formKey = GlobalKey<FormState>();
-  late final ProductionRepository _repository;
   late final String _entryId;
 
   final _shift = TextEditingController(text: 'A');
@@ -45,11 +45,19 @@ class _ProductionEntryEditorScreenState
   @override
   void initState() {
     super.initState();
-    _repository = ProductionRepository(tenantId: widget.tenantId);
-    _entryId = widget.entry?.entryId ?? _repository.newEntryId();
+    _entryId =
+        widget.entry?.entryId ??
+        (_activeTenantId.isEmpty ? '' : _repository.newEntryId());
     _hydrateHeader();
     _loadLines();
   }
+
+  String get _activeTenantId {
+    return context.tenant.selectedTenantId.trim();
+  }
+
+  ProductionRepository get _repository =>
+      ProductionRepository(tenantId: _activeTenantId);
 
   void _hydrateHeader() {
     final entry = widget.entry;
@@ -62,6 +70,11 @@ class _ProductionEntryEditorScreenState
   }
 
   Future<void> _loadLines() async {
+    if (_activeTenantId.isEmpty) {
+      _lines.add(_ProductionLineDraft(workCenterId: _workCenterId.text));
+      setState(() => _loading = false);
+      return;
+    }
     if (widget.entry == null) {
       _lines.add(_ProductionLineDraft(workCenterId: _workCenterId.text));
       setState(() => _loading = false);
@@ -169,6 +182,16 @@ class _ProductionEntryEditorScreenState
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_activeTenantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Missing company workspace. Production entry was not saved.',
+          ),
+        ),
+      );
+      return;
+    }
     setState(() => _saving = true);
 
     try {
@@ -201,7 +224,7 @@ class _ProductionEntryEditorScreenState
       operatorId: _operatorId.text.trim(),
       workCenterId: _workCenterId.text.trim(),
       supervisorId: _supervisorId.text.trim(),
-      tenantId: widget.tenantId,
+      tenantId: _activeTenantId,
       status: _status.text.trim().isEmpty ? 'draft' : _status.text.trim(),
     );
   }

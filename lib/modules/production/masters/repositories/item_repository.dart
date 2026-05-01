@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/production/masters/models/fabrication_item_model.dart';
 
 class ItemRepository {
@@ -10,7 +11,10 @@ class ItemRepository {
   final String tenantId;
 
   CollectionReference<Map<String, dynamic>> get _ref {
-    return _firestore.collection('tenants').doc(tenantId).collection('items');
+    return TenantFirestore(
+      tenantId: tenantId,
+      firestore: _firestore,
+    ).collection('items');
   }
 
   Stream<List<FabricationItemModel>> watchItems() {
@@ -25,9 +29,11 @@ class ItemRepository {
   }
 
   Future<void> saveItem(FabricationItemModel item) {
-    return _ref
-        .doc(item.itemId)
-        .set(item.toFirestore(), SetOptions(merge: true));
+    return _ref.doc(item.itemId).set({
+      ...item.toFirestore(),
+      'companyId': tenantId,
+      'tenantId': tenantId,
+    }, SetOptions(merge: true));
   }
 
   String newItemId() => _ref.doc().id;

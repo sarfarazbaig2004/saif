@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/masters/models/process_model.dart';
 import 'package:QUIK/modules/production/masters/repositories/process_repository.dart';
@@ -16,7 +17,6 @@ class ProcessFormScreen extends StatefulWidget {
 
 class _ProcessFormScreenState extends State<ProcessFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final ProcessRepository _repository;
   late final String _processId;
 
   final _processCode = TextEditingController();
@@ -29,10 +29,18 @@ class _ProcessFormScreenState extends State<ProcessFormScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = ProcessRepository(tenantId: widget.tenantId);
-    _processId = widget.process?.processId ?? _repository.newProcessId();
+    _processId =
+        widget.process?.processId ??
+        (_activeTenantId.isEmpty ? '' : _repository.newProcessId());
     _hydrate();
   }
+
+  String get _activeTenantId {
+    return context.tenant.selectedTenantId.trim();
+  }
+
+  ProcessRepository get _repository =>
+      ProcessRepository(tenantId: _activeTenantId);
 
   void _hydrate() {
     final process = widget.process;
@@ -46,6 +54,14 @@ class _ProcessFormScreenState extends State<ProcessFormScreen> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_activeTenantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Missing company workspace. Process was not saved.'),
+        ),
+      );
+      return;
+    }
     setState(() => _saving = true);
 
     try {

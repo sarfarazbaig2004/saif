@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/models/inquiry_model.dart';
 
 class ScreensInquiryForm extends StatefulWidget {
@@ -67,6 +68,16 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
     _loadExtraData();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final tenantId = context.watchTenant.selectedTenantId.trim();
+    if (tenantId.isNotEmpty && tenantId != _companyId) {
+      _companyId = tenantId;
+      _loadExtraData();
+    }
+  }
+
   void _hydrateFromInquiry() {
     final iq = widget.existingInquiry;
     if (iq == null) return;
@@ -103,17 +114,18 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
     try {
       final currentUser = FirebaseAuth.instance.currentUser;
       if (currentUser == null) return;
+      if (_companyId == null || _companyId!.isEmpty) return;
 
-      final rootUserDoc = await FirebaseFirestore.instance
+      final currentTenantUserDoc = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(_companyId)
           .collection('users')
           .doc(currentUser.uid)
           .get();
 
-      final rootUserData = rootUserDoc.data() ?? {};
-      final role = (rootUserData['role'] ?? '').toString().trim();
+      final currentTenantUserData = currentTenantUserDoc.data() ?? {};
+      final role = (currentTenantUserData['role'] ?? '').toString().trim();
       _canManageAssignment = role == 'admin' || role == 'manager';
-
-      _companyId = _firstNonEmpty([_companyId, rootUserData['companyId']]);
 
       if (widget.existingDoc != null) {
         final existingSnap = await widget.existingDoc!.get();
@@ -528,6 +540,18 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final tenantId = context.tenant.selectedTenantId.trim();
+    if (tenantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Missing company workspace. Inquiry was not saved.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    _companyId = tenantId;
+
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       if (mounted) {
@@ -595,6 +619,8 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
             : Timestamp.fromDate(_expectedClosureDate!),
 
         'linkedQuotationId': _linkedQuotationIdController.text.trim(),
+        'companyId': tenantId,
+        'tenantId': tenantId,
 
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy': user.uid,
@@ -610,10 +636,6 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
       }
 
       if (!_isEditing) {
-        if (_companyId == null || _companyId!.isEmpty) {
-          throw Exception('Company ID missing for creating inquiry');
-        }
-
         final finalAssignedToUid =
             (_assignedToUid ?? user.uid).toString().trim().isEmpty
             ? user.uid
@@ -628,7 +650,6 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
 
         final createData = <String, dynamic>{
           ...editableData,
-          'companyId': _companyId,
           'createdAt': FieldValue.serverTimestamp(),
           'createdBy': user.uid,
           'createdByUid': user.uid,
@@ -642,7 +663,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
 
         await FirebaseFirestore.instance
             .collection('companies')
-            .doc(_companyId)
+            .doc(tenantId)
             .collection('inquiries')
             .add(createData);
       } else {

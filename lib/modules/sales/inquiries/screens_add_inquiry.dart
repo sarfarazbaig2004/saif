@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/models/inquiry_model.dart';
 import 'package:QUIK/modules/crm/customers/screens_add_customer.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
@@ -124,6 +125,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   List<DocumentSnapshot<Map<String, dynamic>>> _customerSuggestions = [];
 
   bool get _isEditing => widget.existingDoc != null;
+  String get _tenantId => widget.companyId.trim();
 
   bool get _isAdminOrManager {
     final role = widget.currentUserRole.trim().toLowerCase();
@@ -139,28 +141,16 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
 
   // Firestore References
   CollectionReference<Map<String, dynamic>> get _companyCustomersRef =>
-      FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('customers');
+      TenantFirestore(tenantId: _tenantId).collection('customers');
 
   CollectionReference<Map<String, dynamic>> get _companyUsersRef =>
-      FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('users');
+      TenantFirestore(tenantId: _tenantId).collection('users');
 
   CollectionReference<Map<String, dynamic>> get _companyInquiriesRef =>
-      FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('inquiries');
+      TenantFirestore(tenantId: _tenantId).collection('inquiries');
 
   CollectionReference<Map<String, dynamic>> get _companyCountersRef =>
-      FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('counters');
+      TenantFirestore(tenantId: _tenantId).collection('counters');
 
   CollectionReference<Map<String, dynamic>> _companyContactsRef(
     String customerId,
@@ -932,6 +922,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     _selectedStatus = _statusForStage(_selectedStage);
 
     return <String, dynamic>{
+      'companyId': _tenantId,
+      'tenantId': _tenantId,
       'subject': subjectStr,
       'subjectSearch': subjectSearch,
       'customerSearchCache': searchCache,
@@ -1089,7 +1081,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             ];
 
             payload.addAll({
-              'companyId': widget.companyId,
+              'companyId': _tenantId,
+              'tenantId': _tenantId,
               'createdBy': widget.currentUserUid,
               'createdAt': FieldValue.serverTimestamp(),
               'isActive': true,
@@ -1145,6 +1138,13 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     if (_isSaving) return;
     FocusScope.of(context).unfocus();
 
+    if (_tenantId.isEmpty) {
+      _showValidationMessage(
+        'Missing company workspace. Inquiry was not saved.',
+      );
+      return;
+    }
+
     if (!_validateForm()) return;
 
     setState(() => _isSaving = true);
@@ -1177,7 +1177,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           MaterialPageRoute(
             builder: (_) => QuotationScreenLocal(
               currentUserUid: widget.currentUserUid,
-              companyId: widget.companyId,
+              companyId: _tenantId,
               inquirySeed: payload,
             ),
           ),

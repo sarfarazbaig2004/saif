@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/boq/models/boq_item_model.dart';
 import 'package:QUIK/modules/production/boq/models/boq_model.dart';
@@ -22,7 +23,6 @@ class _BoqEditorScreenState extends State<BoqEditorScreen> {
   static const double _gridWidth = 1688;
 
   final _formKey = GlobalKey<FormState>();
-  late final BoqRepository _repository;
   late final String _boqId;
 
   final _boqNo = TextEditingController();
@@ -49,11 +49,18 @@ class _BoqEditorScreenState extends State<BoqEditorScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = BoqRepository(tenantId: widget.tenantId);
-    _boqId = widget.boq?.boqId ?? _repository.newBoqId();
+    _boqId =
+        widget.boq?.boqId ??
+        (_activeTenantId.isEmpty ? '' : _repository.newBoqId());
     _hydrateHeader();
     _loadLines();
   }
+
+  String get _activeTenantId {
+    return context.tenant.selectedTenantId.trim();
+  }
+
+  BoqRepository get _repository => BoqRepository(tenantId: _activeTenantId);
 
   void _hydrateHeader() {
     final boq = widget.boq;
@@ -83,6 +90,11 @@ class _BoqEditorScreenState extends State<BoqEditorScreen> {
   }
 
   Future<void> _loadLines() async {
+    if (_activeTenantId.isEmpty) {
+      _lines.add(_BoqLineDraft());
+      setState(() => _loading = false);
+      return;
+    }
     if (widget.boq == null) {
       _lines.add(_BoqLineDraft());
       setState(() => _loading = false);
@@ -191,6 +203,13 @@ class _BoqEditorScreenState extends State<BoqEditorScreen> {
       );
       return;
     }
+    if (_activeTenantId.isEmpty) {
+      _showSnack(
+        'Missing company workspace. BOQ was not saved.',
+        isError: true,
+      );
+      return;
+    }
     setState(() => _saving = true);
 
     try {
@@ -198,7 +217,7 @@ class _BoqEditorScreenState extends State<BoqEditorScreen> {
       final lineModels = _buildLineModels();
 
       debugPrint(
-        'Saving BOQ ${boq.boqId} for tenant ${widget.tenantId} with ${lineModels.length} lines',
+        'Saving BOQ ${boq.boqId} for tenant $_activeTenantId with ${lineModels.length} lines',
       );
 
       await _repository.saveBoq(boq);

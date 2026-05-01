@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/models/inquiry_model.dart';
+import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/sales/inquiries/screens_add_inquiry.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
 
@@ -25,6 +27,7 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
 
   Future<Map<String, dynamic>?>? _profileDataFuture;
   Query<Map<String, dynamic>>? _inquiryQuery;
+  String? _loadedTenantId;
 
   // --- DRY: Centralized Firebase User Access ---
   User? get _currentUser => FirebaseAuth.instance.currentUser;
@@ -32,10 +35,6 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   @override
   void initState() {
     super.initState();
-    final user = _currentUser;
-    if (user != null) {
-      _profileDataFuture = _loadProfileAndQuery(user.uid);
-    }
   }
 
   @override
@@ -44,14 +43,16 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     super.dispose();
   }
 
-  Future<Map<String, dynamic>?> _loadProfileAndQuery(String uid) async {
-    final userData = await _loadCurrentUserProfile(uid);
+  Future<Map<String, dynamic>?> _loadProfileAndQuery(
+    String uid,
+    String tenantId,
+  ) async {
+    final safeTenantId = TenantFirestore.requireTenantId(tenantId);
+    final userData = await _loadCurrentUserProfile(uid, safeTenantId);
     if (userData != null) {
-      final resolvedCompanyId = _getString(userData, 'companyId');
-      if (resolvedCompanyId.isNotEmpty) {
-        _companyId = resolvedCompanyId;
-        _inquiryQuery = await _resolveInquiryQuery(resolvedCompanyId);
-      }
+      _companyId = safeTenantId;
+      _loadedTenantId = safeTenantId;
+      _inquiryQuery = _resolveInquiryQuery(safeTenantId);
     }
     return userData;
   }
@@ -60,10 +61,6 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   String _getString(Map<String, dynamic>? data, String key) {
     if (data == null || !data.containsKey(key)) return '';
     return (data[key] ?? '').toString().trim();
-  }
-
-  String _safeString(dynamic value) {
-    return (value ?? '').toString().trim();
   }
 
   // --- DRY: Centralized Date Formatting ---
@@ -93,38 +90,15 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   }
 
   // --- FULL MULTI-TENANT PROFILE LOADER ---
-  Future<Map<String, dynamic>?> _loadCurrentUserProfile(String uid) async {
-    final globalDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .get();
-
-    if (!globalDoc.exists) return null;
-
-    Map<String, dynamic> userData = globalDoc.data() ?? {};
-
-    // Cascading Fallback for Company ID
-    String resolvedCompanyId = _getString(userData, 'activeCompanyId');
-
-    if (resolvedCompanyId.isEmpty) {
-      resolvedCompanyId = _getString(userData, 'companyId');
-    }
-
-    if (resolvedCompanyId.isEmpty &&
-        userData['companyIds'] is List &&
-        (userData['companyIds'] as List).isNotEmpty) {
-      resolvedCompanyId = _safeString((userData['companyIds'] as List).first);
-    }
-
-    if (resolvedCompanyId.isEmpty &&
-        userData['memberships'] is Map &&
-        (userData['memberships'] as Map).isNotEmpty) {
-      resolvedCompanyId = _safeString(
-        (userData['memberships'] as Map).keys.first,
-      );
-    }
-
-    userData['companyId'] = resolvedCompanyId;
+  Future<Map<String, dynamic>?> _loadCurrentUserProfile(
+    String uid,
+    String tenantId,
+  ) async {
+    final resolvedCompanyId = tenantId.trim();
+    Map<String, dynamic> userData = {
+      'companyId': resolvedCompanyId,
+      'tenantId': resolvedCompanyId,
+    };
 
     // Merge Company-Scoped Data Override
     if (resolvedCompanyId.isNotEmpty) {
@@ -138,17 +112,6 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
       if (companyUserDoc.exists && companyUserDoc.data() != null) {
         userData.addAll(companyUserDoc.data()!);
         userData['companyId'] = resolvedCompanyId; // Re-enforce
-      } else {
-        if (userData['memberships'] is Map) {
-          final membershipsMap = userData['memberships'] as Map;
-          if (membershipsMap[resolvedCompanyId] is Map) {
-            final memberData = membershipsMap[resolvedCompanyId];
-            if (_getString(userData, 'role').isEmpty) {
-              userData['role'] = memberData['role'];
-            }
-            userData['permissions'] ??= memberData['permissions'];
-          }
-        }
       }
     }
 
@@ -177,33 +140,10 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   }
 
   // --- SMART FIRESTORE AUTO-FALLBACK QUERY ---
-  Future<Query<Map<String, dynamic>>> _resolveInquiryQuery(
-    String companyId,
-  ) async {
-    final scopedQuery = FirebaseFirestore.instance
-        .collection('companies')
-        .doc(companyId)
-        .collection('inquiries');
-
-    try {
-      final scopedSnap = await scopedQuery.limit(1).get();
-      if (scopedSnap.docs.isNotEmpty) {
-        return scopedQuery.orderBy('createdAt', descending: true);
-      }
-
-      final rootQuery = FirebaseFirestore.instance
-          .collection('inquiries')
-          .where('companyId', isEqualTo: companyId);
-
-      final rootSnap = await rootQuery.limit(1).get();
-      if (rootSnap.docs.isNotEmpty) {
-        return rootQuery;
-      }
-    } catch (e) {
-      debugPrint("Query resolution error: $e");
-    }
-
-    return scopedQuery.orderBy('createdAt', descending: true);
+  Query<Map<String, dynamic>> _resolveInquiryQuery(String companyId) {
+    return TenantFirestore(
+      tenantId: companyId,
+    ).collection('inquiries').orderBy('createdAt', descending: true);
   }
 
   List<QueryDocumentSnapshot<Map<String, dynamic>>> _applyLocalFilters({
@@ -437,9 +377,7 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     required String currentUserUid,
     required String role,
   }) async {
-    final targetCompanyId = inquiry.companyId.isNotEmpty
-        ? inquiry.companyId
-        : (_companyId ?? '');
+    final targetCompanyId = (_companyId ?? '').trim();
 
     if (targetCompanyId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -481,9 +419,7 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     required Inquiry inquiry,
     required Map<String, dynamic> inquiryData,
   }) async {
-    final targetCompanyId = inquiry.companyId.isNotEmpty
-        ? inquiry.companyId
-        : (_companyId ?? '');
+    final targetCompanyId = (_companyId ?? '').trim();
 
     if (targetCompanyId.isEmpty) {
       if (mounted) {
@@ -498,9 +434,13 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     }
 
     final assignedToUid =
-        (inquiryData['assignedToUid'] ?? inquiry.assignedToUid).toString().trim();
+        (inquiryData['assignedToUid'] ?? inquiry.assignedToUid)
+            .toString()
+            .trim();
     final assignedToName =
-        (inquiryData['assignedToName'] ?? inquiry.assignedToName).toString().trim();
+        (inquiryData['assignedToName'] ?? inquiry.assignedToName)
+            .toString()
+            .trim();
     final currentUid = _currentUser?.uid ?? '';
     final role = (_getString(await _profileDataFuture, 'role')).toLowerCase();
     final isPrivileged = _isAdminOrManager(role);
@@ -615,12 +555,24 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   @override
   Widget build(BuildContext context) {
     final firebaseUser = _currentUser;
+    final selectedTenantId = context.watchTenant.selectedTenantId.trim();
 
     if (firebaseUser == null) {
       return const Scaffold(body: Center(child: Text('User not logged in')));
     }
 
-    _profileDataFuture ??= _loadProfileAndQuery(firebaseUser.uid);
+    if (selectedTenantId.isEmpty) {
+      return const Scaffold(
+        body: Center(child: Text('Select a company workspace first.')),
+      );
+    }
+
+    if (_profileDataFuture == null || _loadedTenantId != selectedTenantId) {
+      _profileDataFuture = _loadProfileAndQuery(
+        firebaseUser.uid,
+        selectedTenantId,
+      );
+    }
 
     return FutureBuilder<Map<String, dynamic>?>(
       future: _profileDataFuture,
@@ -688,7 +640,10 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                   ),
                 );
                 setState(() {
-                  _profileDataFuture = _loadProfileAndQuery(firebaseUser.uid);
+                  _profileDataFuture = _loadProfileAndQuery(
+                    firebaseUser.uid,
+                    selectedTenantId,
+                  );
                 });
               }
             },

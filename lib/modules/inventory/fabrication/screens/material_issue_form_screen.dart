@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_issue_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/repositories/fabrication_inventory_repository.dart';
 
@@ -16,7 +17,6 @@ class MaterialIssueFormScreen extends StatefulWidget {
 
 class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final FabricationInventoryRepository _repository;
 
   final _issuedTo = TextEditingController();
   final _workOrderId = TextEditingController();
@@ -30,11 +30,15 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
   DateTime _issueDate = DateTime.now();
   bool _saving = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _repository = FabricationInventoryRepository(tenantId: widget.tenantId);
+  String get _tenantId {
+    final contextTenantId = context.tenant.selectedTenantId.trim();
+    return contextTenantId.isNotEmpty
+        ? contextTenantId
+        : widget.tenantId.trim();
   }
+
+  FabricationInventoryRepository get _repository =>
+      FabricationInventoryRepository(tenantId: _tenantId);
 
   @override
   void dispose() {
@@ -51,6 +55,17 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    if (_tenantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Missing company workspace. Material issue was not saved.',
+          ),
+        ),
+      );
+      return;
+    }
 
     setState(() => _saving = true);
     try {

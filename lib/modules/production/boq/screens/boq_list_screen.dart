@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/production/boq/models/boq_model.dart';
 import 'package:QUIK/modules/production/boq/repositories/boq_repository.dart';
 import 'package:QUIK/modules/production/boq/screens/boq_editor_screen.dart';
@@ -10,11 +11,15 @@ class BoqListScreen extends StatelessWidget {
 
   const BoqListScreen({super.key, required this.tenantId});
 
-  Future<void> _openEditor(BuildContext context, {BoqModel? boq}) async {
+  Future<void> _openEditor(
+    BuildContext context, {
+    required String activeTenantId,
+    BoqModel? boq,
+  }) async {
     final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => BoqEditorScreen(tenantId: tenantId, boq: boq),
+        builder: (_) => BoqEditorScreen(tenantId: activeTenantId, boq: boq),
       ),
     );
 
@@ -27,7 +32,12 @@ class BoqListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final repository = BoqRepository(tenantId: tenantId);
+    final activeTenantId = context.watchTenant.selectedTenantId.trim();
+    if (activeTenantId.isEmpty) {
+      return const Center(child: Text('Select a company workspace first.'));
+    }
+
+    final repository = BoqRepository(tenantId: activeTenantId);
 
     return ProductionListScaffold<BoqModel>(
       title: 'BOQ',
@@ -38,7 +48,7 @@ class BoqListScreen extends StatelessWidget {
       emptyMessage:
           'Create project BOQs with section, length, quantity, unit weight, and calculated total weight.',
       headerAction: FilledButton.icon(
-        onPressed: () => _openEditor(context),
+        onPressed: () => _openEditor(context, activeTenantId: activeTenantId),
         icon: const Icon(Icons.add),
         label: const Text('New BOQ'),
       ),
@@ -49,7 +59,8 @@ class BoqListScreen extends StatelessWidget {
           subtitle:
               '${boq.clientName} • ${boq.moduleType} • ${boq.capacityKW.toStringAsFixed(0)} kW',
           trailing: '${boq.totalWeight.toStringAsFixed(2)} kg',
-          onTap: () => _openEditor(context, boq: boq),
+          onTap: () =>
+              _openEditor(context, activeTenantId: activeTenantId, boq: boq),
         );
       },
     );

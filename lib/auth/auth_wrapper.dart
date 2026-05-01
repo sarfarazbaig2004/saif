@@ -8,8 +8,10 @@ import 'package:QUIK/core/inventory/providers/inventory_config_provider.dart';
 import 'package:QUIK/core/inventory/services/inventory_config_service.dart';
 import 'package:QUIK/core/modules/providers/module_access_provider.dart';
 import 'package:QUIK/core/modules/services/tenant_module_service.dart';
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/auth/login/login_screen.dart';
 import 'package:QUIK/modules/administration/company/screen_join_company.dart';
+import 'package:provider/provider.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -187,19 +189,8 @@ class _UserProfileGateState extends State<_UserProfileGate> {
       );
     }
 
-    // Dynamic companyId extraction
-    String companyId = (data['companyId'] ?? '').toString();
-    if (companyId.isEmpty) {
-      final companyIds = data['companyIds'];
-      if (companyIds is List && companyIds.isNotEmpty) {
-        companyId = companyIds.first.toString();
-      } else {
-        final memberships = data['memberships'];
-        if (memberships is Map && memberships.isNotEmpty) {
-          companyId = memberships.keys.first.toString();
-        }
-      }
-    }
+    final allowedTenantIds = _resolveAllowedTenantIds(data);
+    final companyId = _resolveSelectedTenantId(data, allowedTenantIds);
 
     final role = (data['role'] ?? 'sales').toString();
     final companyName =
@@ -307,25 +298,88 @@ class _UserProfileGateState extends State<_UserProfileGate> {
       );
     }
 
-    return _TenantModuleBackfillGate(
-      companyId: companyId,
-      child: InventoryConfigProvider(
-        tenantId: companyId,
-        child: ModuleAccessProvider(
+    return ChangeNotifierProvider<TenantContext>(
+      create: (_) => TenantContext(
+        selectedTenantId: companyId,
+        allowedTenantIds: allowedTenantIds,
+        isPlatformAdmin: _isPlatformAdmin,
+        tenantNames: {if (companyId.isNotEmpty) companyId: companyName},
+      ),
+      child: _TenantModuleBackfillGate(
+        companyId: companyId,
+        child: InventoryConfigProvider(
           tenantId: companyId,
-          child: ZohoShell(
-            userEmail: widget.firebaseUser.email ?? 'user@workspace.com',
-            userUid: widget.firebaseUser.uid,
-            companyId: companyId,
-            companyName: companyName,
-            role: role,
-            permissions: permissions,
-            userDisplayName: userDisplayName,
-            isPlatformAdmin: _isPlatformAdmin,
+          child: ModuleAccessProvider(
+            tenantId: companyId,
+            child: ZohoShell(
+              userEmail: widget.firebaseUser.email ?? 'user@workspace.com',
+              userUid: widget.firebaseUser.uid,
+              companyId: companyId,
+              companyName: companyName,
+              role: role,
+              permissions: permissions,
+              userDisplayName: userDisplayName,
+              isPlatformAdmin: _isPlatformAdmin,
+            ),
           ),
         ),
       ),
     );
+  }
+
+  List<String> _resolveAllowedTenantIds(Map<String, dynamic> data) {
+    final tenantIds = <String>[
+      (data['tenantId'] ?? '').toString(),
+      (data['companyId'] ?? '').toString(),
+      (data['primaryTenantId'] ?? '').toString(),
+      (data['primaryCompanyId'] ?? '').toString(),
+    ];
+
+    void addList(dynamic value) {
+      if (value is! Iterable) return;
+      for (final item in value) {
+        tenantIds.add(item.toString());
+      }
+    }
+
+    addList(data['tenantIds']);
+    addList(data['companyIds']);
+    addList(data['allowedTenantIds']);
+    addList(data['allowedCompanyIds']);
+
+    final memberships = data['memberships'];
+    if (memberships is Map) {
+      for (final key in memberships.keys) {
+        tenantIds.add(key.toString());
+      }
+    }
+
+    final seen = <String>{};
+    return tenantIds
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty && seen.add(id))
+        .toList();
+  }
+
+  String _resolveSelectedTenantId(
+    Map<String, dynamic> data,
+    List<String> allowedTenantIds,
+  ) {
+    final preferred = [
+      (data['selectedTenantId'] ?? '').toString(),
+      (data['tenantId'] ?? '').toString(),
+      (data['companyId'] ?? '').toString(),
+      (data['primaryTenantId'] ?? '').toString(),
+      (data['primaryCompanyId'] ?? '').toString(),
+    ].map((id) => id.trim()).where((id) => id.isNotEmpty);
+
+    for (final tenantId in preferred) {
+      if (allowedTenantIds.isEmpty || allowedTenantIds.contains(tenantId)) {
+        return tenantId;
+      }
+    }
+
+    return allowedTenantIds.isEmpty ? '' : allowedTenantIds.first;
   }
 }
 

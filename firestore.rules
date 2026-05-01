@@ -2,10 +2,112 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
 
-    // TEMPORARY: allow all reads/writes for logged-in users
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function rootUserPath() {
+      return /databases/$(database)/documents/users/$(uid());
+    }
+
+    function hasRootUserProfile() {
+      return signedIn() && exists(rootUserPath());
+    }
+
+    function rootUser() {
+      return get(rootUserPath()).data;
+    }
+
+    function isPlatformAdmin() {
+      return hasRootUserProfile() && rootUser().isPlatformAdmin == true;
+    }
+
+    function rootAllowedTenants(tenantId) {
+      return hasRootUserProfile() && (
+        rootUser().isPlatformAdmin == true ||
+        rootUser().companyId == tenantId ||
+        ('allowedTenantIds' in rootUser() && tenantId in rootUser().allowedTenantIds) ||
+        ('companyIds' in rootUser() && tenantId in rootUser().companyIds) ||
+        ('memberships' in rootUser() && tenantId in rootUser().memberships.keys())
+      );
+    }
+
+    function hasCompanyMembership(tenantId) {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/companies/$(tenantId)/users/$(uid()));
+    }
+
+    function canAccessTenant(tenantId) {
+      return signedIn() &&
+        (isPlatformAdmin() || rootAllowedTenants(tenantId) || hasCompanyMembership(tenantId));
+    }
+
+    function tenantFieldsMatchPath(tenantId) {
+      return !('tenantId' in request.resource.data) ||
+        request.resource.data.tenantId == tenantId;
+    }
+
+    function companyFieldsMatchPath(tenantId) {
+      return !('companyId' in request.resource.data) ||
+        request.resource.data.companyId == tenantId;
+    }
+
+    function tenantWriteAllowed(tenantId) {
+      return tenantFieldsMatchPath(tenantId) && companyFieldsMatchPath(tenantId);
+    }
+
+    function noRootTenantGrantFields() {
+      return !('allowedTenantIds' in request.resource.data) &&
+        !('companyIds' in request.resource.data) &&
+        !('companyId' in request.resource.data) &&
+        !('memberships' in request.resource.data) &&
+        !('isPlatformAdmin' in request.resource.data);
+    }
+
+    function rootTenantGrantFieldsUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'allowedTenantIds',
+        'companyIds',
+        'companyId',
+        'memberships',
+        'isPlatformAdmin',
+      ]);
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (uid() == userId || isPlatformAdmin());
+      allow create: if isPlatformAdmin() ||
+        (signedIn() && uid() == userId && noRootTenantGrantFields());
+      allow update: if isPlatformAdmin() ||
+        (signedIn() && uid() == userId && rootTenantGrantFieldsUnchanged());
+      allow delete: if isPlatformAdmin();
+    }
+
+    match /companies/{tenantId} {
+      allow read: if canAccessTenant(tenantId);
+      allow create, update, delete: if canAccessTenant(tenantId) &&
+        tenantWriteAllowed(tenantId);
+
+      match /users/{userId} {
+        allow read: if canAccessTenant(tenantId);
+        allow write: if isPlatformAdmin() ||
+          (signedIn() && uid() == userId && canAccessTenant(tenantId));
+      }
+
+      match /{document=**} {
+        allow read: if canAccessTenant(tenantId);
+        allow create, update: if canAccessTenant(tenantId) &&
+          tenantWriteAllowed(tenantId);
+        allow delete: if canAccessTenant(tenantId);
+      }
+    }
+
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
   }
 }

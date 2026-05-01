@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/bom/models/bom_header_model.dart';
 import 'package:QUIK/modules/production/bom/models/bom_line_model.dart';
@@ -19,7 +20,6 @@ class _BomEditorScreenState extends State<BomEditorScreen> {
   static const double _lineGridWidth = 1374;
 
   final _formKey = GlobalKey<FormState>();
-  late final BomRepository _repository;
   late final String _bomId;
 
   final _bomCode = TextEditingController();
@@ -40,11 +40,18 @@ class _BomEditorScreenState extends State<BomEditorScreen> {
   @override
   void initState() {
     super.initState();
-    _repository = BomRepository(tenantId: widget.tenantId);
-    _bomId = widget.bom?.bomId ?? _repository.newBomId();
+    _bomId =
+        widget.bom?.bomId ??
+        (_activeTenantId.isEmpty ? '' : _repository.newBomId());
     _hydrateHeader();
     _loadLines();
   }
+
+  String get _activeTenantId {
+    return context.tenant.selectedTenantId.trim();
+  }
+
+  BomRepository get _repository => BomRepository(tenantId: _activeTenantId);
 
   void _hydrateHeader() {
     final bom = widget.bom;
@@ -61,6 +68,11 @@ class _BomEditorScreenState extends State<BomEditorScreen> {
   }
 
   Future<void> _loadLines() async {
+    if (_activeTenantId.isEmpty) {
+      _lines.add(_BomLineDraft());
+      setState(() => _loading = false);
+      return;
+    }
     if (widget.bom == null) {
       _lines.add(_BomLineDraft());
       setState(() => _loading = false);
@@ -90,6 +102,14 @@ class _BomEditorScreenState extends State<BomEditorScreen> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_activeTenantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Missing company workspace. BOM was not saved.'),
+        ),
+      );
+      return;
+    }
     setState(() => _saving = true);
 
     try {

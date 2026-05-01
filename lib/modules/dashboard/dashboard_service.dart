@@ -1,6 +1,7 @@
 // FILE: lib/modules/dashboard/dashboard_service.dart
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 
 class DashboardKpiData {
   final double totalRevenue;
@@ -59,8 +60,12 @@ class DashboardTransaction {
 class DashboardService {
   final String companyId;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  late final TenantFirestore _tenantDb;
 
-  DashboardService({required this.companyId});
+  DashboardService({required String companyId})
+    : companyId = TenantFirestore.requireTenantId(companyId) {
+    _tenantDb = TenantFirestore(tenantId: this.companyId, firestore: _db);
+  }
 
   double _parseDouble(dynamic value) {
     if (value == null) return 0.0;
@@ -78,25 +83,11 @@ class DashboardService {
   }
 
   Stream<DashboardKpiData> streamKpiData() {
-    return _db.collection('companies').doc(companyId).snapshots().asyncMap((
-      _,
-    ) async {
+    return _tenantDb.companyRef.snapshots().asyncMap((_) async {
       try {
-        final invoicesSnap = await _db
-            .collection('companies')
-            .doc(companyId)
-            .collection('tax_invoices')
-            .get();
-        final quotesSnap = await _db
-            .collection('companies')
-            .doc(companyId)
-            .collection('quotations')
-            .get();
-        final inquiriesSnap = await _db
-            .collection('companies')
-            .doc(companyId)
-            .collection('inquiries')
-            .get();
+        final invoicesSnap = await _tenantDb.collection('tax_invoices').get();
+        final quotesSnap = await _tenantDb.collection('quotations').get();
+        final inquiriesSnap = await _tenantDb.collection('inquiries').get();
 
         double revenue = 0;
         double outstanding = 0;
