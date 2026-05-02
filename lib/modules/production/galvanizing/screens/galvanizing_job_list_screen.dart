@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/production/core/production_list_scaffold.dart';
 import 'package:QUIK/modules/production/galvanizing/models/galvanizing_job_model.dart';
 import 'package:QUIK/modules/production/galvanizing/repositories/galvanizing_job_repository.dart';
@@ -30,7 +29,7 @@ class GalvanizingJobListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeTenantId = context.watchTenant.selectedTenantId.trim();
+    final activeTenantId = tenantId.trim();
     if (activeTenantId.isEmpty) {
       return const Center(child: Text('Select a company workspace first.'));
     }

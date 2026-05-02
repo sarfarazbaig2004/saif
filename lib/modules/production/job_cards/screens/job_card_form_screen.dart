@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/job_cards/models/job_card_model.dart';
 import 'package:QUIK/modules/production/job_cards/repositories/job_card_repository.dart';
@@ -62,9 +61,7 @@ class _JobCardFormScreenState extends State<JobCardFormScreen> {
     _hydrate();
   }
 
-  String get _activeTenantId {
-    return context.tenant.selectedTenantId.trim();
-  }
+  String get _activeTenantId => widget.tenantId.trim();
 
   JobCardRepository get _repository =>
       JobCardRepository(tenantId: _activeTenantId);

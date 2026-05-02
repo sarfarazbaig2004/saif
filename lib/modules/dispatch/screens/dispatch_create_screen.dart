@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/dispatch/models/dispatch_model.dart';
 import 'package:QUIK/modules/dispatch/repositories/dispatch_repository.dart';
@@ -44,7 +43,7 @@ class _DispatchCreateScreenState extends State<DispatchCreateScreen> {
     _dispatchId = _activeTenantId.isEmpty ? '' : _repository.newDispatchId();
   }
 
-  String get _activeTenantId => context.tenant.selectedTenantId.trim();
+  String get _activeTenantId => widget.tenantId.trim();
 
   DispatchRepository get _repository =>
       DispatchRepository(tenantId: _activeTenantId);

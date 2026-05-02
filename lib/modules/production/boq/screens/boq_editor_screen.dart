@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/boq/models/boq_item_model.dart';
 import 'package:QUIK/modules/production/boq/models/boq_model.dart';
@@ -56,9 +55,7 @@ class _BoqEditorScreenState extends State<BoqEditorScreen> {
     _loadLines();
   }
 
-  String get _activeTenantId {
-    return context.tenant.selectedTenantId.trim();
-  }
+  String get _activeTenantId => widget.tenantId.trim();
 
   BoqRepository get _repository => BoqRepository(tenantId: _activeTenantId);
 

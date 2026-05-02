@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/masters/models/fabrication_item_model.dart';
 import 'package:QUIK/modules/production/masters/repositories/item_repository.dart';
@@ -41,9 +40,7 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
     _hydrate();
   }
 
-  String get _activeTenantId {
-    return context.tenant.selectedTenantId.trim();
-  }
+  String get _activeTenantId => widget.tenantId.trim();
 
   ItemRepository get _repository => ItemRepository(tenantId: _activeTenantId);
 

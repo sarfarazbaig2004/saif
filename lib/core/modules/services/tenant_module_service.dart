@@ -81,7 +81,9 @@ class TenantModuleService {
           existingModuleIds.add(moduleId);
           final data = moduleSnap.data() ?? const <String, dynamic>{};
           if (data['name'] != moduleId ||
-              (data['label'] ?? '').toString().trim().isEmpty) {
+              (data['label'] ?? '').toString().trim().isEmpty ||
+              (_defaultEnabledModuleIds.contains(moduleId) &&
+                  data['enabled'] != true)) {
             metadataRepairModuleIds.add(moduleId);
           }
         }
@@ -118,6 +120,7 @@ class TenantModuleService {
         transaction.set(modulesRef.doc(moduleId), {
           'name': moduleId,
           'label': module?.displayName ?? moduleId,
+          if (_defaultEnabledModuleIds.contains(moduleId)) 'enabled': true,
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
       }

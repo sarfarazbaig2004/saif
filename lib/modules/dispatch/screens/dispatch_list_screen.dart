@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/dispatch/models/dispatch_model.dart';
 import 'package:QUIK/modules/dispatch/repositories/dispatch_repository.dart';
@@ -8,10 +7,81 @@ import 'package:QUIK/modules/dispatch/screens/dispatch_create_screen.dart';
 import 'package:QUIK/modules/dispatch/screens/dispatch_detail_screen.dart';
 import 'package:QUIK/modules/production/inspections/models/inspection_model.dart';
 
+enum DispatchListMode { ready, challans, shipmentTracking, delivered }
+
+extension DispatchListModeX on DispatchListMode {
+  String get title {
+    switch (this) {
+      case DispatchListMode.ready:
+        return 'Ready for Dispatch';
+      case DispatchListMode.challans:
+        return 'Dispatch Challans';
+      case DispatchListMode.shipmentTracking:
+        return 'Shipment Tracking';
+      case DispatchListMode.delivered:
+        return 'Delivered Orders';
+    }
+  }
+
+  String get subtitle {
+    switch (this) {
+      case DispatchListMode.ready:
+        return 'Approved job cards pending final material dispatch';
+      case DispatchListMode.challans:
+        return 'Create and review dispatch challan records';
+      case DispatchListMode.shipmentTracking:
+        return 'Track material currently marked as dispatched';
+      case DispatchListMode.delivered:
+        return 'Review dispatches completed as delivered orders';
+    }
+  }
+
+  String? get statusFilter {
+    switch (this) {
+      case DispatchListMode.ready:
+      case DispatchListMode.challans:
+        return null;
+      case DispatchListMode.shipmentTracking:
+        return 'dispatched';
+      case DispatchListMode.delivered:
+        return 'delivered';
+    }
+  }
+
+  String get emptyTitle {
+    switch (this) {
+      case DispatchListMode.ready:
+      case DispatchListMode.challans:
+        return 'No dispatches yet';
+      case DispatchListMode.shipmentTracking:
+        return 'No shipments in transit';
+      case DispatchListMode.delivered:
+        return 'No delivered orders yet';
+    }
+  }
+
+  String get emptyMessage {
+    switch (this) {
+      case DispatchListMode.ready:
+      case DispatchListMode.challans:
+        return 'Create a dispatch only after inspection clearance is approved.';
+      case DispatchListMode.shipmentTracking:
+        return 'Dispatches marked as dispatched will appear here for tracking.';
+      case DispatchListMode.delivered:
+        return 'Dispatches marked as delivered will appear here.';
+    }
+  }
+}
+
 class DispatchListScreen extends StatelessWidget {
   final String tenantId;
+  final DispatchListMode mode;
 
-  const DispatchListScreen({super.key, required this.tenantId});
+  const DispatchListScreen({
+    super.key,
+    required this.tenantId,
+    this.mode = DispatchListMode.ready,
+  });
 
   Future<void> _openCreate(BuildContext context, String activeTenantId) async {
     final saved = await Navigator.push<bool>(
@@ -31,7 +101,7 @@ class DispatchListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeTenantId = context.watchTenant.selectedTenantId.trim();
+    final activeTenantId = tenantId.trim();
     if (activeTenantId.isEmpty) {
       return const Center(child: Text('Select a company workspace first.'));
     }
@@ -45,7 +115,10 @@ class DispatchListScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _Header(onCreate: () => _openCreate(context, activeTenantId)),
+                _Header(
+                  mode: mode,
+                  onCreate: () => _openCreate(context, activeTenantId),
+                ),
                 const SizedBox(height: 12),
                 StreamBuilder<List<InspectionModel>>(
                   stream: repository.watchApprovedInspections(),
@@ -81,41 +154,45 @@ class DispatchListScreen extends StatelessWidget {
 
                         final dispatches =
                             dispatchSnapshot.data ?? const <DispatchModel>[];
+                        final visibleDispatches = _visibleDispatches(
+                          dispatches,
+                        );
                         final pending = _pendingRows(inspections, dispatches);
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _PendingSummary(rows: pending),
-                            const SizedBox(height: 12),
-                            if (dispatches.isEmpty)
-                              const _EmptyState(
+                            if (mode == DispatchListMode.ready) ...[
+                              _PendingSummary(rows: pending),
+                              const SizedBox(height: 12),
+                            ],
+                            if (visibleDispatches.isEmpty)
+                              _EmptyState(
                                 icon: Icons.local_shipping_outlined,
-                                title: 'No dispatches yet',
-                                message:
-                                    'Create a dispatch only after inspection clearance is approved.',
+                                title: mode.emptyTitle,
+                                message: mode.emptyMessage,
                               )
                             else
                               Column(
                                 children: [
                                   for (
                                     var index = 0;
-                                    index < dispatches.length;
+                                    index < visibleDispatches.length;
                                     index++
                                   ) ...[
                                     _DispatchTile(
-                                      dispatch: dispatches[index],
+                                      dispatch: visibleDispatches[index],
                                       onTap: () => Navigator.push(
                                         context,
                                         MaterialPageRoute(
                                           builder: (_) => DispatchDetailScreen(
                                             tenantId: activeTenantId,
-                                            dispatch: dispatches[index],
+                                            dispatch: visibleDispatches[index],
                                           ),
                                         ),
                                       ),
                                     ),
-                                    if (index != dispatches.length - 1)
+                                    if (index != visibleDispatches.length - 1)
                                       const SizedBox(height: 8),
                                   ],
                                 ],
@@ -132,6 +209,17 @@ class DispatchListScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  List<DispatchModel> _visibleDispatches(List<DispatchModel> dispatches) {
+    final statusFilter = mode.statusFilter;
+    if (statusFilter == null) return dispatches;
+    return dispatches
+        .where(
+          (dispatch) =>
+              dispatch.dispatchStatus.trim().toLowerCase() == statusFilter,
+        )
+        .toList(growable: false);
   }
 
   List<_PendingDispatchRow> _pendingRows(
@@ -156,9 +244,10 @@ class DispatchListScreen extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
+  final DispatchListMode mode;
   final VoidCallback onCreate;
 
-  const _Header({required this.onCreate});
+  const _Header({required this.mode, required this.onCreate});
 
   @override
   Widget build(BuildContext context) {
@@ -178,22 +267,22 @@ class _Header extends StatelessWidget {
             child: Icon(Icons.local_shipping_outlined, color: zBlue),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Dispatch',
-                  style: TextStyle(
+                  mode.title,
+                  style: const TextStyle(
                     color: zText,
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Track final material dispatch after approved inspection clearance',
-                  style: TextStyle(
+                  mode.subtitle,
+                  style: const TextStyle(
                     color: zMuted,
                     fontSize: 13.2,
                     fontWeight: FontWeight.w600,

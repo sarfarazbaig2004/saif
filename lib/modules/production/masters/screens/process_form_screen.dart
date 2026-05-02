@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/masters/models/process_model.dart';
 import 'package:QUIK/modules/production/masters/repositories/process_repository.dart';
@@ -35,9 +34,7 @@ class _ProcessFormScreenState extends State<ProcessFormScreen> {
     _hydrate();
   }
 
-  String get _activeTenantId {
-    return context.tenant.selectedTenantId.trim();
-  }
+  String get _activeTenantId => widget.tenantId.trim();
 
   ProcessRepository get _repository =>
       ProcessRepository(tenantId: _activeTenantId);

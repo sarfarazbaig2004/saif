@@ -648,23 +648,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget? _buildAlertsSection() {
+    Widget? _buildAlertsSection() {
     if (!hasPermission('inventory', 'lowStockAlerts')) return null;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFFF7ED),
-        borderRadius: BorderRadius.only(
-          topRight: Radius.circular(8),
-          bottomRight: Radius.circular(8),
-        ),
-        border: Border(
-          left: BorderSide(color: Color(0xFFF97316), width: 4),
-          top: BorderSide(color: Color(0xFFFFEDD5)),
-          right: BorderSide(color: Color(0xFFFFEDD5)),
-          bottom: BorderSide(color: Color(0xFFFFEDD5)),
-        ),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFFFEDD5)),
       ),
       child: Row(
         children: [

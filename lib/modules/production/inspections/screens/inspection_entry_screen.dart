@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/inspections/models/inspection_model.dart';
 import 'package:QUIK/modules/production/inspections/repositories/inspection_repository.dart';
@@ -44,7 +43,7 @@ class _InspectionEntryScreenState extends State<InspectionEntryScreen> {
     _inspectionId = _activeTenantId.isEmpty ? '' : _repository.newInspectionId();
   }
 
-  String get _activeTenantId => context.tenant.selectedTenantId.trim();
+  String get _activeTenantId => widget.tenantId.trim();
 
   InspectionRepository get _repository =>
       InspectionRepository(tenantId: _activeTenantId);

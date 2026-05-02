@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/inspections/models/inspection_model.dart';
 import 'package:QUIK/modules/production/inspections/repositories/inspection_repository.dart';
@@ -58,7 +57,7 @@ class _InspectionStatusScreenState extends State<InspectionStatusScreen> {
         : 'pending';
   }
 
-  String get _activeTenantId => context.tenant.selectedTenantId.trim();
+  String get _activeTenantId => widget.tenantId.trim();
 
   InspectionRepository get _repository =>
       InspectionRepository(tenantId: _activeTenantId);

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:printing/printing.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/execution/models/production_entry_model.dart';
 import 'package:QUIK/modules/production/execution/models/production_line_model.dart';
@@ -52,9 +51,7 @@ class _ProductionEntryEditorScreenState
     _loadLines();
   }
 
-  String get _activeTenantId {
-    return context.tenant.selectedTenantId.trim();
-  }
+  String get _activeTenantId => widget.tenantId.trim();
 
   ProductionRepository get _repository =>
       ProductionRepository(tenantId: _activeTenantId);

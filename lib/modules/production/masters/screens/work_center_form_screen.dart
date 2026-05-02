@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/masters/models/work_center_model.dart';
 import 'package:QUIK/modules/production/masters/repositories/work_center_repository.dart';
@@ -39,9 +38,7 @@ class _WorkCenterFormScreenState extends State<WorkCenterFormScreen> {
     _hydrate();
   }
 
-  String get _activeTenantId {
-    return context.tenant.selectedTenantId.trim();
-  }
+  String get _activeTenantId => widget.tenantId.trim();
 
   WorkCenterRepository get _repository =>
       WorkCenterRepository(tenantId: _activeTenantId);

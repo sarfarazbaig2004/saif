@@ -1070,6 +1070,10 @@ class _ZohoShellState extends State<ZohoShell> {
   }
 
   bool _isSidebarGroupModuleEnabled(String groupKey) {
+    if (groupKey == ModuleIds.production || groupKey == ModuleIds.dispatch) {
+      return true;
+    }
+
     final moduleId = _moduleIdForSidebarGroup(groupKey);
     if (moduleId == null) return true;
 
@@ -1110,6 +1114,9 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.inventoryMaterialInward:
       case ShellPage.inventoryMaterialIssue:
       case ShellPage.dispatchReady:
+      case ShellPage.dispatchChallans:
+      case ShellPage.dispatchShipmentTracking:
+      case ShellPage.dispatchDelivered:
       case ShellPage.salesQuotations:
       case ShellPage.adminUsers:
       case ShellPage.adminModules:
@@ -1822,7 +1829,37 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.dispatchReady:
         return Padding(
           padding: const EdgeInsets.all(14),
-          child: DispatchListScreen(tenantId: widget.companyId),
+          child: DispatchListScreen(
+            tenantId: widget.companyId,
+            mode: DispatchListMode.ready,
+          ),
+        );
+
+      case ShellPage.dispatchChallans:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: DispatchListScreen(
+            tenantId: widget.companyId,
+            mode: DispatchListMode.challans,
+          ),
+        );
+
+      case ShellPage.dispatchShipmentTracking:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: DispatchListScreen(
+            tenantId: widget.companyId,
+            mode: DispatchListMode.shipmentTracking,
+          ),
+        );
+
+      case ShellPage.dispatchDelivered:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: DispatchListScreen(
+            tenantId: widget.companyId,
+            mode: DispatchListMode.delivered,
+          ),
         );
 
       case ShellPage.salesQuotations:

@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/galvanizing/models/galvanizing_job_model.dart';
 import 'package:QUIK/modules/production/galvanizing/repositories/galvanizing_job_repository.dart';
@@ -38,7 +37,7 @@ class _GalvanizingSendScreenState extends State<GalvanizingSendScreen> {
         : _repository.newGalvanizingJobId();
   }
 
-  String get _activeTenantId => context.tenant.selectedTenantId.trim();
+  String get _activeTenantId => widget.tenantId.trim();
 
   GalvanizingJobRepository get _repository =>
       GalvanizingJobRepository(tenantId: _activeTenantId);

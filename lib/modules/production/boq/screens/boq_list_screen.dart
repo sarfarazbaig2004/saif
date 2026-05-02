@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/production/boq/models/boq_model.dart';
 import 'package:QUIK/modules/production/boq/repositories/boq_repository.dart';
 import 'package:QUIK/modules/production/boq/screens/boq_editor_screen.dart';
@@ -32,7 +31,7 @@ class BoqListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeTenantId = context.watchTenant.selectedTenantId.trim();
+    final activeTenantId = tenantId.trim();
     if (activeTenantId.isEmpty) {
       return const Center(child: Text('Select a company workspace first.'));
     }

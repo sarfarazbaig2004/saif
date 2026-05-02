@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/contractor_jobs/models/contractor_job_model.dart';
 import 'package:QUIK/modules/production/contractor_jobs/repositories/contractor_job_repository.dart';
@@ -52,7 +51,7 @@ class _ContractorJobReceiveScreenState
         : 'in_progress';
   }
 
-  String get _activeTenantId => context.tenant.selectedTenantId.trim();
+  String get _activeTenantId => widget.tenantId.trim();
 
   ContractorJobRepository get _repository =>
       ContractorJobRepository(tenantId: _activeTenantId);

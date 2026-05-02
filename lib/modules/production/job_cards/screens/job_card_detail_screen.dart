@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/production/job_cards/models/job_card_model.dart';
 import 'package:QUIK/modules/production/job_cards/screens/job_card_form_screen.dart';
 
@@ -31,7 +30,7 @@ class JobCardDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeTenantId = context.watchTenant.selectedTenantId.trim();
+    final activeTenantId = tenantId.trim();
     if (activeTenantId.isEmpty) {
       return const Scaffold(
         body: Center(child: Text('Select a company workspace first.')),

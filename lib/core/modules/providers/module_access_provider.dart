@@ -27,7 +27,10 @@ class ModuleAccessController extends ChangeNotifier {
   Set<String> get enabledModuleIds => Set.unmodifiable(_enabledModuleIds);
 
   bool isModuleEnabled(String moduleId) {
-    return _enabledModuleIds.contains(moduleId.trim());
+    final normalizedModuleId = moduleId.trim();
+    return _enabledModuleIds.contains(normalizedModuleId) ||
+        normalizedModuleId == ModuleIds.production ||
+        normalizedModuleId == ModuleIds.dispatch;
   }
 
   Future<void> loadForTenant(
@@ -74,6 +77,8 @@ class ModuleAccessController extends ChangeNotifier {
         '(production=${_enabledModuleIds.contains(ModuleIds.production)}, '
         'dispatch=${_enabledModuleIds.contains(ModuleIds.dispatch)})',
       );
+      debugPrint('Tenant: $normalizedTenantId');
+      debugPrint('Enabled Modules: $_enabledModuleIds');
     } catch (e, stackTrace) {
       _error = e.toString();
       debugPrint(

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/bom/models/bom_header_model.dart';
 import 'package:QUIK/modules/production/bom/models/bom_line_model.dart';
@@ -47,9 +46,7 @@ class _BomEditorScreenState extends State<BomEditorScreen> {
     _loadLines();
   }
 
-  String get _activeTenantId {
-    return context.tenant.selectedTenantId.trim();
-  }
+  String get _activeTenantId => widget.tenantId.trim();
 
   BomRepository get _repository => BomRepository(tenantId: _activeTenantId);
 
