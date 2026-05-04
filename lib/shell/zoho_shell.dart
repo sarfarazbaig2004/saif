@@ -577,6 +577,10 @@ class _ZohoShellState extends State<ZohoShell> {
       return false;
     }
 
+    if (_isPurchasePage(page) && !_isModuleEnabled(ModuleIds.purchase)) {
+      return false;
+    }
+
     if (page == ShellPage.hrHome && !_isModuleEnabled(ModuleIds.hr)) {
       return false;
     }
@@ -751,6 +755,15 @@ class _ZohoShellState extends State<ZohoShell> {
         page == ShellPage.dispatchChallans ||
         page == ShellPage.dispatchShipmentTracking ||
         page == ShellPage.dispatchDelivered;
+  }
+
+  bool _isPurchasePage(ShellPage page) {
+    return page == ShellPage.purchaseVendors ||
+        page == ShellPage.purchaseVendorOffers ||
+        page == ShellPage.purchasePurchaseOrders ||
+        page == ShellPage.purchaseOrders ||
+        page == ShellPage.purchaseGrn ||
+        page == ShellPage.purchaseLedger;
   }
 
   String _dispatchPermissionKey(ShellPage page) {
@@ -1033,6 +1046,8 @@ class _ZohoShellState extends State<ZohoShell> {
         return ModuleIds.sales;
       case ModuleIds.service:
         return ModuleIds.service;
+      case ModuleIds.purchase:
+        return ModuleIds.purchase;
       case ModuleIds.inventory:
         return ModuleIds.inventory;
       case ModuleIds.dispatch:

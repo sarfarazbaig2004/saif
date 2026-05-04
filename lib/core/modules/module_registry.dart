@@ -9,6 +9,7 @@ class ModuleIds {
   static const String inventory = 'inventory';
   static const String iot = 'iot';
   static const String production = 'production';
+  static const String purchase = 'purchase';
   static const String reports = 'reports';
   static const String sales = 'sales';
   static const String service = 'service';
@@ -46,6 +47,13 @@ class ModuleRegistry {
       baseRoute: '/service',
       iconKey: 'support_agent',
       sortOrder: 40,
+    ),
+    AppModule(
+      id: ModuleIds.purchase,
+      displayName: 'Purchase',
+      baseRoute: '/purchase',
+      iconKey: 'shopping_cart',
+      sortOrder: 45,
     ),
     AppModule(
       id: ModuleIds.inventory,
