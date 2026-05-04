@@ -23,6 +23,7 @@ class PlatformTenantModulesScreen extends StatefulWidget {
 class _PlatformTenantModulesScreenState
     extends State<PlatformTenantModulesScreen> {
   final TenantModuleService _tenantModuleService = TenantModuleService();
+
   final Set<String> _lockedModuleIds = {
     ModuleIds.administration,
     ModuleIds.settings,
@@ -43,33 +44,39 @@ class _PlatformTenantModulesScreenState
     String companyId,
     Map<String, dynamic> companyData,
   ) async {
-    if (_selectedCompanyId == companyId && _moduleStates.isNotEmpty) return;
+    final normalizedCompanyId = companyId.trim();
+    if (normalizedCompanyId.isEmpty) return;
 
     setState(() {
-      _selectedCompanyId = companyId;
+      _selectedCompanyId = normalizedCompanyId;
       _selectedCompanyData = companyData;
-      _loadingModules = true;
-      _error = null;
       _moduleStates = {};
+      _loadingModules = true;
+      _savingModules = false;
+      _error = null;
     });
+
+    debugPrint('TENANT MODULE SELECT tenant=$normalizedCompanyId');
 
     try {
       await _tenantModuleService.ensureTenantModulesInitialized(
-        tenantId: companyId,
-        source: 'platform_admin_open',
+        tenantId: normalizedCompanyId,
+        source: 'platform_admin_select',
       );
+
       final access = await _tenantModuleService.fetchTenantModuleAccess(
-        companyId,
+        normalizedCompanyId,
         forceRefresh: true,
       );
 
-      final states = {
+      final states = <String, bool>{
         for (final module in ModuleRegistry.activeModules) module.id: false,
       };
 
       for (final moduleAccess in access) {
-        if (ModuleRegistry.findById(moduleAccess.moduleId) != null) {
-          states[moduleAccess.moduleId] = moduleAccess.enabled;
+        final moduleId = moduleAccess.moduleId.trim();
+        if (ModuleRegistry.findById(moduleId) != null) {
+          states[moduleId] = moduleAccess.enabled == true;
         }
       }
 
@@ -77,13 +84,19 @@ class _PlatformTenantModulesScreenState
         states[moduleId] = true;
       }
 
-      if (!mounted || _selectedCompanyId != companyId) return;
+      if (!mounted || _selectedCompanyId != normalizedCompanyId) return;
+
       setState(() {
         _moduleStates = states;
         _loadingModules = false;
       });
+
+      debugPrint(
+        'TENANT MODULE LOADED tenant=$normalizedCompanyId states=$_moduleStates',
+      );
     } catch (e) {
-      if (!mounted || _selectedCompanyId != companyId) return;
+      if (!mounted || _selectedCompanyId != normalizedCompanyId) return;
+
       setState(() {
         _loadingModules = false;
         _error = 'Failed to load tenant modules: $e';
@@ -92,7 +105,8 @@ class _PlatformTenantModulesScreenState
   }
 
   Future<void> _toggleModule(AppModule module, bool enabled) async {
-    final companyId = _selectedCompanyId;
+    final companyId = _selectedCompanyId?.trim();
+
     if (companyId == null ||
         companyId.isEmpty ||
         _lockedModuleIds.contains(module.id) ||
@@ -101,8 +115,8 @@ class _PlatformTenantModulesScreenState
     }
 
     final previousStates = Map<String, bool>.from(_moduleStates);
-    final nextStates = Map<String, bool>.from(_moduleStates)
-      ..[module.id] = enabled;
+    final nextStates = Map<String, bool>.from(_moduleStates);
+    nextStates[module.id] = enabled;
 
     for (final moduleId in _lockedModuleIds) {
       nextStates[moduleId] = true;
@@ -114,27 +128,39 @@ class _PlatformTenantModulesScreenState
       _moduleStates = nextStates;
     });
 
+    debugPrint(
+      'TOGGLE MODULE tenant=$companyId module=${module.id} enabled=$enabled '
+      'path=companies/$companyId/modules/${module.id}',
+    );
+
     try {
       final enabledModuleIds = nextStates.entries
-          .where((entry) => entry.value)
+          .where((entry) => entry.value == true)
           .map((entry) => entry.key)
           .toSet();
 
       await _tenantModuleService.ensureTenantModulesInitialized(
         tenantId: companyId,
-        source: 'platform_admin_save',
+        source: 'platform_admin_toggle',
       );
+
       await _tenantModuleService.saveEnabledModuleIds(
         tenantId: companyId,
         enabledModuleIds: enabledModuleIds,
       );
+
       final accessController = ModuleAccessProvider.of(context, listen: false);
+
       if (accessController.tenantId == companyId) {
         await accessController.refresh();
       }
 
       if (!mounted || _selectedCompanyId != companyId) return;
-      setState(() => _savingModules = false);
+
+      setState(() {
+        _savingModules = false;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -144,6 +170,7 @@ class _PlatformTenantModulesScreenState
       );
     } catch (e) {
       if (!mounted || _selectedCompanyId != companyId) return;
+
       setState(() {
         _savingModules = false;
         _moduleStates = previousStates;
@@ -161,6 +188,7 @@ class _PlatformTenantModulesScreenState
                 '')
             .toString()
             .trim();
+
     return name.isEmpty ? fallbackId : name;
   }
 
@@ -186,6 +214,7 @@ class _PlatformTenantModulesScreenState
           ...(snapshot.data?.docs ??
               const <QueryDocumentSnapshot<Map<String, dynamic>>>[]),
         ];
+
         docs.sort((a, b) {
           final aName = _companyName(a.data(), a.id).toLowerCase();
           final bName = _companyName(b.data(), b.id).toLowerCase();
@@ -211,6 +240,7 @@ class _PlatformTenantModulesScreenState
         return LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 860;
+
             if (compact) {
               return Column(
                 children: [
@@ -263,6 +293,7 @@ class _PlatformTenantModulesScreenState
 
   Widget _modulePanel() {
     final companyId = _selectedCompanyId;
+
     if (companyId == null || companyId.isEmpty) {
       return const _EmptyPanel(
         icon: Icons.touch_app_outlined,
@@ -342,9 +373,9 @@ class _CompanyList extends StatelessWidget {
   final List<QueryDocumentSnapshot<Map<String, dynamic>>> docs;
   final String? selectedCompanyId;
   final Future<void> Function(String companyId, Map<String, dynamic> data)
-  onSelect;
+      onSelect;
   final String Function(Map<String, dynamic> data, String fallbackId)
-  companyName;
+      companyName;
 
   const _CompanyList({
     required this.docs,
@@ -527,7 +558,7 @@ class _TenantModuleEditor extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final module = ModuleRegistry.activeModules[index];
                   final locked = lockedModuleIds.contains(module.id);
-                  final enabled = locked || (moduleStates[module.id] ?? false);
+                  final enabled = locked || (moduleStates[module.id] == true);
 
                   return _ModuleToggleTile(
                     module: module,

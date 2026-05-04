@@ -87,7 +87,14 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       _productType == 'service' || _productType == 'non_stock';
 
   String get _tenantId {
-    final contextTenantId = context.tenant.selectedTenantId.trim();
+    String contextTenantId = '';
+
+    try {
+      contextTenantId = context.tenant.selectedTenantId.trim();
+    } catch (_) {
+      // If TenantContext is not available, fall back to the passed companyId.
+    }
+
     return contextTenantId.isNotEmpty
         ? contextTenantId
         : widget.companyId.trim();

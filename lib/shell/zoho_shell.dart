@@ -447,18 +447,7 @@ class ZohoShell extends StatefulWidget {
 class _ZohoShellState extends State<ZohoShell> {
   ShellPage activePage = ShellPage.dashboard;
 
-  final Set<String> expandedGroups = {
-    'sales',
-    'service',
-    'crm',
-    'inventory',
-    'production',
-    'hr',
-    'finance',
-    'reports',
-    'admin',
-    'platform',
-  };
+  final Set<String> expandedGroups = {};
 
   String? _resolvedIndustry;
   bool _isLoadingIndustry = true;
@@ -1070,10 +1059,6 @@ class _ZohoShellState extends State<ZohoShell> {
   }
 
   bool _isSidebarGroupModuleEnabled(String groupKey) {
-    if (groupKey == ModuleIds.production || groupKey == ModuleIds.dispatch) {
-      return true;
-    }
-
     final moduleId = _moduleIdForSidebarGroup(groupKey);
     if (moduleId == null) return true;
 

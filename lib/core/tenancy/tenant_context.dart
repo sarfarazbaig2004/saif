@@ -5,10 +5,11 @@ class TenantContext extends ChangeNotifier {
   TenantContext({
     required String selectedTenantId,
     required List<String> allowedTenantIds,
-    required this.isPlatformAdmin,
+    required bool isPlatformAdmin,
     Map<String, String>? tenantNames,
   }) : _selectedTenantId = selectedTenantId.trim(),
        _allowedTenantIds = _normalizeTenantIds(allowedTenantIds),
+       _isPlatformAdmin = isPlatformAdmin,
        _tenantNames = Map<String, String>.from(tenantNames ?? {}) {
     if (_selectedTenantId.isEmpty && _allowedTenantIds.isNotEmpty) {
       _selectedTenantId = _allowedTenantIds.first;
@@ -17,14 +18,15 @@ class TenantContext extends ChangeNotifier {
 
   String _selectedTenantId;
   List<String> _allowedTenantIds;
-  final bool isPlatformAdmin;
+  bool _isPlatformAdmin;
   final Map<String, String> _tenantNames;
 
   String get selectedTenantId => _selectedTenantId;
   String get selectedCompanyId => _selectedTenantId;
   List<String> get allowedTenantIds => List.unmodifiable(_allowedTenantIds);
   bool get hasTenant => _selectedTenantId.isNotEmpty;
-  bool get canSwitchTenant => isPlatformAdmin || _allowedTenantIds.length > 1;
+  bool get canSwitchTenant => _isPlatformAdmin || _allowedTenantIds.length > 1;
+  bool get isPlatformAdmin => _isPlatformAdmin;
 
   String tenantName(String tenantId) {
     final id = tenantId.trim();
@@ -35,7 +37,7 @@ class TenantContext extends ChangeNotifier {
   bool canAccess(String tenantId) {
     final id = tenantId.trim();
     if (id.isEmpty) return false;
-    return isPlatformAdmin || _allowedTenantIds.contains(id);
+    return _isPlatformAdmin || _allowedTenantIds.contains(id);
   }
 
   void selectTenant(String tenantId) {
@@ -52,6 +54,19 @@ class TenantContext extends ChangeNotifier {
           ? ''
           : _allowedTenantIds.first;
     }
+    notifyListeners();
+  }
+
+  void setPlatformAdmin(bool value) {
+    if (_isPlatformAdmin == value) return;
+    _isPlatformAdmin = value;
+    notifyListeners();
+  }
+
+  void setTenantNames(Map<String, String> tenantNames) {
+    _tenantNames
+      ..clear()
+      ..addAll(tenantNames);
     notifyListeners();
   }
 

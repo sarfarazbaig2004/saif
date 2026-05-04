@@ -385,7 +385,7 @@ class _ScreensProductListState extends State<ScreensProductList> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ScreensAddProduct(
+        builder: (context) => ScreensAddProduct(
           companyId: companyId,
           currentUserUid: currentUserUid,
           currentUserRole: currentUserRole,
@@ -404,7 +404,7 @@ class _ScreensProductListState extends State<ScreensProductList> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ScreensAddProduct(
+        builder: (context) => ScreensAddProduct(
           companyId: companyId,
           currentUserUid: currentUserUid,
           currentUserRole: currentUserRole,

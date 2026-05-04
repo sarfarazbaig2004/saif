@@ -298,29 +298,30 @@ class _UserProfileGateState extends State<_UserProfileGate> {
       );
     }
 
-    return ChangeNotifierProvider<TenantContext>(
-      create: (_) => TenantContext(
-        selectedTenantId: companyId,
-        allowedTenantIds: allowedTenantIds,
-        isPlatformAdmin: _isPlatformAdmin,
-        tenantNames: {if (companyId.isNotEmpty) companyId: companyName},
-      ),
-      child: _TenantModuleBackfillGate(
-        companyId: companyId,
-        child: InventoryConfigProvider(
+    final tenantContext = context.read<TenantContext>();
+    tenantContext.replaceAllowedTenants(allowedTenantIds);
+    tenantContext.setPlatformAdmin(_isPlatformAdmin);
+    tenantContext.setTenantNames(
+      {if (companyId.isNotEmpty) companyId: companyName},
+    );
+    tenantContext.selectTenant(companyId);
+
+    return _TenantModuleBackfillGate(
+      companyId: companyId,
+      child: InventoryConfigProvider(
+        tenantId: companyId,
+        child: ModuleAccessProvider(
           tenantId: companyId,
-          child: ModuleAccessProvider(
-            tenantId: companyId,
-            child: ZohoShell(
-              userEmail: widget.firebaseUser.email ?? 'user@workspace.com',
-              userUid: widget.firebaseUser.uid,
-              companyId: companyId,
-              companyName: companyName,
-              role: role,
-              permissions: permissions,
-              userDisplayName: userDisplayName,
-              isPlatformAdmin: _isPlatformAdmin,
-            ),
+          controller: context.read<ModuleAccessController>(),
+          child: ZohoShell(
+            userEmail: widget.firebaseUser.email ?? 'user@workspace.com',
+            userUid: widget.firebaseUser.uid,
+            companyId: companyId,
+            companyName: companyName,
+            role: role,
+            permissions: permissions,
+            userDisplayName: userDisplayName,
+            isPlatformAdmin: _isPlatformAdmin,
           ),
         ),
       ),

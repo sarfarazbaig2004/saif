@@ -6,8 +6,8 @@ import 'package:QUIK/core/modules/services/tenant_module_service.dart';
 class ModuleAccessController extends ChangeNotifier {
   ModuleAccessController({
     TenantModuleService? service,
-    this.fallbackToActiveRegistryWhenUnconfigured = true,
-    this.fallbackToActiveRegistryOnError = true,
+    this.fallbackToActiveRegistryWhenUnconfigured = false,
+    this.fallbackToActiveRegistryOnError = false,
   }) : _service = service ?? TenantModuleService();
 
   final TenantModuleService _service;
@@ -17,9 +17,7 @@ class ModuleAccessController extends ChangeNotifier {
   bool _isLoading = false;
   String? _tenantId;
   String? _error;
-  Set<String> _enabledModuleIds = ModuleRegistry.activeModules
-      .map((module) => module.id)
-      .toSet();
+  Set<String> _enabledModuleIds = const {};
 
   bool get isLoading => _isLoading;
   String? get tenantId => _tenantId;
@@ -28,9 +26,8 @@ class ModuleAccessController extends ChangeNotifier {
 
   bool isModuleEnabled(String moduleId) {
     final normalizedModuleId = moduleId.trim();
-    return _enabledModuleIds.contains(normalizedModuleId) ||
-        normalizedModuleId == ModuleIds.production ||
-        normalizedModuleId == ModuleIds.dispatch;
+    if (normalizedModuleId.isEmpty) return false;
+    return _enabledModuleIds.contains(normalizedModuleId);
   }
 
   Future<void> loadForTenant(
@@ -38,17 +35,18 @@ class ModuleAccessController extends ChangeNotifier {
     bool forceRefresh = false,
   }) async {
     final normalizedTenantId = tenantId.trim();
+
     if (normalizedTenantId.isEmpty) {
       _tenantId = null;
       _enabledModuleIds = const {};
       _error = null;
+      _isLoading = false;
       notifyListeners();
       return;
     }
 
     if (!forceRefresh &&
         _tenantId == normalizedTenantId &&
-        _enabledModuleIds.isNotEmpty &&
         _error == null) {
       return;
     }
@@ -63,22 +61,24 @@ class ModuleAccessController extends ChangeNotifier {
         tenantId: normalizedTenantId,
         source: 'module_access_provider',
       );
-      _enabledModuleIds = await _service.fetchEnabledModuleIds(
+
+      final enabledIds = await _service.fetchEnabledModuleIds(
         normalizedTenantId,
-        forceRefresh:
-            forceRefresh ||
+        forceRefresh: forceRefresh ||
             seedResult.modulesCreated > 0 ||
             seedResult.modulesRepaired > 0,
         fallbackToActiveRegistryWhenUnconfigured:
             fallbackToActiveRegistryWhenUnconfigured,
       );
+
+      _enabledModuleIds = enabledIds
+          .map((id) => id.trim())
+          .where((id) => id.isNotEmpty)
+          .toSet();
+
       debugPrint(
-        'ModuleAccessProvider: enabled modules for $normalizedTenantId = $_enabledModuleIds '
-        '(production=${_enabledModuleIds.contains(ModuleIds.production)}, '
-        'dispatch=${_enabledModuleIds.contains(ModuleIds.dispatch)})',
+        'ModuleAccessProvider: tenant=$normalizedTenantId enabled=$_enabledModuleIds',
       );
-      debugPrint('Tenant: $normalizedTenantId');
-      debugPrint('Enabled Modules: $_enabledModuleIds');
     } catch (e, stackTrace) {
       _error = e.toString();
       debugPrint(
@@ -86,13 +86,9 @@ class ModuleAccessController extends ChangeNotifier {
       );
       debugPrintStack(stackTrace: stackTrace);
 
-      if (fallbackToActiveRegistryOnError) {
-        _enabledModuleIds = ModuleRegistry.activeModules
-            .map((module) => module.id)
-            .toSet();
-      } else {
-        _enabledModuleIds = const {};
-      }
+      _enabledModuleIds = fallbackToActiveRegistryOnError
+          ? ModuleRegistry.activeModules.map((module) => module.id).toSet()
+          : const {};
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -102,7 +98,6 @@ class ModuleAccessController extends ChangeNotifier {
   Future<void> refresh() async {
     final currentTenantId = _tenantId;
     if (currentTenantId == null || currentTenantId.isEmpty) return;
-
     await loadForTenant(currentTenantId, forceRefresh: true);
   }
 }
@@ -145,7 +140,7 @@ class _ModuleAccessProviderState extends State<ModuleAccessProvider> {
     super.initState();
     _ownsController = widget.controller == null;
     _controller = widget.controller ?? ModuleAccessController();
-    _controller.loadForTenant(widget.tenantId);
+    _controller.loadForTenant(widget.tenantId, forceRefresh: true);
   }
 
   @override

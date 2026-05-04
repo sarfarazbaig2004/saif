@@ -109,6 +109,11 @@ class ModuleRegistry {
     for (final module in modules) module.id: module,
   };
 
+  static const Set<String> _defaultEnabledModuleIds = {
+    ModuleIds.administration,
+    ModuleIds.settings,
+  };
+
   static List<AppModule> get activeModules {
     final active = modules.where((module) => module.isActive).toList()
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
