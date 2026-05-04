@@ -1572,10 +1572,13 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                   },
                   fieldViewBuilder:
                       (context, controller, focusNode, onEditingComplete) {
-                        if (_customerSearchController.text.isNotEmpty &&
-                            controller.text.isEmpty) {
-                          controller.text = _customerSearchController.text;
-                        }
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (!mounted) return;
+                          if (_customerSearchController.text.isNotEmpty &&
+                              controller.text.isEmpty) {
+                            controller.text = _customerSearchController.text;
+                          }
+                        });
                         return TextFormField(
                           controller: controller,
                           focusNode: focusNode,

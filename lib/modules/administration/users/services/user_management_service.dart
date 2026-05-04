@@ -109,6 +109,48 @@ class UserManagementService {
     return firestore.collection('companies').doc(companyId).collection('branches');
   }
 
+  CollectionReference<Map<String, dynamic>> _companyDepartmentsCollection(
+      String companyId,
+      ) {
+    return firestore.collection('companies').doc(companyId).collection('departments');
+  }
+
+  CollectionReference<Map<String, dynamic>> _companyRolesCollection(
+      String companyId,
+      ) {
+    return firestore.collection('companies').doc(companyId).collection('roles');
+  }
+
+  Future<List<Map<String, dynamic>>> fetchTenantDepartments({
+    required String companyId,
+  }) async {
+    _assertRequiredId('companyId', companyId);
+
+    final snapshot = await _companyDepartmentsCollection(companyId).get();
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return <String, dynamic>{
+        'id': doc.id,
+        ...data,
+      };
+    }).toList(growable: false);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchTenantRoles({
+    required String companyId,
+  }) async {
+    _assertRequiredId('companyId', companyId);
+
+    final snapshot = await _companyRolesCollection(companyId).get();
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      return <String, dynamic>{
+        'id': doc.id,
+        ...data,
+      };
+    }).toList(growable: false);
+  }
+
   CollectionReference<Map<String, dynamic>> get _globalUsersCollection =>
       firestore.collection('users');
 

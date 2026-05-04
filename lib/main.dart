@@ -15,11 +15,7 @@ Future<void> main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider<TenantContext>(
-          create: (_) => TenantContext(
-            selectedTenantId: '',
-            allowedTenantIds: const [],
-            isPlatformAdmin: false,
-          ),
+          create: (_) => TenantContext(),
         ),
         ChangeNotifierProvider<ModuleAccessController>(
           create: (_) => ModuleAccessController(),
