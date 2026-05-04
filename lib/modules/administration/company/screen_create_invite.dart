@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/modules/providers/module_access_provider.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_constants.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
 import 'package:QUIK/modules/administration/users/services/user_management_service.dart';
@@ -47,17 +48,30 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
 
   bool get isExportImport => widget.industry == 'export_import';
 
-  final List<String> _departmentOptions = const [
-    'Sales',
-    'CRM',
-    'Inventory',
-    'Purchase',
-    'Dispatch',
-    'Finance',
-    'Administration',
-    'Management',
-    'Service',
-  ];
+  final List<Map<String, dynamic>> _tenantDepartments = [];
+  final List<Map<String, dynamic>> _tenantRoles = [];
+  bool _isLoadingMetadata = false;
+  String? _metadataError;
+  Set<String>? _lastLoadedEnabledModuleIds;
+
+  Set<String> get _currentEnabledModuleIds {
+    return ModuleAccessProvider.of(context).enabledModuleIds;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final enabledModuleIds = _currentEnabledModuleIds;
+    final hadLoadedIds = _lastLoadedEnabledModuleIds;
+
+    final hasChanged = hadLoadedIds == null ||
+        hadLoadedIds.length != enabledModuleIds.length ||
+        !hadLoadedIds.containsAll(enabledModuleIds);
+
+    if (hasChanged) {
+      _loadTenantMetadata();
+    }
+  }
 
   final Map<String, List<String>> _designationOptionsByDepartment = const {
     'Sales': [
@@ -117,9 +131,22 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
 
   // 🔥 CHANGED: 'sales' is completely removed from the export_import array
   List<String> get activeModules {
-    return isExportImport
-        ? ['dashboard', 'crm', 'finance', 'reports']
-        : permissionModuleOrder;
+    final enabledModules = permissionModuleOrder
+        .where((moduleKey) => moduleKey == PermissionModules.dashboard
+            || _currentEnabledModuleIds.contains(moduleKey))
+        .toList(growable: false);
+
+    if (isExportImport) {
+      return enabledModules.where((moduleKey) {
+        if (moduleKey == PermissionModules.sales) return false;
+        if (moduleKey == PermissionModules.crm) return true;
+        if (moduleKey == PermissionModules.finance) return true;
+        if (moduleKey == PermissionModules.reports) return true;
+        return moduleKey == PermissionModules.dashboard;
+      }).toList(growable: false);
+    }
+
+    return enabledModules;
   }
 
   @override
@@ -127,6 +154,11 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     super.initState();
     _applyRoleDefaults(selectedRole);
     _setDefaultDesignationForDepartment(selectedDepartment);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadTenantMetadata();
+      }
+    });
   }
 
   @override
@@ -148,6 +180,236 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
       selectedDepartment = department;
       _setDefaultDesignationForDepartment(department);
     });
+  }
+
+  String _departmentLabelFromDoc(Map<String, dynamic> department) {
+    return (department['label'] ?? department['name'] ?? department['id'] ?? '')
+        .toString()
+        .trim();
+  }
+
+  String _roleKeyFromDoc(Map<String, dynamic> role) {
+    return (role['role'] ?? role['name'] ?? role['id'] ?? role['roleId'])
+        .toString()
+        .trim();
+  }
+
+  String _roleLabelFromDoc(Map<String, dynamic> role) {
+    if (role.containsKey('label')) {
+      return role['label'].toString();
+    }
+    final key = _roleKeyFromDoc(role);
+    return formatRole(key);
+  }
+
+  String _moduleIdFromRoleDoc(Map<String, dynamic> role) {
+    return (role['moduleId'] ?? role['module'] ?? role['moduleKey'])
+        .toString()
+        .trim();
+  }
+
+  String _moduleIdFromDepartmentDoc(Map<String, dynamic> department) {
+    return (department['moduleId'] ?? department['module'] ?? department['moduleKey'])
+        .toString()
+        .trim();
+  }
+
+  List<String> _designationOptionsForDepartment(String department) {
+    final departmentDoc = _tenantDepartments.firstWhere(
+      (dept) => _departmentLabelFromDoc(dept) == department,
+      orElse: () => {},
+    );
+
+    if (departmentDoc.isNotEmpty) {
+      final designations = departmentDoc['designations'];
+      if (designations is List) {
+        return designations.map((item) => item.toString()).toList();
+      }
+    }
+
+    return _designationOptionsByDepartment[department] ?? ['Not Assigned'];
+  }
+
+  Map<String, dynamic>? _findRoleDoc(String roleKey) {
+    try {
+      return _tenantRoles.firstWhere(
+        (role) => _roleKeyFromDoc(role) == roleKey,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _roleLabelFromKey(String? roleKey) {
+    if (roleKey == null || roleKey.trim().isEmpty) {
+      return '';
+    }
+
+    final roleDoc = _findRoleDoc(roleKey);
+    if (roleDoc != null) {
+      return _roleLabelFromDoc(roleDoc);
+    }
+
+    return formatRole(roleKey);
+  }
+
+  Map<String, dynamic> _filterPermissionsByEnabledModules(
+    Map<String, dynamic> permissions,
+  ) {
+    final result = <String, dynamic>{};
+
+    for (final entry in permissions.entries) {
+      final moduleKey = entry.key;
+      if (moduleKey == PermissionModules.dashboard ||
+          _currentEnabledModuleIds.contains(moduleKey)) {
+        if (entry.value is Map<String, dynamic>) {
+          result[moduleKey] = Map<String, dynamic>.from(
+            entry.value as Map<String, dynamic>,
+          );
+        } else {
+          result[moduleKey] = entry.value;
+        }
+      }
+    }
+
+    return result;
+  }
+
+  Future<void> _loadTenantMetadata() async {
+    setState(() {
+      _isLoadingMetadata = true;
+      _metadataError = null;
+    });
+
+    try {
+      final enabledModuleIds = _currentEnabledModuleIds;
+
+      final rawRoles = await _userManagementService.fetchTenantRoles(
+        companyId: widget.companyId,
+      );
+      final rawDepartments = await _userManagementService.fetchTenantDepartments(
+        companyId: widget.companyId,
+      );
+
+      final tenantRoles = rawRoles.where((role) {
+        final isActive = role['isActive'] == true;
+        if (!isActive) return false;
+        final moduleId = _moduleIdFromRoleDoc(role);
+        if (moduleId.isNotEmpty && !enabledModuleIds.contains(moduleId)) {
+          return false;
+        }
+        return true;
+      }).toList(growable: false);
+
+      final tenantDepartments = rawDepartments.where((department) {
+        final isActive = department['isActive'] == true;
+        if (!isActive) return false;
+        final moduleId = _moduleIdFromDepartmentDoc(department);
+        if (moduleId.isNotEmpty && !enabledModuleIds.contains(moduleId)) {
+          return false;
+        }
+        return true;
+      }).toList(growable: false);
+
+      tenantRoles.sort((a, b) => _roleLabelFromDoc(a).compareTo(_roleLabelFromDoc(b)));
+      tenantDepartments.sort(
+        (a, b) => _departmentLabelFromDoc(a).compareTo(_departmentLabelFromDoc(b)),
+      );
+
+      setState(() {
+        _lastLoadedEnabledModuleIds = enabledModuleIds;
+        _tenantRoles
+          ..clear()
+          ..addAll(tenantRoles);
+        _tenantDepartments
+          ..clear()
+          ..addAll(tenantDepartments);
+
+        if (!_tenantRoles.any((role) => _roleKeyFromDoc(role) == selectedRole) &&
+            _tenantRoles.isNotEmpty) {
+          selectedRole = _roleKeyFromDoc(_tenantRoles.first);
+        }
+
+        if (!_tenantDepartments.any((department) =>
+                _departmentLabelFromDoc(department) == selectedDepartment) &&
+            _tenantDepartments.isNotEmpty) {
+          selectedDepartment = _departmentLabelFromDoc(_tenantDepartments.first);
+        }
+      });
+
+      _applyRoleDefaults(selectedRole);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _metadataError = e.toString();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingMetadata = false;
+        });
+      }
+    }
+  }
+
+  bool get _canCreateInvite {
+    if (_isLoadingMetadata) return false;
+    if (_tenantRoles.isEmpty || _tenantDepartments.isEmpty) return false;
+    if (!_tenantRoles.any((role) => _roleKeyFromDoc(role) == selectedRole)) {
+      return false;
+    }
+    if (!_tenantDepartments.any((department) =>
+        _departmentLabelFromDoc(department) == selectedDepartment)) {
+      return false;
+    }
+    return true;
+  }
+
+  Widget _buildTenantMetadataStatus() {
+    if (_isLoadingMetadata) {
+      return const Padding(
+        padding: EdgeInsets.only(bottom: 16),
+        child: LinearProgressIndicator(),
+      );
+    }
+
+    if (_metadataError != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF3F2),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFECACA)),
+        ),
+        child: Text(
+          'Unable to load tenant configuration: $_metadataError',
+          style: const TextStyle(color: Color(0xFF991B1B)),
+        ),
+      );
+    }
+
+    if (_tenantRoles.isEmpty || _tenantDepartments.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEEF2FF),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFCDD7F4)),
+        ),
+        child: const Text(
+          'Tenant roles or departments are not configured for this company. '
+          'Please configure active roles, departments, and module access in tenant settings before inviting employees.',
+          style: TextStyle(color: Color(0xFF1E3A8A)),
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 
   String _normalizeEmail(String email) {
@@ -199,14 +461,21 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   }
 
   void _applyRoleDefaults(String role) {
+    final roleDoc = _findRoleDoc(role);
+    final rawPermissions = roleDoc != null && roleDoc['permissions'] is Map
+        ? Map<String, dynamic>.from(roleDoc['permissions'] as Map)
+        : _getIndustryDefaultPermissions(
+            role: role,
+            isExportImport: isExportImport,
+          );
+
+    final filteredPermissions = _filterPermissionsByEnabledModules(rawPermissions);
+
     setState(() {
       permissions = _buildUiPermissionState(
         role: role,
         isExportImport: isExportImport,
-        permissions: _getIndustryDefaultPermissions(
-          role: role,
-          isExportImport: isExportImport,
-        ),
+        permissions: filteredPermissions,
       );
     });
   }
@@ -854,8 +1123,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   }
 
   List<String> get _designationOptionsForSelectedDepartment {
-    return _designationOptionsByDepartment[selectedDepartment] ??
-        const <String>[];
+    return _designationOptionsForDepartment(selectedDepartment);
   }
 
   @override
@@ -993,6 +1261,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                       ),
                     ),
                     const SizedBox(height: 18),
+                    _buildTenantMetadataStatus(),
                     _buildSectionCard(
                       title: 'Department & Role',
                       subtitle:
@@ -1009,22 +1278,28 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                             left: _buildDropdownField(
                               label: 'Role',
                               value: selectedRole,
-                              options: userRolesList,
+                              options: _tenantRoles
+                                  .map(_roleKeyFromDoc)
+                                  .toList(growable: false),
                               icon: Icons.admin_panel_settings_outlined,
-                              labelBuilder: formatRole,
+                              labelBuilder: _roleLabelFromKey,
                               onChanged: (value) {
-                                final nextRole = value ?? UserRoles.sales;
-                                selectedRole = nextRole;
+                                final nextRole = value ?? selectedRole;
+                                setState(() {
+                                  selectedRole = nextRole;
+                                });
                                 _applyRoleDefaults(nextRole);
                               },
                             ),
                             right: _buildDropdownField(
                               label: 'Department',
                               value: selectedDepartment,
-                              options: _departmentOptions,
+                              options: _tenantDepartments
+                                  .map(_departmentLabelFromDoc)
+                                  .toList(growable: false),
                               icon: Icons.apartment_outlined,
                               onChanged: (value) {
-                                final department = value ?? 'Sales';
+                                final department = value ?? selectedDepartment;
                                 _onDepartmentChanged(department);
                               },
                             ),
@@ -1164,7 +1439,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton(
-                                    onPressed: isLoading ? null : _createInvite,
+                                    onPressed: isLoading || !_canCreateInvite ? null : _createInvite,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: _invitePrimaryColor,
                                       foregroundColor: Colors.white,
@@ -1220,7 +1495,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                               ),
                               const Spacer(),
                               ElevatedButton(
-                                onPressed: isLoading ? null : _createInvite,
+                                onPressed: isLoading || !_canCreateInvite ? null : _createInvite,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _invitePrimaryColor,
                                   foregroundColor: Colors.white,
