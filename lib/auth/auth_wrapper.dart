@@ -54,6 +54,8 @@ class _UserProfileGateState extends State<_UserProfileGate> {
   String? _error;
   Map<String, dynamic>? _data;
   bool _isPlatformAdmin = false;
+  String? _lastAppliedTenantId;
+  bool _tenantContextUpdated = false;
 
   @override
   void initState() {
@@ -298,13 +300,22 @@ class _UserProfileGateState extends State<_UserProfileGate> {
       );
     }
 
-    final tenantContext = context.read<TenantContext>();
-    tenantContext.replaceAllowedTenants(allowedTenantIds);
-    tenantContext.setPlatformAdmin(_isPlatformAdmin);
-    tenantContext.setTenantNames(
-      {if (companyId.isNotEmpty) companyId: companyName},
-    );
-    tenantContext.selectTenant(companyId);
+    if (!_tenantContextUpdated || _lastAppliedTenantId != companyId) {
+      _tenantContextUpdated = true;
+      _lastAppliedTenantId = companyId;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+
+        final tenantContext = context.read<TenantContext>();
+        tenantContext.replaceAllowedTenants(allowedTenantIds);
+        tenantContext.setPlatformAdmin(_isPlatformAdmin);
+        tenantContext.setTenantNames(
+          {if (companyId.isNotEmpty) companyId: companyName},
+        );
+        tenantContext.selectTenant(companyId);
+      });
+    }
 
     return _TenantModuleBackfillGate(
       companyId: companyId,

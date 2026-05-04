@@ -140,7 +140,10 @@ class _ModuleAccessProviderState extends State<ModuleAccessProvider> {
     super.initState();
     _ownsController = widget.controller == null;
     _controller = widget.controller ?? ModuleAccessController();
-    _controller.loadForTenant(widget.tenantId, forceRefresh: true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _controller.loadForTenant(widget.tenantId, forceRefresh: true);
+    });
   }
 
   @override
@@ -148,7 +151,10 @@ class _ModuleAccessProviderState extends State<ModuleAccessProvider> {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.tenantId != widget.tenantId) {
-      _controller.loadForTenant(widget.tenantId, forceRefresh: true);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _controller.loadForTenant(widget.tenantId, forceRefresh: true);
+      });
     }
   }
 
