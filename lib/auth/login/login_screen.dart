@@ -335,7 +335,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                                   ),
                                                   SizedBox(height: 4),
                                                   Text(
-                                                    'AMAN Infra ERP Workspace',
+                                                    kAppTagline,
                                                     style: TextStyle(
                                                       color: zMuted,
                                                       fontSize: 13,

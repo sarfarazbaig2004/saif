@@ -1,11 +1,11 @@
 {
-  "name": "QUIK ERP - AMAN Infra ERP Workspace",
+  "name": "QUIK ERP - AMAN Infra Developer ERP",
   "short_name": "QUIK ERP",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#EEF2F7",
   "theme_color": "#2563EB",
-  "description": "QUIK ERP for the AMAN Infra ERP Workspace",
+  "description": "AMAN Infra Developer ERP Workspace",
   "orientation": "portrait-primary",
   "prefer_related_applications": false,
   "icons": [

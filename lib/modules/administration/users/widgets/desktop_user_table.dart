@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/app/aman_app_config.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_constants.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
 import 'package:QUIK/modules/administration/users/widgets/mini_badge.dart';
@@ -20,6 +21,7 @@ class DesktopUserTable extends StatelessWidget {
   final Future<void> Function(UserDoc doc) onEdit;
   final Future<void> Function(UserDoc doc) onToggle;
   final Future<void> Function(UserDoc doc) onDelete;
+  final bool canManageSoftwareSuperAdmin;
 
   const DesktopUserTable({
     super.key,
@@ -32,6 +34,7 @@ class DesktopUserTable extends StatelessWidget {
     required this.onEdit,
     required this.onToggle,
     required this.onDelete,
+    this.canManageSoftwareSuperAdmin = false,
   });
 
   static const double _tableMinWidth = 1040;
@@ -63,9 +66,7 @@ class DesktopUserTable extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: _tableMinWidth),
               child: Theme(
-                data: Theme.of(context).copyWith(
-                  dividerColor: cardBorderColor,
-                ),
+                data: Theme.of(context).copyWith(dividerColor: cardBorderColor),
                 child: DataTable(
                   sortAscending: sortAscending,
                   sortColumnIndex: sortColumnIndex,
@@ -121,9 +122,7 @@ class DesktopUserTable extends StatelessWidget {
         label: const Text('Created', style: headingStyle),
         onSort: (_, __) => onSort(5, 'createdAt'),
       ),
-      const DataColumn(
-        label: Text('Actions', style: headingStyle),
-      ),
+      const DataColumn(label: Text('Actions', style: headingStyle)),
     ];
   }
 
@@ -139,22 +138,19 @@ class DesktopUserTable extends StatelessWidget {
     final isActive = (data['isActive'] ?? true) == true;
     final isDeleted = (data['isDeleted'] ?? false) == true;
     final storedStatus = _normalizeText(data['status']);
+    final isSoftwareSuperAdmin =
+        role == UserRoles.softwareSuperAdmin ||
+        email.toLowerCase() == AmanAppConfig.softwareSuperAdminEmail;
 
     final isSelfUser = doc.id == currentUid;
 
     final statusText = storedStatus.isNotEmpty
         ? statusLabelFromValue(storedStatus)
-        : statusLabel(
-      isActive: isActive,
-      isDeleted: isDeleted,
-    );
+        : statusLabel(isActive: isActive, isDeleted: isDeleted);
 
     final statusClr = storedStatus.isNotEmpty
         ? statusColorFromValue(storedStatus)
-        : statusColor(
-      isActive: isActive,
-      isDeleted: isDeleted,
-    );
+        : statusColor(isActive: isActive, isDeleted: isDeleted);
 
     return DataRow(
       cells: [
@@ -173,12 +169,7 @@ class DesktopUserTable extends StatelessWidget {
             backgroundColor: roleColor(role).withValues(alpha: 0.10),
           ),
         ),
-        DataCell(
-          _textCell(
-            formatDepartment(department),
-            width: 150,
-          ),
-        ),
+        DataCell(_textCell(formatDepartment(department), width: 150)),
         DataCell(
           MiniBadge(
             text: statusText,
@@ -186,24 +177,15 @@ class DesktopUserTable extends StatelessWidget {
             backgroundColor: statusClr.withValues(alpha: 0.10),
           ),
         ),
-        DataCell(
-          _textCell(
-            formatTimestamp(data['lastLoginAt']),
-            width: 135,
-          ),
-        ),
-        DataCell(
-          _textCell(
-            formatTimestamp(data['createdAt']),
-            width: 135,
-          ),
-        ),
+        DataCell(_textCell(formatTimestamp(data['lastLoginAt']), width: 135)),
+        DataCell(_textCell(formatTimestamp(data['createdAt']), width: 135)),
         DataCell(
           _buildActions(
             doc: doc,
             isActive: isActive,
             isDeleted: isDeleted,
             isSelfUser: isSelfUser,
+            isSoftwareSuperAdmin: isSoftwareSuperAdmin,
           ),
         ),
       ],
@@ -217,8 +199,9 @@ class DesktopUserTable extends StatelessWidget {
     required bool isSelfUser,
   }) {
     final safeName = displayName.trim().isEmpty ? 'Unnamed User' : displayName;
-    final secondaryText =
-    email.isNotEmpty ? email : (designation.isEmpty ? '-' : designation);
+    final secondaryText = email.isNotEmpty
+        ? email
+        : (designation.isEmpty ? '-' : designation);
 
     return SizedBox(
       width: 300,
@@ -274,10 +257,7 @@ class DesktopUserTable extends StatelessWidget {
                 Text(
                   secondaryText,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11.5,
-                    color: mutedTextColor,
-                  ),
+                  style: const TextStyle(fontSize: 11.5, color: mutedTextColor),
                 ),
               ],
             ),
@@ -296,10 +276,7 @@ class DesktopUserTable extends StatelessWidget {
         safeValue,
         overflow: TextOverflow.ellipsis,
         maxLines: 1,
-        style: const TextStyle(
-          color: Color(0xFF475569),
-          fontSize: 12.5,
-        ),
+        style: const TextStyle(color: Color(0xFF475569), fontSize: 12.5),
       ),
     );
   }
@@ -309,9 +286,13 @@ class DesktopUserTable extends StatelessWidget {
     required bool isActive,
     required bool isDeleted,
     required bool isSelfUser,
+    required bool isSoftwareSuperAdmin,
   }) {
-    final canToggle = !isSelfUser && !isDeleted;
-    final canDelete = !isSelfUser && !isDeleted;
+    final protectedSoftwareAdmin =
+        isSoftwareSuperAdmin && !canManageSoftwareSuperAdmin;
+    final canEdit = !protectedSoftwareAdmin;
+    final canToggle = !isSelfUser && !isDeleted && !protectedSoftwareAdmin;
+    final canDelete = !isSelfUser && !isDeleted && !protectedSoftwareAdmin;
 
     return SizedBox(
       width: 110,
@@ -324,8 +305,8 @@ class DesktopUserTable extends StatelessWidget {
               value: isDeleted ? false : isActive,
               onChanged: canToggle
                   ? (_) async {
-                await onToggle(doc);
-              }
+                      await onToggle(doc);
+                    }
                   : null,
               activeThumbColor: primaryColor,
             ),
@@ -343,7 +324,9 @@ class DesktopUserTable extends StatelessWidget {
                   await onView(doc);
                   break;
                 case 'edit':
-                  await onEdit(doc);
+                  if (canEdit) {
+                    await onEdit(doc);
+                  }
                   break;
                 case 'delete':
                   if (canDelete) {
@@ -353,13 +336,11 @@ class DesktopUserTable extends StatelessWidget {
               }
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(
-                value: 'view',
-                child: Text('View'),
-              ),
-              const PopupMenuItem(
+              const PopupMenuItem(value: 'view', child: Text('View')),
+              PopupMenuItem(
                 value: 'edit',
-                child: Text('Edit'),
+                enabled: canEdit,
+                child: const Text('Edit'),
               ),
               PopupMenuItem(
                 value: 'delete',

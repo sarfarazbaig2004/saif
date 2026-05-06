@@ -506,6 +506,8 @@ class _ZohoShellState extends State<ZohoShell> {
   bool get isAdminOrManager {
     final r = _currentRole;
     return r == 'owner' ||
+        r == 'software_super_admin' ||
+        r == 'company_super_admin' ||
         r == 'founder' ||
         r == 'ceo' ||
         r == 'superadmin' ||

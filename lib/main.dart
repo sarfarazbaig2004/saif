@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 
 import 'package:QUIK/config/firebase_options.dart';
+import 'package:QUIK/core/app/aman_app_config.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/modules/providers/module_access_provider.dart';
@@ -14,9 +15,7 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider<TenantContext>(
-          create: (_) => TenantContext(),
-        ),
+        ChangeNotifierProvider<TenantContext>(create: (_) => TenantContext()),
         ChangeNotifierProvider<ModuleAccessController>(
           create: (_) => ModuleAccessController(),
         ),
@@ -32,7 +31,7 @@ class QuikApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: kAppName,
+      title: AmanAppConfig.browserTitle,
       debugShowCheckedModeBanner: false,
       theme: buildQuikTheme(),
       home: const AuthWrapper(),

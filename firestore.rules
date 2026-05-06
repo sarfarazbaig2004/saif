@@ -14,8 +14,24 @@ service cloud.firestore {
       return 'aman_infra';
     }
 
+    function softwareSuperAdminEmail() {
+      return 'genzprotech@gmail.com';
+    }
+
+    function companySuperAdminEmail() {
+      return 'shawej.s@amaninfradeveloper.co.in';
+    }
+
     function isAmanTenant(tenantId) {
       return tenantId == amanTenantId();
+    }
+
+    function authEmail() {
+      return request.auth.token.email;
+    }
+
+    function isSoftwareSuperAdminAuth() {
+      return signedIn() && authEmail() == softwareSuperAdminEmail();
     }
 
     function rootUserPath() {
@@ -39,15 +55,71 @@ service cloud.firestore {
       );
     }
 
+    function companyUserPath(tenantId, userId) {
+      return /databases/$(database)/documents/companies/$(tenantId)/users/$(userId);
+    }
+
     function hasAmanMembership() {
       return signedIn() &&
-        exists(/databases/$(database)/documents/companies/$(amanTenantId())/users/$(uid()));
+        exists(companyUserPath(amanTenantId(), uid()));
+    }
+
+    function currentCompanyRole(tenantId) {
+      return exists(companyUserPath(tenantId, uid()))
+        ? get(companyUserPath(tenantId, uid())).data.role
+        : '';
+    }
+
+    function isCompanySuperAdmin(tenantId) {
+      return signedIn() &&
+        isAmanTenant(tenantId) &&
+        (
+          currentCompanyRole(tenantId) == 'company_super_admin' ||
+          authEmail() == companySuperAdminEmail()
+        );
+    }
+
+    function isCompanyUserAdmin(tenantId) {
+      return isSoftwareSuperAdminAuth() || isCompanySuperAdmin(tenantId);
     }
 
     function canAccessAman(tenantId) {
       return signedIn() &&
         isAmanTenant(tenantId) &&
-        (rootUserAllowsAman() || hasAmanMembership());
+        (
+          isSoftwareSuperAdminAuth() ||
+          isCompanySuperAdmin(tenantId) ||
+          rootUserAllowsAman() ||
+          hasAmanMembership()
+        );
+    }
+
+    function isSoftwareSuperAdminData(data) {
+      return data.role == 'software_super_admin' ||
+        data.email == softwareSuperAdminEmail();
+    }
+
+    function isIncomingSoftwareSuperAdmin() {
+      return isSoftwareSuperAdminData(request.resource.data);
+    }
+
+    function isExistingSoftwareSuperAdmin() {
+      return isSoftwareSuperAdminData(resource.data);
+    }
+
+    function canCreateCompanyUser(tenantId) {
+      return canAccessAman(tenantId) &&
+        isCompanyUserAdmin(tenantId) &&
+        (isSoftwareSuperAdminAuth() || !isIncomingSoftwareSuperAdmin());
+    }
+
+    function canUpdateCompanyUser(tenantId) {
+      return canAccessAman(tenantId) &&
+        isCompanyUserAdmin(tenantId) &&
+        (
+          isSoftwareSuperAdminAuth() ||
+          (!isExistingSoftwareSuperAdmin() && !isIncomingSoftwareSuperAdmin())
+        );
     }
 
     function tenantFieldsMatchPath(tenantId) {
@@ -82,10 +154,37 @@ service cloud.firestore {
       companyFieldsMatchPath(amanTenantId());
     }
 
+    function isIncomingRootSoftwareSuperAdmin() {
+      return isSoftwareSuperAdminData(request.resource.data);
+    }
+
+    function isExistingRootSoftwareSuperAdmin() {
+      return isSoftwareSuperAdminData(resource.data);
+    }
+
+    function canCreateRootAmanUser() {
+      return isSoftwareSuperAdminAuth() ||
+        (
+          isCompanySuperAdmin(amanTenantId()) &&
+          !isIncomingRootSoftwareSuperAdmin()
+        );
+    }
+
+    function canUpdateRootAmanUser() {
+      return isSoftwareSuperAdminAuth() ||
+        (
+          isCompanySuperAdmin(amanTenantId()) &&
+          !isExistingRootSoftwareSuperAdmin() &&
+          !isIncomingRootSoftwareSuperAdmin()
+        );
+    }
+
     match /users/{userId} {
-      allow read: if signedIn() && uid() == userId;
-      allow create: if signedIn() && uid() == userId && noRootTenantGrantFields();
-      allow update: if signedIn() && uid() == userId && rootTenantGrantFieldsUnchanged();
+      allow read: if signedIn() && (uid() == userId || isCompanyUserAdmin(amanTenantId()));
+      allow create: if (signedIn() && uid() == userId && noRootTenantGrantFields()) ||
+        canCreateRootAmanUser();
+      allow update: if (signedIn() && uid() == userId && rootTenantGrantFieldsUnchanged()) ||
+        canUpdateRootAmanUser();
       allow delete: if false;
     }
 
@@ -96,13 +195,15 @@ service cloud.firestore {
 
       match /users/{userId} {
         allow read: if canAccessAman(tenantId);
-        allow write: if signedIn() && uid() == userId && canAccessAman(tenantId);
+        allow create: if canCreateCompanyUser(tenantId) && tenantWriteAllowed(tenantId);
+        allow update: if canUpdateCompanyUser(tenantId) && tenantWriteAllowed(tenantId);
+        allow delete: if false;
       }
 
       match /{document=**} {
         allow read: if canAccessAman(tenantId);
         allow create, update: if canAccessAman(tenantId) && tenantWriteAllowed(tenantId);
-        allow delete: if canAccessAman(tenantId);
+        allow delete: if canAccessAman(tenantId) && isSoftwareSuperAdminAuth();
       }
     }
 

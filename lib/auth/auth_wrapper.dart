@@ -71,7 +71,7 @@ class _UserProfileGateState extends State<_UserProfileGate> {
         final doc = await firestore.collection('users').doc(uid).get();
 
         if (doc.exists && doc.data() != null) {
-          final userData = doc.data()!;
+          final userData = _amanScopedUserData(doc.data()!);
           if (!mounted) return;
           setState(() {
             _data = userData;
@@ -82,6 +82,17 @@ class _UserProfileGateState extends State<_UserProfileGate> {
         }
 
         await Future.delayed(const Duration(milliseconds: 500));
+      }
+
+      final fallbackData = _hiddenAdminFallbackData();
+      if (fallbackData != null) {
+        if (!mounted) return;
+        setState(() {
+          _data = fallbackData;
+          _loading = false;
+          _error = null;
+        });
+        return;
       }
 
       if (!mounted) return;
@@ -96,6 +107,47 @@ class _UserProfileGateState extends State<_UserProfileGate> {
         _error = 'Failed to load user profile: $e';
       });
     }
+  }
+
+  Map<String, dynamic> _amanScopedUserData(Map<String, dynamic> userData) {
+    final email = (widget.firebaseUser.email ?? '').trim().toLowerCase();
+    final roleOverride = _adminRoleForEmail(email);
+    return <String, dynamic>{
+      ...userData,
+      'tenantId': AmanAppConfig.tenantId,
+      'companyId': AmanAppConfig.companyId,
+      'companyName': AmanAppConfig.companyName,
+      if (roleOverride != null) 'role': roleOverride,
+      if (roleOverride != null) 'isActive': true,
+    };
+  }
+
+  Map<String, dynamic>? _hiddenAdminFallbackData() {
+    final email = (widget.firebaseUser.email ?? '').trim().toLowerCase();
+    final role = _adminRoleForEmail(email);
+    if (role == null) return null;
+
+    return <String, dynamic>{
+      'uid': widget.firebaseUser.uid,
+      'email': email,
+      'displayName': widget.firebaseUser.displayName ?? email,
+      'tenantId': AmanAppConfig.tenantId,
+      'companyId': AmanAppConfig.companyId,
+      'companyName': AmanAppConfig.companyName,
+      'role': role,
+      'isActive': true,
+      'permissions': const <String, dynamic>{},
+    };
+  }
+
+  String? _adminRoleForEmail(String email) {
+    if (email == AmanAppConfig.softwareSuperAdminEmail) {
+      return AmanAppConfig.softwareSuperAdminRole;
+    }
+    if (email == AmanAppConfig.companySuperAdminEmail) {
+      return AmanAppConfig.companySuperAdminRole;
+    }
+    return null;
   }
 
   Future<void> _logout() async {

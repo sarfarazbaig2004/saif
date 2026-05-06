@@ -12,7 +12,7 @@ class UserCard extends StatelessWidget {
   final UserDoc doc;
   final String currentUid;
   final Future<void> Function() onView;
-  final Future<void> Function() onEdit;
+  final Future<void> Function()? onEdit;
   final Future<void> Function()? onToggle;
   final Future<void> Function()? onDelete;
 
@@ -44,17 +44,11 @@ class UserCard extends StatelessWidget {
 
     final currentStatusText = storedStatus.isNotEmpty
         ? statusLabelFromValue(storedStatus)
-        : statusLabel(
-      isActive: isActive,
-      isDeleted: isDeleted,
-    );
+        : statusLabel(isActive: isActive, isDeleted: isDeleted);
 
     final currentStatusColor = storedStatus.isNotEmpty
         ? statusColorFromValue(storedStatus)
-        : statusColor(
-      isActive: isActive,
-      isDeleted: isDeleted,
-    );
+        : statusColor(isActive: isActive, isDeleted: isDeleted);
 
     final currentRoleColor = roleColor(role);
 
@@ -97,8 +91,8 @@ class UserCard extends StatelessWidget {
                   value: isDeleted ? false : isActive,
                   onChanged: canToggle
                       ? (_) async {
-                    await onToggle!.call();
-                  }
+                          await onToggle!.call();
+                        }
                       : null,
                   activeThumbColor: primaryColor,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -232,7 +226,9 @@ class UserCard extends StatelessWidget {
     required bool canToggle,
     required bool canDelete,
   }) {
-    final toggleLabel = isDeleted ? 'Deleted' : (isActive ? 'Disable' : 'Enable');
+    final toggleLabel = isDeleted
+        ? 'Deleted'
+        : (isActive ? 'Disable' : 'Enable');
 
     return Wrap(
       spacing: 8,
@@ -247,15 +243,15 @@ class UserCard extends StatelessWidget {
         ActionButton(
           icon: Icons.edit_outlined,
           label: 'Edit',
-          color: accentColor,
-          onTap: () async => onEdit(),
+          color: onEdit == null ? Colors.grey : accentColor,
+          onTap: onEdit == null ? null : () async => onEdit!(),
         ),
         ActionButton(
           icon: isDeleted
               ? Icons.delete_outline_rounded
               : (isActive
-              ? Icons.toggle_off_outlined
-              : Icons.toggle_on_outlined),
+                    ? Icons.toggle_off_outlined
+                    : Icons.toggle_on_outlined),
           label: toggleLabel,
           color: isDeleted ? Colors.grey : warningColor,
           onTap: canToggle ? () async => onToggle!() : null,
@@ -284,11 +280,7 @@ class UserCard extends StatelessWidget {
   Widget _metaDot() {
     return const Text(
       '•',
-      style: TextStyle(
-        color: mutedTextColor,
-        fontSize: 11.5,
-        height: 1.1,
-      ),
+      style: TextStyle(color: mutedTextColor, fontSize: 11.5, height: 1.1),
     );
   }
 
