@@ -1077,6 +1077,9 @@ class _ZohoShellState extends State<ZohoShell> {
   }
 
   bool _isModuleEnabled(String moduleId) {
+    if (moduleId == ModuleIds.inventory && isAdminOrManager) {
+      return true;
+    }
     return ModuleAccessProvider.of(context).isModuleEnabled(moduleId);
   }
 
