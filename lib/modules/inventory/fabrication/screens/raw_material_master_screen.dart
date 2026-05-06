@@ -72,6 +72,7 @@ class _RawMaterialMasterScreenState extends State<RawMaterialMasterScreen> {
                   : _RawMaterialTable(
                       materials: materials,
                       onEdit: (material) => _openForm(material: material),
+                      onDelete: _deleteMaterial,
                     ),
             ),
           ],
@@ -99,6 +100,31 @@ class _RawMaterialMasterScreenState extends State<RawMaterialMasterScreen> {
       builder: (context) =>
           _RawMaterialFormDialog(repository: _repository, material: material),
     );
+  }
+
+  Future<void> _deleteMaterial(RawMaterialModel material) async {
+    final confirmed =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Delete Raw Material'),
+            content: Text('Delete ${material.displayName}?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+
+    await _repository.deleteRawMaterial(material.materialId);
   }
 }
 
@@ -165,8 +191,13 @@ class _Header extends StatelessWidget {
 class _RawMaterialTable extends StatelessWidget {
   final List<RawMaterialModel> materials;
   final ValueChanged<RawMaterialModel> onEdit;
+  final ValueChanged<RawMaterialModel> onDelete;
 
-  const _RawMaterialTable({required this.materials, required this.onEdit});
+  const _RawMaterialTable({
+    required this.materials,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -227,10 +258,20 @@ class _RawMaterialTable extends StatelessWidget {
                         ),
                       ),
                       DataCell(
-                        IconButton(
-                          tooltip: 'Edit',
-                          onPressed: () => onEdit(material),
-                          icon: const Icon(Icons.edit_outlined),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: 'Edit',
+                              onPressed: () => onEdit(material),
+                              icon: const Icon(Icons.edit_outlined),
+                            ),
+                            IconButton(
+                              tooltip: 'Delete',
+                              onPressed: () => onDelete(material),
+                              icon: const Icon(Icons.delete_outline),
+                            ),
+                          ],
                         ),
                       ),
                     ],

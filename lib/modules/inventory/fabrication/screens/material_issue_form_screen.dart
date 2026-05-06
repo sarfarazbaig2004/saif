@@ -21,6 +21,8 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
 
   final _issuedTo = TextEditingController();
   final _workOrderId = TextEditingController();
+  final _plantName = TextEditingController(text: 'Plant 1');
+  final _warehouseName = TextEditingController(text: 'Main Store');
   final _materialDescription = TextEditingController();
   final _grade = TextEditingController();
   final _lengthMm = TextEditingController();
@@ -55,6 +57,8 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
   void dispose() {
     _issuedTo.dispose();
     _workOrderId.dispose();
+    _plantName.dispose();
+    _warehouseName.dispose();
     _materialDescription.dispose();
     _grade.dispose();
     _lengthMm.dispose();
@@ -117,6 +121,8 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
           uom: material?.uom ?? 'Kg',
           category: material?.category ?? '',
           productFamily: material?.productFamily ?? '',
+          plantName: _plantName.text.trim(),
+          warehouseName: _warehouseName.text.trim(),
           quantityNos: double.tryParse(_quantityNos.text.trim()) ?? 0,
           quantityKg: double.tryParse(_quantityKg.text.trim()) ?? 0,
           referenceNo: '',
@@ -199,6 +205,8 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
                           required: true,
                         ),
                         _field(_workOrderId, 'Work Order'),
+                        _field(_plantName, 'Plant', required: true),
+                        _field(_warehouseName, 'Warehouse', required: true),
                         _materialPicker(materials),
                         _field(
                           _materialDescription,

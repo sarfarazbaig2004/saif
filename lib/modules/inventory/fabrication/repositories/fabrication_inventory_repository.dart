@@ -217,6 +217,16 @@ class FabricationInventoryRepository {
     }, SetOptions(merge: true));
   }
 
+  Future<void> deleteRawMaterial(String materialId) {
+    return _materialsRef.doc(materialId.trim()).set({
+      'isActive': false,
+      'deletedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+      'companyId': tenantId,
+      'tenantId': tenantId,
+    }, SetOptions(merge: true));
+  }
+
   Future<void> saveInwardEntry(RawMaterialInwardModel entry) async {
     return saveInventoryTransaction(
       RawMaterialTransactionModel(
@@ -232,6 +242,8 @@ class FabricationInventoryRepository {
         uom: 'Kg',
         category: '',
         productFamily: '',
+        plantName: 'Plant 1',
+        warehouseName: 'Main Store',
         quantityNos: entry.quantityNos,
         quantityKg: _calculatedQuantityKg(
           quantityKg: entry.quantityKg,
@@ -266,6 +278,8 @@ class FabricationInventoryRepository {
         uom: 'Kg',
         category: '',
         productFamily: '',
+        plantName: 'Plant 1',
+        warehouseName: 'Main Store',
         quantityNos: 0,
         quantityKg: entry.quantityKg,
         referenceNo: '',
@@ -384,6 +398,10 @@ class FabricationInventoryRepository {
       uom: entry.uom.trim().isEmpty ? 'Kg' : entry.uom,
       category: entry.category,
       productFamily: entry.productFamily,
+      plantName: entry.plantName.trim().isEmpty ? 'Plant 1' : entry.plantName,
+      warehouseName: entry.warehouseName.trim().isEmpty
+          ? 'Main Store'
+          : entry.warehouseName,
       quantityNos: entry.quantityNos,
       quantityKg: quantityKg,
       referenceNo: entry.referenceNo,
@@ -413,12 +431,16 @@ class FabricationInventoryRepository {
     RawMaterialTransactionModel b,
   ) {
     if (a.materialId.trim().isNotEmpty && b.materialId.trim().isNotEmpty) {
-      return a.materialId == b.materialId;
+      return a.materialId == b.materialId &&
+          _normalizeText(a.plantName) == _normalizeText(b.plantName) &&
+          _normalizeText(a.warehouseName) == _normalizeText(b.warehouseName);
     }
     return _normalizeText(a.materialDescription) ==
             _normalizeText(b.materialDescription) &&
         _normalizeText(a.grade) == _normalizeText(b.grade) &&
-        _normalizeLength(a.length) == _normalizeLength(b.length);
+        _normalizeLength(a.length) == _normalizeLength(b.length) &&
+        _normalizeText(a.plantName) == _normalizeText(b.plantName) &&
+        _normalizeText(a.warehouseName) == _normalizeText(b.warehouseName);
   }
 
   List<RawMaterialStockSummaryModel> _buildStockSummary(
@@ -428,21 +450,32 @@ class FabricationInventoryRepository {
 
     for (final transaction in transactions) {
       final key = transaction.materialId.trim().isNotEmpty
-          ? transaction.materialId
-          : _summaryItemId(
-              materialDescription: transaction.materialDescription,
-              grade: transaction.grade,
-              lengthMm: transaction.length,
-            );
+          ? [
+              transaction.materialId,
+              _normalizeText(transaction.plantName),
+              _normalizeText(transaction.warehouseName),
+            ].join('-')
+          : [
+              _summaryItemId(
+                materialDescription: transaction.materialDescription,
+                grade: transaction.grade,
+                lengthMm: transaction.length,
+              ),
+              _normalizeText(transaction.plantName),
+              _normalizeText(transaction.warehouseName),
+            ].join('-');
       final row = rows.putIfAbsent(
         key,
         () => _SummaryAccumulator(
           itemId: key,
+          materialId: transaction.materialId,
           materialCode: transaction.materialCode,
           materialDescription: transaction.materialDescription,
           grade: transaction.grade,
           category: transaction.category,
           productFamily: transaction.productFamily,
+          plantName: transaction.plantName,
+          warehouseName: transaction.warehouseName,
           length: transaction.length,
           unitWeight: transaction.unitWeight,
           uom: transaction.uom,
@@ -466,22 +499,28 @@ class FabricationInventoryRepository {
 class _SummaryAccumulator {
   _SummaryAccumulator({
     required this.itemId,
+    required this.materialId,
     required this.materialCode,
     required this.materialDescription,
     required this.grade,
     required this.category,
     required this.productFamily,
+    required this.plantName,
+    required this.warehouseName,
     required this.length,
     required this.unitWeight,
     required this.uom,
   });
 
   final String itemId;
+  final String materialId;
   String materialCode;
   String materialDescription;
   String grade;
   String category;
   String productFamily;
+  String plantName;
+  String warehouseName;
   double length;
   double unitWeight;
   String uom;
@@ -506,6 +545,10 @@ class _SummaryAccumulator {
     productFamily = productFamily.isEmpty
         ? transaction.productFamily
         : productFamily;
+    plantName = plantName.isEmpty ? transaction.plantName : plantName;
+    warehouseName = warehouseName.isEmpty
+        ? transaction.warehouseName
+        : warehouseName;
     length = length <= 0 ? transaction.length : length;
     unitWeight = unitWeight <= 0 ? transaction.unitWeight : unitWeight;
     uom = uom.isEmpty ? transaction.uom : uom;
@@ -543,11 +586,14 @@ class _SummaryAccumulator {
         openingKg + inwardKg + returnKg + adjustmentKg - issueKg - scrapKg;
     return RawMaterialStockSummaryModel(
       itemId: itemId,
+      materialId: materialId,
       materialCode: materialCode,
       materialDescription: materialDescription,
       grade: grade,
       rawMaterialCategory: category,
       productFamily: productFamily,
+      plantName: plantName,
+      warehouseName: warehouseName,
       lengthMm: length,
       unitWeightKgPerM: unitWeight,
       openingKg: openingKg,

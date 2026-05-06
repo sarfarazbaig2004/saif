@@ -16,6 +16,7 @@ import 'package:QUIK/modules/dispatch/screens/dispatch_list_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_inward_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_issue_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_master_screen.dart';
+import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_low_stock_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_stock_screen.dart';
 import 'package:QUIK/modules/purchase/fabrication/screens/purchase_bill_screen.dart';
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_ledger_screen.dart';
@@ -607,7 +608,9 @@ class _ZohoShellState extends State<ZohoShell> {
       return false;
     }
 
-    if (_isGeneralInventoryPage(page) && _isFabricationInventory) {
+    if (_isGeneralInventoryPage(page) &&
+        _isFabricationInventory &&
+        !_isFabricationInventoryPage(page)) {
       return false;
     }
 
@@ -810,7 +813,13 @@ class _ZohoShellState extends State<ZohoShell> {
   }
 
   bool _isFabricationInventoryPage(ShellPage page) {
-    return page == ShellPage.inventoryRawMaterialStock ||
+    return page == ShellPage.inventoryProducts ||
+        page == ShellPage.inventoryStockSummary ||
+        page == ShellPage.inventoryStockIn ||
+        page == ShellPage.inventoryStockOut ||
+        page == ShellPage.inventoryWarehouse ||
+        page == ShellPage.inventoryLowStock ||
+        page == ShellPage.inventoryRawMaterialStock ||
         page == ShellPage.inventoryMaterialInward ||
         page == ShellPage.inventoryMaterialIssue;
   }
@@ -818,9 +827,12 @@ class _ZohoShellState extends State<ZohoShell> {
   List<ShellPage> get _inventorySidebarPages {
     if (_isFabricationInventory) {
       return const [
+        ShellPage.inventoryProducts,
         ShellPage.inventoryRawMaterialStock,
         ShellPage.inventoryMaterialInward,
         ShellPage.inventoryMaterialIssue,
+        ShellPage.inventoryWarehouse,
+        ShellPage.inventoryLowStock,
       ];
     }
 
@@ -1105,6 +1117,11 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.purchaseOrders:
       case ShellPage.purchaseGrn:
       case ShellPage.inventoryProducts:
+      case ShellPage.inventoryStockSummary:
+      case ShellPage.inventoryStockIn:
+      case ShellPage.inventoryStockOut:
+      case ShellPage.inventoryWarehouse:
+      case ShellPage.inventoryLowStock:
       case ShellPage.inventoryRawMaterialStock:
       case ShellPage.inventoryMaterialInward:
       case ShellPage.inventoryMaterialIssue:
@@ -1766,6 +1783,31 @@ class _ZohoShellState extends State<ZohoShell> {
         return Padding(
           padding: EdgeInsets.all(10),
           child: RawMaterialMasterScreen(tenantId: widget.companyId),
+        );
+
+      case ShellPage.inventoryStockSummary:
+      case ShellPage.inventoryWarehouse:
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: FabricationRawMaterialStockScreen(tenantId: widget.companyId),
+        );
+
+      case ShellPage.inventoryStockIn:
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: FabricationMaterialInwardScreen(tenantId: widget.companyId),
+        );
+
+      case ShellPage.inventoryStockOut:
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: FabricationMaterialIssueScreen(tenantId: widget.companyId),
+        );
+
+      case ShellPage.inventoryLowStock:
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: RawMaterialLowStockScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.purchaseVendors:

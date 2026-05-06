@@ -91,6 +91,8 @@ class RawMaterialTransactionModel {
   final String uom;
   final String category;
   final String productFamily;
+  final String plantName;
+  final String warehouseName;
   final double quantityNos;
   final double quantityKg;
   final String referenceNo;
@@ -115,6 +117,8 @@ class RawMaterialTransactionModel {
     required this.uom,
     required this.category,
     required this.productFamily,
+    required this.plantName,
+    required this.warehouseName,
     required this.quantityNos,
     required this.quantityKg,
     required this.referenceNo,
@@ -148,6 +152,8 @@ class RawMaterialTransactionModel {
       'category': category,
       'rawMaterialCategory': category,
       'productFamily': productFamily,
+      'plantName': plantName,
+      'warehouseName': warehouseName,
       'quantityNos': quantityNos,
       'quantityKg': quantityKg,
       'referenceNo': referenceNo,
@@ -187,6 +193,10 @@ class RawMaterialTransactionModel {
       category: (data['category'] ?? data['rawMaterialCategory'] ?? '')
           .toString(),
       productFamily: (data['productFamily'] ?? '').toString(),
+      plantName: (data['plantName'] ?? data['plant'] ?? 'Plant 1').toString(),
+      warehouseName:
+          (data['warehouseName'] ?? data['warehouse'] ?? 'Main Store')
+              .toString(),
       quantityNos: doubleFromValue(data['quantityNos']),
       quantityKg: doubleFromValue(data['quantityKg']),
       referenceNo: (data['referenceNo'] ?? data['challanNo'] ?? '').toString(),

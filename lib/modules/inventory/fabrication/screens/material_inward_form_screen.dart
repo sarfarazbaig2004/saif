@@ -26,6 +26,8 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
 
   final _supplierName = TextEditingController();
   final _challanNo = TextEditingController();
+  final _plantName = TextEditingController(text: 'Plant 1');
+  final _warehouseName = TextEditingController(text: 'Main Store');
   final _materialDescription = TextEditingController();
   final _grade = TextEditingController();
   final _lengthMm = TextEditingController();
@@ -60,6 +62,8 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
   void dispose() {
     _supplierName.dispose();
     _challanNo.dispose();
+    _plantName.dispose();
+    _warehouseName.dispose();
     _materialDescription.dispose();
     _grade.dispose();
     _lengthMm.dispose();
@@ -122,6 +126,8 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
           uom: material?.uom ?? 'Kg',
           category: material?.category ?? '',
           productFamily: material?.productFamily ?? '',
+          plantName: _plantName.text.trim(),
+          warehouseName: _warehouseName.text.trim(),
           quantityNos: double.tryParse(_quantityNos.text.trim()) ?? 0,
           quantityKg: double.tryParse(_quantityKg.text.trim()) ?? 0,
           referenceNo: _challanNo.text.trim(),
@@ -210,6 +216,8 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
                         _dateField(),
                         _field(_supplierName, 'Supplier Name', required: true),
                         _field(_challanNo, 'Challan / GRN No', required: true),
+                        _field(_plantName, 'Plant', required: true),
+                        _field(_warehouseName, 'Warehouse', required: true),
                         _materialPicker(materials),
                         _field(
                           _materialDescription,

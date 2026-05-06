@@ -20,6 +20,8 @@ class _FabricationRawMaterialStockScreenState
     extends State<FabricationRawMaterialStockScreen> {
   final _search = TextEditingController();
   String _query = '';
+  String _plantFilter = 'all';
+  String _warehouseFilter = 'all';
 
   @override
   void initState() {
@@ -50,11 +52,13 @@ class _FabricationRawMaterialStockScreenState
     return StreamBuilder<List<RawMaterialStockSummaryModel>>(
       stream: repository.watchStockSummary(),
       builder: (context, snapshot) {
-        final summaries =
-            (snapshot.data ?? const <RawMaterialStockSummaryModel>[])
-                .where(_matches)
-                .toList(growable: false);
+        final allRows = snapshot.data ?? const <RawMaterialStockSummaryModel>[];
+        final summaries = allRows.where(_matches).toList(growable: false);
         final metrics = _StockMetrics.fromRows(summaries);
+        final plants = _filterValues(allRows.map((row) => row.plantName));
+        final warehouses = _filterValues(
+          allRows.map((row) => row.warehouseName),
+        );
 
         return Column(
           children: [
@@ -64,7 +68,20 @@ class _FabricationRawMaterialStockScreenState
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ScreenHeader(metrics: metrics, search: _search),
+                    _ScreenHeader(
+                      metrics: metrics,
+                      search: _search,
+                      plants: plants,
+                      warehouses: warehouses,
+                      plantFilter: _plantFilter,
+                      warehouseFilter: _warehouseFilter,
+                      onPlantChanged: (value) {
+                        setState(() => _plantFilter = value ?? 'all');
+                      },
+                      onWarehouseChanged: (value) {
+                        setState(() => _warehouseFilter = value ?? 'all');
+                      },
+                    ),
                     const SizedBox(height: 12),
                     const FabricationInventoryFlowCard(
                       activeStep: FabricationInventoryFlowStep.stock,
@@ -95,6 +112,10 @@ class _FabricationRawMaterialStockScreenState
   }
 
   bool _matches(RawMaterialStockSummaryModel row) {
+    if (_plantFilter != 'all' && row.plantName != _plantFilter) return false;
+    if (_warehouseFilter != 'all' && row.warehouseName != _warehouseFilter) {
+      return false;
+    }
     if (_query.isEmpty) return true;
     final fields = [
       row.materialCode,
@@ -103,16 +124,43 @@ class _FabricationRawMaterialStockScreenState
       row.lengthMm.toString(),
       row.rawMaterialCategory,
       row.productFamily,
+      row.plantName,
+      row.warehouseName,
     ];
     return fields.any((field) => field.toLowerCase().contains(_query));
+  }
+
+  List<String> _filterValues(Iterable<String> values) {
+    final result = values
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList();
+    result.sort();
+    return result;
   }
 }
 
 class _ScreenHeader extends StatelessWidget {
   final _StockMetrics metrics;
   final TextEditingController search;
+  final List<String> plants;
+  final List<String> warehouses;
+  final String plantFilter;
+  final String warehouseFilter;
+  final ValueChanged<String?> onPlantChanged;
+  final ValueChanged<String?> onWarehouseChanged;
 
-  const _ScreenHeader({required this.metrics, required this.search});
+  const _ScreenHeader({
+    required this.metrics,
+    required this.search,
+    required this.plants,
+    required this.warehouses,
+    required this.plantFilter,
+    required this.warehouseFilter,
+    required this.onPlantChanged,
+    required this.onWarehouseChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -189,9 +237,56 @@ class _ScreenHeader extends StatelessWidget {
                   ),
                 ),
               ),
+              _FilterDropdown(
+                label: 'Plant',
+                value: plantFilter,
+                values: plants,
+                onChanged: onPlantChanged,
+              ),
+              _FilterDropdown(
+                label: 'Warehouse',
+                value: warehouseFilter,
+                values: warehouses,
+                onChanged: onWarehouseChanged,
+              ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FilterDropdown extends StatelessWidget {
+  final String label;
+  final String value;
+  final List<String> values;
+  final ValueChanged<String?> onChanged;
+
+  const _FilterDropdown({
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveValue = value == 'all' || values.contains(value)
+        ? value
+        : 'all';
+    return SizedBox(
+      width: 220,
+      child: DropdownButtonFormField<String>(
+        initialValue: effectiveValue,
+        decoration: InputDecoration(labelText: label),
+        items: [
+          const DropdownMenuItem(value: 'all', child: Text('All')),
+          ...values.map(
+            (value) => DropdownMenuItem(value: value, child: Text(value)),
+          ),
+        ],
+        onChanged: onChanged,
       ),
     );
   }
@@ -299,6 +394,8 @@ class _LiveStockTable extends StatelessWidget {
                   DataColumn(label: Text('Nos')),
                   DataColumn(label: Text('UOM')),
                   DataColumn(label: Text('Category')),
+                  DataColumn(label: Text('Plant')),
+                  DataColumn(label: Text('Warehouse')),
                   DataColumn(label: Text('Last Updated')),
                 ],
                 rows: rows
@@ -348,6 +445,16 @@ class _LiveStockTable extends StatelessWidget {
                               row.rawMaterialCategory.isEmpty
                                   ? '-'
                                   : row.rawMaterialCategory,
+                            ),
+                          ),
+                          DataCell(
+                            Text(row.plantName.isEmpty ? '-' : row.plantName),
+                          ),
+                          DataCell(
+                            Text(
+                              row.warehouseName.isEmpty
+                                  ? '-'
+                                  : row.warehouseName,
                             ),
                           ),
                           DataCell(

@@ -4,11 +4,14 @@ import 'package:QUIK/modules/production/core/production_firestore_utils.dart';
 
 class RawMaterialStockSummaryModel {
   final String itemId;
+  final String materialId;
   final String materialCode;
   final String materialDescription;
   final String grade;
   final String rawMaterialCategory;
   final String productFamily;
+  final String plantName;
+  final String warehouseName;
   final double lengthMm;
   final double unitWeightKgPerM;
   final double openingKg;
@@ -27,11 +30,14 @@ class RawMaterialStockSummaryModel {
 
   const RawMaterialStockSummaryModel({
     required this.itemId,
+    required this.materialId,
     required this.materialCode,
     required this.materialDescription,
     required this.grade,
     required this.rawMaterialCategory,
     required this.productFamily,
+    required this.plantName,
+    required this.warehouseName,
     required this.lengthMm,
     required this.unitWeightKgPerM,
     required this.openingKg,
@@ -56,12 +62,16 @@ class RawMaterialStockSummaryModel {
 
     return RawMaterialStockSummaryModel(
       itemId: (data['itemId'] ?? snapshot.id).toString(),
+      materialId: (data['materialId'] ?? '').toString(),
       materialCode: (data['materialCode'] ?? '').toString(),
       materialDescription:
           (data['materialDescription'] ?? data['description'] ?? '').toString(),
       grade: (data['grade'] ?? '').toString(),
       rawMaterialCategory: (data['rawMaterialCategory'] ?? '').toString(),
       productFamily: (data['productFamily'] ?? '').toString(),
+      plantName: (data['plantName'] ?? data['plant'] ?? '').toString(),
+      warehouseName: (data['warehouseName'] ?? data['warehouse'] ?? '')
+          .toString(),
       lengthMm: doubleFromValue(data['lengthMm']),
       unitWeightKgPerM: doubleFromValue(data['unitWeightKgPerM']),
       openingKg: doubleFromValue(data['openingKg']),
