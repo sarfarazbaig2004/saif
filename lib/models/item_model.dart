@@ -10,6 +10,10 @@ class Item {
   final double costPrice;
   final double minStockLevel;
   final double reorderLevel;
+  final String rawMaterialCategory;
+  final String productFamily;
+  final String unit;
+  final bool weightTracking;
 
   // Mandatory ERP Standard Fields
   final bool isActive;
@@ -29,6 +33,10 @@ class Item {
     this.costPrice = 0.0,
     this.minStockLevel = 0.0,
     this.reorderLevel = 0.0,
+    this.rawMaterialCategory = '',
+    this.productFamily = '',
+    this.unit = '',
+    this.weightTracking = false,
     this.isActive = true,
     this.isDeleted = false,
     this.createdAt,
@@ -48,9 +56,15 @@ class Item {
       'costPrice': costPrice,
       'minStockLevel': minStockLevel,
       'reorderLevel': reorderLevel,
+      'rawMaterialCategory': rawMaterialCategory,
+      'productFamily': productFamily,
+      'unit': unit,
+      'weightTracking': weightTracking,
       'isActive': isActive,
       'isDeleted': isDeleted,
-      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
+      'createdAt': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
       'createdBy': createdBy,
       'updatedAt': FieldValue.serverTimestamp(),
       'updatedBy': updatedBy,
@@ -68,11 +82,19 @@ class Item {
       costPrice: (data['costPrice'] ?? 0).toDouble(),
       minStockLevel: (data['minStockLevel'] ?? 0).toDouble(),
       reorderLevel: (data['reorderLevel'] ?? 0).toDouble(),
+      rawMaterialCategory: (data['rawMaterialCategory'] ?? '').toString(),
+      productFamily: (data['productFamily'] ?? '').toString(),
+      unit: (data['unit'] ?? data['uom'] ?? '').toString(),
+      weightTracking: data['weightTracking'] == true,
       isActive: data['isActive'] ?? true,
       isDeleted: data['isDeleted'] ?? false,
-      createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
+      createdAt: data['createdAt'] != null
+          ? (data['createdAt'] as Timestamp).toDate()
+          : null,
       createdBy: (data['createdBy'] ?? '').toString(),
-      updatedAt: data['updatedAt'] != null ? (data['updatedAt'] as Timestamp).toDate() : null,
+      updatedAt: data['updatedAt'] != null
+          ? (data['updatedAt'] as Timestamp).toDate()
+          : null,
       updatedBy: (data['updatedBy'] ?? '').toString(),
     );
   }

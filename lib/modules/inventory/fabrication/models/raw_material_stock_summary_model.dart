@@ -6,22 +6,28 @@ class RawMaterialStockSummaryModel {
   final String itemId;
   final String materialDescription;
   final String grade;
+  final String rawMaterialCategory;
+  final String productFamily;
   final double lengthMm;
   final double unitWeightKgPerM;
   final double closingStockKg;
   final double currentOpeningStockKg;
   final String uom;
+  final bool weightTracking;
   final DateTime? lastUpdatedAt;
 
   const RawMaterialStockSummaryModel({
     required this.itemId,
     required this.materialDescription,
     required this.grade,
+    required this.rawMaterialCategory,
+    required this.productFamily,
     required this.lengthMm,
     required this.unitWeightKgPerM,
     required this.closingStockKg,
     required this.currentOpeningStockKg,
     required this.uom,
+    required this.weightTracking,
     this.lastUpdatedAt,
   });
 
@@ -33,14 +39,18 @@ class RawMaterialStockSummaryModel {
     return RawMaterialStockSummaryModel(
       itemId: (data['itemId'] ?? snapshot.id).toString(),
       materialDescription:
-          (data['materialDescription'] ?? data['description'] ?? '')
-              .toString(),
+          (data['materialDescription'] ?? data['description'] ?? '').toString(),
       grade: (data['grade'] ?? '').toString(),
+      rawMaterialCategory: (data['rawMaterialCategory'] ?? '').toString(),
+      productFamily: (data['productFamily'] ?? '').toString(),
       lengthMm: doubleFromValue(data['lengthMm']),
       unitWeightKgPerM: doubleFromValue(data['unitWeightKgPerM']),
       closingStockKg: doubleFromValue(data['closingStockKg']),
       currentOpeningStockKg: doubleFromValue(data['currentOpeningStockKg']),
       uom: (data['uom'] ?? 'Kg').toString(),
+      weightTracking:
+          data['weightTracking'] == true ||
+          doubleFromValue(data['unitWeightKgPerM']) > 0,
       lastUpdatedAt: dateTimeFromValue(
         data['lastUpdatedAt'] ?? data['updatedAt'],
       ),

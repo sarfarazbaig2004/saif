@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:QUIK/core/inventory/models/material_classification.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 
@@ -70,6 +71,9 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
   String? _selectedCategoryName;
   String? _selectedSubcategoryId;
   String? _selectedSubcategoryName;
+  String _rawMaterialCategory = '';
+  String _productFamily = '';
+  bool _weightTracking = true;
 
   // Multi-file Storage Lists
   List<String> _imageUrls = [];
@@ -128,6 +132,11 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       _skuController.text = (data['sku'] ?? '').toString();
       _barcodeController.text = (data['barcode'] ?? '').toString();
       _uomController.text = (data['uom'] ?? 'Nos').toString();
+      _rawMaterialCategory = (data['rawMaterialCategory'] ?? '').toString();
+      _productFamily = (data['productFamily'] ?? '').toString();
+      _weightTracking = data['weightTracking'] == null
+          ? true
+          : data['weightTracking'] == true;
 
       _brandController.text = (data['brand'] ?? '').toString();
       _notesController.text = (data['notes'] ?? '').toString();
@@ -988,6 +997,18 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
         'sku': cleanSku,
         'barcode': cleanBarcode,
         'uom': cleanUom,
+        'unit': cleanUom,
+        'rawMaterialCategory': _rawMaterialCategory,
+        'rawMaterialCategoryLabel': _rawMaterialCategory.isEmpty
+            ? ''
+            : MaterialClassification.rawMaterialLabel(_rawMaterialCategory),
+        'productFamily': _productFamily,
+        'productFamilyLabel': _productFamily.isEmpty
+            ? ''
+            : MaterialClassification.productFamilyLabel(_productFamily),
+        'weightTracking': _trackInventory && !_isServiceLike
+            ? _weightTracking
+            : false,
         'openingStock': openingStock,
         'reorderLevel': reorderLevel,
         'minStockLevel': minStockLevel,
@@ -1148,6 +1169,29 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       style: TextStyle(fontSize: inputFontSize, color: Colors.black87),
       decoration: _inputDecoration(label: label, icon: icon),
       items: items,
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildMaterialClassificationDropdown({
+    required String label,
+    required IconData icon,
+    required String value,
+    required List<DropdownMenuItem<String>> items,
+    required void Function(String?) onChanged,
+  }) {
+    final width = MediaQuery.of(context).size.width;
+    final inputFontSize = width < 360 ? 13.0 : (width < 480 ? 14.0 : 15.0);
+    final normalizedValue = value.trim().isEmpty ? '' : value;
+
+    return DropdownButtonFormField<String>(
+      initialValue: normalizedValue,
+      style: TextStyle(fontSize: inputFontSize, color: Colors.black87),
+      decoration: _inputDecoration(label: label, icon: icon),
+      items: [
+        const DropdownMenuItem(value: '', child: Text('Not Selected')),
+        ...items,
+      ],
       onChanged: onChanged,
     );
   }
@@ -1709,6 +1753,91 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                         ),
                       ],
                       SizedBox(height: fieldGap),
+                      if (useTwoCol)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildMaterialClassificationDropdown(
+                                label: 'Raw Material Category',
+                                icon: Icons.category_outlined,
+                                value: _rawMaterialCategory,
+                                items: MaterialClassification
+                                    .rawMaterialCategories
+                                    .map((category) {
+                                      return DropdownMenuItem(
+                                        value: category.key,
+                                        child: Text(category.label),
+                                      );
+                                    })
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(
+                                    () => _rawMaterialCategory = value ?? '',
+                                  );
+                                },
+                              ),
+                            ),
+                            SizedBox(width: fieldGap),
+                            Expanded(
+                              child: _buildMaterialClassificationDropdown(
+                                label: 'Product Family',
+                                icon: Icons.account_tree_outlined,
+                                value: _productFamily,
+                                items: MaterialClassification.productFamilies
+                                    .map((family) {
+                                      return DropdownMenuItem(
+                                        value: family.key,
+                                        child: Text(family.label),
+                                      );
+                                    })
+                                    .toList(),
+                                onChanged: (value) {
+                                  setState(() => _productFamily = value ?? '');
+                                },
+                              ),
+                            ),
+                          ],
+                        )
+                      else ...[
+                        _buildMaterialClassificationDropdown(
+                          label: 'Raw Material Category',
+                          icon: Icons.category_outlined,
+                          value: _rawMaterialCategory,
+                          items: MaterialClassification.rawMaterialCategories
+                              .map((category) {
+                                return DropdownMenuItem(
+                                  value: category.key,
+                                  child: Text(category.label),
+                                );
+                              })
+                              .toList(),
+                          onChanged: (value) {
+                            setState(() => _rawMaterialCategory = value ?? '');
+                          },
+                        ),
+                        SizedBox(height: fieldGap),
+                        _buildMaterialClassificationDropdown(
+                          label: 'Product Family',
+                          icon: Icons.account_tree_outlined,
+                          value: _productFamily,
+                          items: MaterialClassification.productFamilies.map((
+                            family,
+                          ) {
+                            return DropdownMenuItem(
+                              value: family.key,
+                              child: Text(family.label),
+                            );
+                          }).toList(),
+                          onChanged: (value) {
+                            setState(() => _productFamily = value ?? '');
+                          },
+                        ),
+                      ],
+                      _MaterialMappingNote(
+                        rawMaterialCategory: _rawMaterialCategory,
+                        productFamily: _productFamily,
+                      ),
+                      SizedBox(height: fieldGap),
                       _buildTextField(
                         controller: _uomController,
                         label: 'UOM *',
@@ -1764,6 +1893,17 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                             ),
                           ),
                         ),
+                      _buildStatusToggleTile(
+                        title: 'Weight Tracking',
+                        subtitle:
+                            'Use item weight for BOM, procurement, stock forecasting and production planning.',
+                        value: _weightTracking && _trackInventory,
+                        onChanged: (_trackInventory && !_isServiceLike)
+                            ? (value) {
+                                setState(() => _weightTracking = value);
+                              }
+                            : (_) {},
+                      ),
                       SizedBox(height: isCompactPhone ? 6 : 8),
                       if (useTwoCol)
                         Row(
@@ -2167,6 +2307,53 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _MaterialMappingNote extends StatelessWidget {
+  const _MaterialMappingNote({
+    required this.rawMaterialCategory,
+    required this.productFamily,
+  });
+
+  final String rawMaterialCategory;
+  final String productFamily;
+
+  @override
+  Widget build(BuildContext context) {
+    if (rawMaterialCategory.isEmpty || productFamily.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final mapped = MaterialClassification.isRawMaterialMappedToFamily(
+      rawMaterialCategoryKey: rawMaterialCategory,
+      productFamilyKey: productFamily,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: mapped ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: mapped ? const Color(0xFF16A34A) : const Color(0xFFF59E0B),
+          ),
+        ),
+        child: Text(
+          mapped
+              ? 'Mapped for ${MaterialClassification.productFamilyLabel(productFamily)} planning.'
+              : 'Outside default family mapping. Keep it only if planning requires it.',
+          style: TextStyle(
+            color: mapped ? const Color(0xFF166534) : const Color(0xFF92400E),
+            fontSize: 12,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       ),
     );
   }

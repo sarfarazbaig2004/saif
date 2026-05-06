@@ -9,10 +9,13 @@ class FabricationItemModel {
   final String description;
   final String itemType;
   final String category;
+  final String rawMaterialCategory;
+  final String productFamily;
   final String uom;
   final String section;
   final double standardLength;
   final double unitWeight;
+  final bool weightTracking;
   final String makeOrBuy;
   final bool isActive;
   final DateTime? createdAt;
@@ -25,10 +28,13 @@ class FabricationItemModel {
     required this.description,
     required this.itemType,
     required this.category,
+    required this.rawMaterialCategory,
+    required this.productFamily,
     required this.uom,
     required this.section,
     required this.standardLength,
     required this.unitWeight,
+    required this.weightTracking,
     required this.makeOrBuy,
     required this.isActive,
     this.createdAt,
@@ -43,10 +49,14 @@ class FabricationItemModel {
       'description': description,
       'itemType': itemType,
       'category': category,
+      'rawMaterialCategory': rawMaterialCategory,
+      'productFamily': productFamily,
       'uom': uom,
+      'unit': uom,
       'section': section,
       'standardLength': standardLength,
       'unitWeight': unitWeight,
+      'weightTracking': weightTracking,
       'makeOrBuy': makeOrBuy,
       'isActive': isActive,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -65,10 +75,15 @@ class FabricationItemModel {
       description: (data['description'] ?? '').toString(),
       itemType: (data['itemType'] ?? 'manufactured').toString(),
       category: (data['category'] ?? '').toString(),
-      uom: (data['uom'] ?? 'nos').toString(),
+      rawMaterialCategory: (data['rawMaterialCategory'] ?? '').toString(),
+      productFamily: (data['productFamily'] ?? '').toString(),
+      uom: (data['uom'] ?? data['unit'] ?? 'nos').toString(),
       section: (data['section'] ?? '').toString(),
       standardLength: doubleFromValue(data['standardLength']),
       unitWeight: doubleFromValue(data['unitWeight']),
+      weightTracking:
+          data['weightTracking'] == true ||
+          doubleFromValue(data['unitWeight']) > 0,
       makeOrBuy: (data['makeOrBuy'] ?? 'make').toString(),
       isActive: data['isActive'] != false,
       createdAt: dateTimeFromValue(data['createdAt']),

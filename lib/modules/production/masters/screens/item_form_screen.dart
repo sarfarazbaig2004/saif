@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/inventory/models/material_classification.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/masters/models/fabrication_item_model.dart';
 import 'package:QUIK/modules/production/masters/repositories/item_repository.dart';
@@ -28,6 +29,9 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
   final _standardLength = TextEditingController();
   final _unitWeight = TextEditingController();
   final _makeOrBuy = TextEditingController(text: 'make');
+  String _rawMaterialCategory = '';
+  String _productFamily = '';
+  bool _weightTracking = true;
   bool _isActive = true;
   bool _saving = false;
 
@@ -52,11 +56,14 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
     _description.text = item.description;
     _itemType.text = item.itemType;
     _category.text = item.category;
+    _rawMaterialCategory = item.rawMaterialCategory;
+    _productFamily = item.productFamily;
     _uom.text = item.uom;
     _section.text = item.section;
     _standardLength.text = '${item.standardLength}';
     _unitWeight.text = '${item.unitWeight}';
     _makeOrBuy.text = item.makeOrBuy;
+    _weightTracking = item.weightTracking;
     _isActive = item.isActive;
   }
 
@@ -83,10 +90,13 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
               ? 'manufactured'
               : _itemType.text.trim(),
           category: _category.text.trim(),
+          rawMaterialCategory: _rawMaterialCategory,
+          productFamily: _productFamily,
           uom: _uom.text.trim().isEmpty ? 'nos' : _uom.text.trim(),
           section: _section.text.trim(),
           standardLength: double.tryParse(_standardLength.text.trim()) ?? 0,
           unitWeight: double.tryParse(_unitWeight.text.trim()) ?? 0,
+          weightTracking: _weightTracking,
           makeOrBuy: _makeOrBuy.text.trim().isEmpty
               ? 'make'
               : _makeOrBuy.text.trim(),
@@ -160,11 +170,56 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
                     _field(_description, 'Description', width: 500),
                     _field(_itemType, 'Item Type'),
                     _field(_category, 'Category'),
+                    _classificationDropdown(
+                      label: 'Raw Material Category',
+                      value: _rawMaterialCategory,
+                      items: MaterialClassification.rawMaterialCategories.map((
+                        category,
+                      ) {
+                        return DropdownMenuItem(
+                          value: category.key,
+                          child: Text(category.label),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() => _rawMaterialCategory = value ?? '');
+                      },
+                    ),
+                    _classificationDropdown(
+                      label: 'Product Family',
+                      value: _productFamily,
+                      items: MaterialClassification.productFamilies.map((
+                        family,
+                      ) {
+                        return DropdownMenuItem(
+                          value: family.key,
+                          child: Text(family.label),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() => _productFamily = value ?? '');
+                      },
+                    ),
                     _field(_uom, 'UOM', width: 120),
                     _field(_section, 'Section'),
                     _field(_standardLength, 'Standard Length mm', number: true),
                     _field(_unitWeight, 'Unit Weight kg/m', number: true),
                     _field(_makeOrBuy, 'Make / Buy', width: 160),
+                    SizedBox(
+                      width: 220,
+                      child: SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Weight Tracking'),
+                        value: _weightTracking,
+                        onChanged: (value) {
+                          setState(() => _weightTracking = value);
+                        },
+                      ),
+                    ),
+                    _MappingHint(
+                      rawMaterialCategory: _rawMaterialCategory,
+                      productFamily: _productFamily,
+                    ),
                     SizedBox(
                       width: 180,
                       child: SwitchListTile(
@@ -203,6 +258,69 @@ class _ItemFormScreenState extends State<ItemFormScreen> {
             ? (value) =>
                   (value ?? '').trim().isEmpty ? '$label is required' : null
             : null,
+      ),
+    );
+  }
+
+  Widget _classificationDropdown({
+    required String label,
+    required String value,
+    required List<DropdownMenuItem<String>> items,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final normalizedValue = value.trim().isEmpty ? null : value;
+    return SizedBox(
+      width: 240,
+      child: DropdownButtonFormField<String>(
+        initialValue: normalizedValue,
+        decoration: InputDecoration(labelText: label),
+        items: [
+          const DropdownMenuItem(value: '', child: Text('Not Selected')),
+          ...items,
+        ],
+        onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+class _MappingHint extends StatelessWidget {
+  const _MappingHint({
+    required this.rawMaterialCategory,
+    required this.productFamily,
+  });
+
+  final String rawMaterialCategory;
+  final String productFamily;
+
+  @override
+  Widget build(BuildContext context) {
+    if (rawMaterialCategory.isEmpty || productFamily.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final mapped = MaterialClassification.isRawMaterialMappedToFamily(
+      rawMaterialCategoryKey: rawMaterialCategory,
+      productFamilyKey: productFamily,
+    );
+
+    return Container(
+      width: 320,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: mapped ? zSuccessSoft : zOrangeSoft,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: mapped ? zSuccess : zOrange),
+      ),
+      child: Text(
+        mapped
+            ? 'Mapped for ${MaterialClassification.productFamilyLabel(productFamily)}'
+            : 'Not in default mapping. Keep only if this is intentional.',
+        style: TextStyle(
+          color: mapped ? zSuccess : zOrange,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
       ),
     );
   }

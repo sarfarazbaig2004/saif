@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/inventory/models/material_classification.dart';
 import 'package:QUIK/core/inventory/models/inventory_profile_config.dart';
 import 'package:QUIK/core/inventory/providers/inventory_config_provider.dart';
 import 'package:QUIK/core/inventory/services/inventory_config_service.dart';
@@ -165,10 +166,107 @@ class _ScreenInventoryProfileSettingsState
               ),
               const SizedBox(height: 14),
               _CurrentProfilePanel(profile: _profile),
+              const SizedBox(height: 14),
+              const _MaterialClassificationPanel(),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _MaterialClassificationPanel extends StatelessWidget {
+  const _MaterialClassificationPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: zBorder),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.account_tree_outlined, color: zBlue, size: 20),
+              SizedBox(width: 8),
+              Text(
+                'Material Classification Foundation',
+                style: TextStyle(
+                  color: zText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: MaterialClassification.rawMaterialCategories.map((
+              category,
+            ) {
+              return Chip(label: Text(category.label));
+            }).toList(),
+          ),
+          const SizedBox(height: 14),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 760;
+              final cards = MaterialClassification.productFamilies.map((
+                family,
+              ) {
+                final materials = MaterialClassification.rawMaterialsForFamily(
+                  family.key,
+                );
+                return SizedBox(
+                  width: narrow ? double.infinity : 320,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: zSurfaceSoft,
+                      border: Border.all(color: zBorder),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          family.label,
+                          style: const TextStyle(
+                            color: zText,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          materials
+                              .map((material) => material.label)
+                              .join(', '),
+                          style: const TextStyle(
+                            color: zMuted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList();
+
+              return Wrap(spacing: 10, runSpacing: 10, children: cards);
+            },
+          ),
+        ],
+      ),
     );
   }
 }
