@@ -1,11 +1,11 @@
 {
-  "name": "QUIK",
-  "short_name": "QUIK",
+  "name": "QUIK ERP - AMAN Infra ERP Workspace",
+  "short_name": "QUIK ERP",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#EEF2F7",
   "theme_color": "#2563EB",
-  "description": "QUIK - Smart CRM and Quotation Management System",
+  "description": "QUIK ERP for the AMAN Infra ERP Workspace",
   "orientation": "portrait-primary",
   "prefer_related_applications": false,
   "icons": [

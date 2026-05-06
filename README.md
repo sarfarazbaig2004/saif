@@ -1,16 +1,9 @@
-# genz_protech
+# AMAN Infra ERP
 
-A new Flutter project.
+Single-tenant QUIK ERP workspace for AMAN Infra.
 
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- App branding: QUIK ERP / AMAN Infra ERP Workspace
+- Tenant and company ID: `aman_infra`
+- Data scope: `companies/aman_infra/**`
+- Tenant switching: disabled
+- Production module: enabled by default

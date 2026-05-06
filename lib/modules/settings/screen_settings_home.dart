@@ -4,16 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/auth/register/register_screen_local.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 
-enum _SettingsSection {
-  personal,
-  workspace,
-  access,
-  system,
-  danger,
-}
+enum _SettingsSection { personal, workspace, access, system, danger }
 
 class ScreenSettingsHome extends StatefulWidget {
   final String companyId;
@@ -60,9 +53,12 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
   bool get canOpenUsers => isAdminOrManager || _hasPermission('userManagement');
 
   // Hide these explicitly for Export-Import
-  bool get canOpenCompanyProfile => !isExportImport && (isAdminOrManager || _hasPermission('companyProfile'));
-  bool get canOpenAuditLogs => !isExportImport && (isAdminOrManager || _hasPermission('auditLogs'));
-  bool get canOpenRoles => !isExportImport && (isAdminOrManager || _hasPermission('roles'));
+  bool get canOpenCompanyProfile =>
+      !isExportImport && (isAdminOrManager || _hasPermission('companyProfile'));
+  bool get canOpenAuditLogs =>
+      !isExportImport && (isAdminOrManager || _hasPermission('auditLogs'));
+  bool get canOpenRoles =>
+      !isExportImport && (isAdminOrManager || _hasPermission('roles'));
 
   List<_NavItemData> get _navItems {
     return [
@@ -106,14 +102,9 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
         Expanded(
           child: Row(
             children: [
-              SizedBox(
-                width: 250,
-                child: _buildLeftNav(),
-              ),
+              SizedBox(width: 250, child: _buildLeftNav()),
               const SizedBox(width: 10),
-              Expanded(
-                child: _buildRightPanel(),
-              ),
+              Expanded(child: _buildRightPanel()),
             ],
           ),
         ),
@@ -190,19 +181,16 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
                 ),
                 child: Row(
                   children: [
-                    Icon(
-                      item.icon,
-                      size: 18,
-                      color: selected ? zBlue : zMuted,
-                    ),
+                    Icon(item.icon, size: 18, color: selected ? zBlue : zMuted),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         item.title,
                         style: TextStyle(
                           color: selected ? zBlue : zText,
-                          fontWeight:
-                          selected ? FontWeight.w800 : FontWeight.w600,
+                          fontWeight: selected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
                           fontSize: 13.5,
                         ),
                       ),
@@ -240,19 +228,14 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
         _ActionTile(
           title: 'My Profile',
           subtitle:
-          'View and update the same company and registration details already saved in your workspace.',
+              'AMAN Infra account profile changes are managed by the administrator.',
           icon: Icons.person_outline,
-          onTap: () async {
-            await Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const RegisterScreenLocal(),
-              ),
-            );
-
-            if (!mounted) return;
+          onTap: () {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Profile screen closed. Any saved changes are now updated.'),
+                content: Text(
+                  'Contact the AMAN Infra administrator for profile changes.',
+                ),
               ),
             );
           },
@@ -281,7 +264,8 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
         if (canOpenCompanyProfile)
           _ActionTile(
             title: 'Company Profile',
-            subtitle: 'Manage company identity, GST, PAN, address, and branding.',
+            subtitle:
+                'Manage company identity, GST, PAN, address, and branding.',
             icon: Icons.apartment_outlined,
             enabled: canOpenCompanyProfile,
             onTap: widget.onOpenCompanyProfile,
@@ -296,12 +280,13 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
           ),
           _ActionTile(
             title: 'Document Numbering',
-            subtitle: 'Control quotation, invoice, and order numbering formats.',
+            subtitle:
+                'Control quotation, invoice, and order numbering formats.',
             icon: Icons.numbers_outlined,
             enabled: isAdminOrManager,
             onTap: () => _showComingSoon('Document Numbering'),
           ),
-        ]
+        ],
       ],
     );
   }
@@ -360,12 +345,13 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
           ),
           _ActionTile(
             title: 'Security Policies',
-            subtitle: 'Future controls for session rules and account protection.',
+            subtitle:
+                'Future controls for session rules and account protection.',
             icon: Icons.security_outlined,
             enabled: isAdminOrManager,
             onTap: () => _showComingSoon('Security Policies'),
           ),
-        ]
+        ],
       ],
     );
   }
@@ -378,7 +364,7 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
         _ActionTile(
           title: 'Delete Account',
           subtitle:
-          'Permanently delete your login and remove your root user profile.',
+              'Permanently delete your login and remove your root user profile.',
           icon: Icons.delete_forever_outlined,
           isDanger: true,
           onTap: () => _showDeleteDialog(context),
@@ -388,11 +374,9 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
   }
 
   void _showComingSoon(String title) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$title will be added next'),
-      ),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$title will be added next')));
   }
 
   Future<void> _showChangePasswordDialog(BuildContext context) async {
@@ -544,10 +528,10 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
                   onPressed: saving ? null : submit,
                   child: saving
                       ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Text('Update Password'),
                 ),
               ],
@@ -663,9 +647,7 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
                     TextField(
                       controller: passwordController,
                       obscureText: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Password',
-                      ),
+                      decoration: const InputDecoration(labelText: 'Password'),
                     ),
                     if (errorText != null) ...[
                       const SizedBox(height: 12),
@@ -692,16 +674,14 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
                   child: const Text('Cancel'),
                 ),
                 FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.red,
-                  ),
+                  style: FilledButton.styleFrom(backgroundColor: Colors.red),
                   onPressed: deleting ? null : submitDelete,
                   child: deleting
                       ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Text('Delete Permanently'),
                 ),
               ],
@@ -823,9 +803,7 @@ class _ActionTile extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(
-            color: isDanger ? Colors.red.shade100 : zBorder,
-          ),
+          border: Border.all(color: isDanger ? Colors.red.shade100 : zBorder),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -837,11 +815,7 @@ class _ActionTile extends StatelessWidget {
                 color: isDanger ? const Color(0xFFFFF1F2) : zBlueSoft,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                icon,
-                size: 19,
-                color: accent,
-              ),
+              child: Icon(icon, size: 19, color: accent),
             ),
             const SizedBox(width: 12),
             Expanded(

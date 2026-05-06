@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:QUIK/core/app/aman_app_config.dart';
+
 class TenantContext extends ChangeNotifier {
-  String _selectedTenantId = '';
-  List<String> _allowedTenantIds = [];
-  bool _isPlatformAdmin = false;
-  Map<String, String> _tenantNames = {};
+  String _selectedTenantId = AmanAppConfig.tenantId;
+  List<String> _allowedTenantIds = const [AmanAppConfig.tenantId];
+  Map<String, String> _tenantNames = const {
+    AmanAppConfig.tenantId: AmanAppConfig.companyName,
+  };
 
   String get selectedTenantId => _selectedTenantId;
   List<String> get allowedTenantIds => _allowedTenantIds;
-  bool get isPlatformAdmin => _isPlatformAdmin;
   Map<String, String> get tenantNames => _tenantNames;
 
   void setSelectedTenant(String id) {
-    _selectedTenantId = id;
+    _selectedTenantId = AmanAppConfig.tenantId;
     notifyListeners();
   }
 
@@ -22,17 +24,12 @@ class TenantContext extends ChangeNotifier {
   }
 
   void replaceAllowedTenants(List<String> ids) {
-    _allowedTenantIds = ids;
-    notifyListeners();
-  }
-
-  void setPlatformAdmin(bool value) {
-    _isPlatformAdmin = value;
+    _allowedTenantIds = const [AmanAppConfig.tenantId];
     notifyListeners();
   }
 
   void setTenantNames(Map<String, String> names) {
-    _tenantNames = names;
+    _tenantNames = const {AmanAppConfig.tenantId: AmanAppConfig.companyName};
     notifyListeners();
   }
 }

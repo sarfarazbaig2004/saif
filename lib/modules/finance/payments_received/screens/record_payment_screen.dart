@@ -7,7 +7,7 @@ import '../models/payment_model.dart';
 import '../controllers/record_payment_controller.dart';
 import '../../invoice/screens/export_invoice_screen.dart';
 
-// --- Premium SaaS Design System Colors ---
+// --- Premium ERP Design System Colors ---
 const Color _kPrimary = Color(0xFF2563EB);
 const Color _kPrimarySoft = Color(0xFFEFF6FF);
 const Color _kText = Color(0xFF0F172A);

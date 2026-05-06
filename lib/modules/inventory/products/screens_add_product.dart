@@ -1618,7 +1618,7 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
                         controller: _brandController,
                         label: 'Brand',
                         icon: Icons.workspace_premium_outlined,
-                        hint: 'e.g. MEMCO',
+                        hint: 'e.g. AMAN',
                         onChanged: (_) => setState(() {}),
                       ),
                     ],

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:QUIK/core/app/aman_app_config.dart';
 import 'package:QUIK/shell/zoho_shell.dart';
 import 'package:QUIK/core/inventory/providers/inventory_config_provider.dart';
 import 'package:QUIK/core/inventory/services/inventory_config_service.dart';
@@ -10,7 +11,6 @@ import 'package:QUIK/core/modules/providers/module_access_provider.dart';
 import 'package:QUIK/core/modules/services/tenant_module_service.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/auth/login/login_screen.dart';
-import 'package:QUIK/modules/administration/company/screen_join_company.dart';
 import 'package:provider/provider.dart';
 
 class AuthWrapper extends StatelessWidget {
@@ -53,7 +53,6 @@ class _UserProfileGateState extends State<_UserProfileGate> {
   bool _loading = true;
   String? _error;
   Map<String, dynamic>? _data;
-  bool _isPlatformAdmin = false;
   String? _lastAppliedTenantId;
   bool _tenantContextUpdated = false;
 
@@ -73,16 +72,9 @@ class _UserProfileGateState extends State<_UserProfileGate> {
 
         if (doc.exists && doc.data() != null) {
           final userData = doc.data()!;
-          final isPlatformAdmin = await _resolvePlatformAdminStatus(
-            firestore: firestore,
-            uid: uid,
-            userData: userData,
-          );
-
           if (!mounted) return;
           setState(() {
             _data = userData;
-            _isPlatformAdmin = isPlatformAdmin;
             _loading = false;
             _error = null;
           });
@@ -104,39 +96,6 @@ class _UserProfileGateState extends State<_UserProfileGate> {
         _error = 'Failed to load user profile: $e';
       });
     }
-  }
-
-  Future<bool> _resolvePlatformAdminStatus({
-    required FirebaseFirestore firestore,
-    required String uid,
-    required Map<String, dynamic> userData,
-  }) async {
-    final userFlag =
-        userData['isPlatformAdmin'] == true ||
-        userData['platformAdmin'] == true ||
-        userData['isSuperAdmin'] == true;
-
-    var platformAdminDocAllowed = false;
-    try {
-      final platformAdminDoc = await firestore
-          .collection('platform_admins')
-          .doc(uid)
-          .get();
-      final platformAdminData = platformAdminDoc.data();
-      platformAdminDocAllowed =
-          platformAdminDoc.exists &&
-          platformAdminData?['isActive'] != false &&
-          platformAdminData?['active'] != false;
-    } catch (e) {
-      debugPrint('Platform admin lookup failed for $uid: $e');
-    }
-
-    final isPlatformAdmin = userFlag || platformAdminDocAllowed;
-    debugPrint(
-      'Platform admin resolved for $uid: $isPlatformAdmin '
-      '(userFlag=$userFlag, platformDoc=$platformAdminDocAllowed)',
-    );
-    return isPlatformAdmin;
   }
 
   Future<void> _logout() async {
@@ -191,13 +150,11 @@ class _UserProfileGateState extends State<_UserProfileGate> {
       );
     }
 
-    final allowedTenantIds = _resolveAllowedTenantIds(data);
-    final companyId = _resolveSelectedTenantId(data, allowedTenantIds);
+    const allowedTenantIds = [AmanAppConfig.tenantId];
+    const companyId = AmanAppConfig.companyId;
 
     final role = (data['role'] ?? 'sales').toString();
-    final companyName =
-        (data['companyName'] ?? widget.firebaseUser.email ?? 'Workspace')
-            .toString();
+    const companyName = AmanAppConfig.companyName;
 
     final permissions = Map<String, dynamic>.from(data['permissions'] ?? {});
 
@@ -209,97 +166,6 @@ class _UserProfileGateState extends State<_UserProfileGate> {
                 '')
             .toString();
 
-    if (companyId.isEmpty) {
-      return Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 460),
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade300),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
-                    blurRadius: 26,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Color(0xFFEFF6FF),
-                    child: Icon(
-                      Icons.group_add_outlined,
-                      size: 28,
-                      color: Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'You are not linked to any company yet',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.black87,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Join your company using an invite code to access your workspace.',
-                    style: TextStyle(color: Colors.grey, height: 1.4),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: FilledButton(
-                      onPressed: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const ScreenJoinCompany(),
-                          ),
-                        );
-
-                        if (!mounted) return;
-                        setState(() {
-                          _loading = true;
-                          _error = null;
-                          _data = null;
-                        });
-                        _loadUserProfileWithRetry();
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Join Existing Company',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton(onPressed: _logout, child: const Text('Logout')),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
     if (!_tenantContextUpdated || _lastAppliedTenantId != companyId) {
       _tenantContextUpdated = true;
       _lastAppliedTenantId = companyId;
@@ -309,10 +175,7 @@ class _UserProfileGateState extends State<_UserProfileGate> {
 
         final tenantContext = context.read<TenantContext>();
         tenantContext.replaceAllowedTenants(allowedTenantIds);
-        tenantContext.setPlatformAdmin(_isPlatformAdmin);
-        tenantContext.setTenantNames(
-          {if (companyId.isNotEmpty) companyId: companyName},
-        );
+        tenantContext.setTenantNames(const {companyId: companyName});
         tenantContext.selectTenant(companyId);
       });
     }
@@ -325,73 +188,17 @@ class _UserProfileGateState extends State<_UserProfileGate> {
           tenantId: companyId,
           controller: context.read<ModuleAccessController>(),
           child: ZohoShell(
-            userEmail: widget.firebaseUser.email ?? 'user@workspace.com',
+            userEmail: widget.firebaseUser.email ?? AmanAppConfig.supportEmail,
             userUid: widget.firebaseUser.uid,
             companyId: companyId,
             companyName: companyName,
             role: role,
             permissions: permissions,
             userDisplayName: userDisplayName,
-            isPlatformAdmin: _isPlatformAdmin,
           ),
         ),
       ),
     );
-  }
-
-  List<String> _resolveAllowedTenantIds(Map<String, dynamic> data) {
-    final tenantIds = <String>[
-      (data['tenantId'] ?? '').toString(),
-      (data['companyId'] ?? '').toString(),
-      (data['primaryTenantId'] ?? '').toString(),
-      (data['primaryCompanyId'] ?? '').toString(),
-    ];
-
-    void addList(dynamic value) {
-      if (value is! Iterable) return;
-      for (final item in value) {
-        tenantIds.add(item.toString());
-      }
-    }
-
-    addList(data['tenantIds']);
-    addList(data['companyIds']);
-    addList(data['allowedTenantIds']);
-    addList(data['allowedCompanyIds']);
-
-    final memberships = data['memberships'];
-    if (memberships is Map) {
-      for (final key in memberships.keys) {
-        tenantIds.add(key.toString());
-      }
-    }
-
-    final seen = <String>{};
-    return tenantIds
-        .map((id) => id.trim())
-        .where((id) => id.isNotEmpty && seen.add(id))
-        .toList();
-  }
-
-  String _resolveSelectedTenantId(
-    Map<String, dynamic> data,
-    List<String> allowedTenantIds,
-  ) {
-    final preferred = [
-      (data['selectedTenantId'] ?? '').toString(),
-      (data['tenantId'] ?? '').toString(),
-      (data['companyId'] ?? '').toString(),
-      (data['primaryTenantId'] ?? '').toString(),
-      (data['primaryCompanyId'] ?? '').toString(),
-    ].map((id) => id.trim()).where((id) => id.isNotEmpty);
-
-    for (final tenantId in preferred) {
-      if (allowedTenantIds.isEmpty || allowedTenantIds.contains(tenantId)) {
-        return tenantId;
-      }
-    }
-
-    return allowedTenantIds.isEmpty ? '' : allowedTenantIds.first;
   }
 }
 

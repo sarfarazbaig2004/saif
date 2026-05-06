@@ -1,13 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:QUIK/core/app/aman_app_config.dart';
+
 class TenantFirestore {
   TenantFirestore({required String tenantId, FirebaseFirestore? firestore})
-    : tenantId = tenantId.trim(),
+    : tenantId = AmanAppConfig.tenantId,
       _firestore = firestore ?? FirebaseFirestore.instance {
-    if (this.tenantId.isEmpty) {
-      throw ArgumentError(
-        'tenantId is required for tenant-scoped Firestore access.',
-      );
+    final requestedTenantId = tenantId.trim();
+    if (requestedTenantId.isNotEmpty &&
+        requestedTenantId != AmanAppConfig.tenantId) {
+      throw ArgumentError('AMAN Infra ERP only supports the AMAN tenant.');
     }
   }
 
@@ -37,10 +39,11 @@ class TenantFirestore {
   }
 
   static String requireTenantId(String? tenantId) {
-    final id = (tenantId ?? '').trim();
-    if (id.isEmpty) {
-      throw StateError('Missing tenantId. Select a company workspace first.');
+    final requestedTenantId = (tenantId ?? '').trim();
+    if (requestedTenantId.isNotEmpty &&
+        requestedTenantId != AmanAppConfig.tenantId) {
+      throw StateError('AMAN Infra ERP only supports the AMAN tenant.');
     }
-    return id;
+    return AmanAppConfig.tenantId;
   }
 }

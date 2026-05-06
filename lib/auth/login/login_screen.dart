@@ -1,9 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/auth/register/register_screen_local.dart' as reg;
 import 'package:QUIK/core/theme/app_theme.dart';
-import 'package:QUIK/modules/administration/company/screen_join_company.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -276,7 +274,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                     border: Border.all(color: zBorder),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.07),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.07,
+                                        ),
                                         blurRadius: 30,
                                         offset: const Offset(0, 16),
                                       ),
@@ -335,7 +335,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                                   ),
                                                   SizedBox(height: 4),
                                                   Text(
-                                                    'Sign in to your ERP workspace',
+                                                    'AMAN Infra ERP Workspace',
                                                     style: TextStyle(
                                                       color: zMuted,
                                                       fontSize: 13,
@@ -512,120 +512,21 @@ class _LoginScreenState extends State<LoginScreen> {
                                           ),
                                         ),
                                         const SizedBox(height: 12),
-                                        SizedBox(
-                                          height: 46,
-                                          child: OutlinedButton(
-                                            onPressed: _loading
-                                                ? null
-                                                : () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) =>
-                                                            const reg.RegisterScreenLocal(),
-                                                      ),
-                                                    );
-                                                  },
-                                            style: OutlinedButton.styleFrom(
-                                              backgroundColor: const Color(
-                                                0xFFF8FAFC,
-                                              ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(14),
-                                              ),
-                                              side: const BorderSide(
-                                                color: zBorder,
-                                              ),
-                                            ),
-                                            child: const Text(
-                                              'Create New ERP Workspace',
-                                              style: TextStyle(
-                                                fontSize: 14.5,
-                                                fontWeight: FontWeight.w700,
-                                                color: zText,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          height: compactHeight ? 12 : 16,
-                                        ),
-                                        Row(
-                                          children: [
-                                            Expanded(
-                                              child: Container(
-                                                height: 1,
-                                                color: zBorder,
-                                              ),
-                                            ),
-                                            const Padding(
-                                              padding: EdgeInsets.symmetric(
-                                                horizontal: 10,
-                                              ),
-                                              child: Text(
-                                                'or',
-                                                style: TextStyle(
-                                                  color: zMuted,
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 13,
-                                                ),
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: Container(
-                                                height: 1,
-                                                color: zBorder,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        SizedBox(
-                                          height: compactHeight ? 12 : 16,
-                                        ),
-                                        SizedBox(
-                                          height: 46,
-                                          child: OutlinedButton.icon(
-                                            onPressed: _loading
-                                                ? null
-                                                : () {
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) =>
-                                                            const ScreenJoinCompany(),
-                                                      ),
-                                                    );
-                                                  },
-                                            icon: const Icon(
-                                              Icons.group_add_outlined,
-                                              size: 18,
-                                              color: zBlue,
-                                            ),
-                                            style: OutlinedButton.styleFrom(
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(14),
-                                              ),
-                                              side: const BorderSide(
-                                                color: zBorder,
-                                              ),
-                                            ),
-                                            label: const Text(
-                                              'Join Existing Company Workspace',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w700,
-                                                color: zText,
-                                              ),
-                                            ),
+                                        const Text(
+                                          'Use your AMAN Infra account credentials. New users are created by the AMAN Infra administrator.',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: zMuted,
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w600,
+                                            height: 1.45,
                                           ),
                                         ),
                                         SizedBox(
                                           height: compactHeight ? 12 : 18,
                                         ),
                                         const Text(
-                                          'QUIK ERP for operations, sales, customers, inventory, finance and team management',
+                                          'QUIK ERP for AMAN Infra production, inventory, finance and team operations',
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
                                             color: zMuted,
@@ -668,7 +569,9 @@ class _BgGlow extends StatelessWidget {
         height: size,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: RadialGradient(colors: [color, color.withValues(alpha: 0.0)]),
+          gradient: RadialGradient(
+            colors: [color, color.withValues(alpha: 0.0)],
+          ),
         ),
       ),
     );
@@ -810,7 +713,7 @@ class _LoginSideBranding extends StatelessWidget {
             ),
             const SizedBox(height: 30),
             const Text(
-              'Run your business with one secure and connected ERP workspace.',
+              'Run AMAN Infra operations in one secure ERP workspace.',
               style: TextStyle(
                 fontSize: 34,
                 height: 1.16,
@@ -820,7 +723,7 @@ class _LoginSideBranding extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             const Text(
-              'Manage sales, customers, quotations, inventory, users, approvals and day-to-day business operations from one professional SaaS platform.',
+              'Manage production, inventory, purchase, dispatch, finance, users and daily AMAN Infra operations from one dedicated workspace.',
               style: TextStyle(
                 fontSize: 15,
                 height: 1.65,
@@ -1057,7 +960,7 @@ class _LoginSideBranding extends StatelessWidget {
                           icon: Icons.shield_outlined,
                           title: 'Company isolation',
                           subtitle:
-                              'Each company works inside its own protected data boundary.',
+                              'AMAN Infra data stays inside its own protected company boundary.',
                           tint: zBlueSoft,
                           iconColor: zBlue,
                         ),

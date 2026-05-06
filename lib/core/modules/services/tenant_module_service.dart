@@ -17,6 +17,15 @@ class TenantModuleService {
 
   static const Set<String> _defaultEnabledModuleIds = {
     ModuleIds.administration,
+    ModuleIds.crm,
+    ModuleIds.dispatch,
+    ModuleIds.finance,
+    ModuleIds.hr,
+    ModuleIds.inventory,
+    ModuleIds.production,
+    ModuleIds.purchase,
+    ModuleIds.reports,
+    ModuleIds.sales,
     ModuleIds.settings,
   };
 

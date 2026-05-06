@@ -42,13 +42,6 @@ class ModuleRegistry {
       sortOrder: 30,
     ),
     AppModule(
-      id: ModuleIds.service,
-      displayName: 'Service',
-      baseRoute: '/service',
-      iconKey: 'support_agent',
-      sortOrder: 40,
-    ),
-    AppModule(
       id: ModuleIds.purchase,
       displayName: 'Purchase',
       baseRoute: '/purchase',
@@ -96,13 +89,6 @@ class ModuleRegistry {
       baseRoute: '/reports',
       iconKey: 'bar_chart',
       sortOrder: 80,
-    ),
-    AppModule(
-      id: ModuleIds.iot,
-      displayName: 'IoT',
-      baseRoute: '/iot',
-      iconKey: 'sensors',
-      sortOrder: 90,
     ),
     AppModule(
       id: ModuleIds.settings,

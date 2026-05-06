@@ -10,6 +10,14 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
+    function amanTenantId() {
+      return 'aman_infra';
+    }
+
+    function isAmanTenant(tenantId) {
+      return tenantId == amanTenantId();
+    }
+
     function rootUserPath() {
       return /databases/$(database)/documents/users/$(uid());
     }
@@ -22,28 +30,24 @@ service cloud.firestore {
       return get(rootUserPath()).data;
     }
 
-    function isPlatformAdmin() {
-      return hasRootUserProfile() && rootUser().isPlatformAdmin == true;
-    }
-
-    function rootAllowedTenants(tenantId) {
+    function rootUserAllowsAman() {
       return hasRootUserProfile() && (
-        rootUser().isPlatformAdmin == true ||
-        rootUser().companyId == tenantId ||
-        ('allowedTenantIds' in rootUser() && tenantId in rootUser().allowedTenantIds) ||
-        ('companyIds' in rootUser() && tenantId in rootUser().companyIds) ||
-        ('memberships' in rootUser() && tenantId in rootUser().memberships.keys())
+        rootUser().tenantId == amanTenantId() ||
+        rootUser().companyId == amanTenantId() ||
+        rootUser().primaryTenantId == amanTenantId() ||
+        rootUser().primaryCompanyId == amanTenantId()
       );
     }
 
-    function hasCompanyMembership(tenantId) {
+    function hasAmanMembership() {
       return signedIn() &&
-        exists(/databases/$(database)/documents/companies/$(tenantId)/users/$(uid()));
+        exists(/databases/$(database)/documents/companies/$(amanTenantId())/users/$(uid()));
     }
 
-    function canAccessTenant(tenantId) {
+    function canAccessAman(tenantId) {
       return signedIn() &&
-        (isPlatformAdmin() || rootAllowedTenants(tenantId) || hasCompanyMembership(tenantId));
+        isAmanTenant(tenantId) &&
+        (rootUserAllowsAman() || hasAmanMembership());
     }
 
     function tenantFieldsMatchPath(tenantId) {
@@ -63,46 +67,42 @@ service cloud.firestore {
     function noRootTenantGrantFields() {
       return !('allowedTenantIds' in request.resource.data) &&
         !('companyIds' in request.resource.data) &&
-        !('companyId' in request.resource.data) &&
         !('memberships' in request.resource.data) &&
-        !('isPlatformAdmin' in request.resource.data);
+        tenantFieldsMatchPath(amanTenantId()) &&
+        companyFieldsMatchPath(amanTenantId());
     }
 
     function rootTenantGrantFieldsUnchanged() {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
         'allowedTenantIds',
         'companyIds',
-        'companyId',
         'memberships',
-        'isPlatformAdmin',
-      ]);
+      ]) &&
+      tenantFieldsMatchPath(amanTenantId()) &&
+      companyFieldsMatchPath(amanTenantId());
     }
 
     match /users/{userId} {
-      allow read: if signedIn() && (uid() == userId || isPlatformAdmin());
-      allow create: if isPlatformAdmin() ||
-        (signedIn() && uid() == userId && noRootTenantGrantFields());
-      allow update: if isPlatformAdmin() ||
-        (signedIn() && uid() == userId && rootTenantGrantFieldsUnchanged());
-      allow delete: if isPlatformAdmin();
+      allow read: if signedIn() && uid() == userId;
+      allow create: if signedIn() && uid() == userId && noRootTenantGrantFields();
+      allow update: if signedIn() && uid() == userId && rootTenantGrantFieldsUnchanged();
+      allow delete: if false;
     }
 
     match /companies/{tenantId} {
-      allow read: if canAccessTenant(tenantId);
-      allow create, update, delete: if canAccessTenant(tenantId) &&
-        tenantWriteAllowed(tenantId);
+      allow read: if canAccessAman(tenantId);
+      allow create, update: if canAccessAman(tenantId) && tenantWriteAllowed(tenantId);
+      allow delete: if false;
 
       match /users/{userId} {
-        allow read: if canAccessTenant(tenantId);
-        allow write: if isPlatformAdmin() ||
-          (signedIn() && uid() == userId && canAccessTenant(tenantId));
+        allow read: if canAccessAman(tenantId);
+        allow write: if signedIn() && uid() == userId && canAccessAman(tenantId);
       }
 
       match /{document=**} {
-        allow read: if canAccessTenant(tenantId);
-        allow create, update: if canAccessTenant(tenantId) &&
-          tenantWriteAllowed(tenantId);
-        allow delete: if canAccessTenant(tenantId);
+        allow read: if canAccessAman(tenantId);
+        allow create, update: if canAccessAman(tenantId) && tenantWriteAllowed(tenantId);
+        allow delete: if canAccessAman(tenantId);
       }
     }
 

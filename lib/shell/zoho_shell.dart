@@ -37,7 +37,6 @@ import 'package:QUIK/modules/finance/proforma_invoice/proforma_list_screen.dart'
 import 'package:QUIK/modules/finance/payments_received/screens/payments_list_screen.dart';
 import 'package:QUIK/modules/finance/outstanding/screens/outstanding_screen.dart';
 import 'package:QUIK/modules/hr/screens/hr_home_screen.dart';
-import 'package:QUIK/modules/platform_admin/screens/platform_tenant_modules_screen.dart';
 import 'package:QUIK/modules/production/bom/screens/bom_list_screen.dart';
 import 'package:QUIK/modules/production/boq/screens/boq_list_screen.dart';
 import 'package:QUIK/modules/production/contractor_jobs/screens/contractor_job_list_screen.dart';
@@ -134,7 +133,7 @@ extension ShellPageX on ShellPage {
       case ShellPage.dashboard:
         return 'Dashboard';
       case ShellPage.platformTenantModules:
-        return 'Tenant Modules';
+        return 'AMAN Modules';
 
       case ShellPage.salesInquiries:
         return 'Inquiries';
@@ -426,7 +425,6 @@ class ZohoShell extends StatefulWidget {
   final Map<String, dynamic> permissions;
   final String? userDisplayName;
   final String? industry;
-  final bool isPlatformAdmin;
 
   const ZohoShell({
     super.key,
@@ -438,7 +436,6 @@ class ZohoShell extends StatefulWidget {
     required this.permissions,
     this.userDisplayName,
     this.industry,
-    this.isPlatformAdmin = false,
   });
 
   @override
@@ -585,7 +582,7 @@ class _ZohoShellState extends State<ZohoShell> {
     }
 
     if (page == ShellPage.platformTenantModules) {
-      return widget.isPlatformAdmin;
+      return false;
     }
 
     if (page == ShellPage.adminModules ||
@@ -607,7 +604,7 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.dashboard:
         return true;
       case ShellPage.platformTenantModules:
-        return widget.isPlatformAdmin;
+        return false;
       case ShellPage.settingsGeneral:
         return true;
       // Sales
@@ -821,13 +818,6 @@ class _ZohoShellState extends State<ZohoShell> {
   List<SidebarGroup> get _allSidebarGroups {
     if (_resolvedIndustry == 'export_import') {
       return [
-        if (widget.isPlatformAdmin)
-          const SidebarGroup(
-            key: 'platform',
-            title: 'Platform Admin',
-            icon: Icons.admin_panel_settings_outlined,
-            children: [ShellPage.platformTenantModules],
-          ),
         SidebarGroup(
           key: 'crm',
           title: 'CRM',
@@ -876,13 +866,6 @@ class _ZohoShellState extends State<ZohoShell> {
     }
 
     return [
-      if (widget.isPlatformAdmin)
-        const SidebarGroup(
-          key: 'platform',
-          title: 'Platform Admin',
-          icon: Icons.admin_panel_settings_outlined,
-          children: [ShellPage.platformTenantModules],
-        ),
       const SidebarGroup(
         key: 'sales',
         title: 'Sales',
@@ -895,12 +878,6 @@ class _ZohoShellState extends State<ZohoShell> {
           ShellPage.salesTasks,
           ShellPage.salesMeetings,
         ],
-      ),
-      const SidebarGroup(
-        key: 'service',
-        title: 'Service',
-        icon: Icons.build_outlined,
-        children: [ShellPage.service],
       ),
       const SidebarGroup(
         key: 'crm',
@@ -1043,8 +1020,6 @@ class _ZohoShellState extends State<ZohoShell> {
         return ModuleIds.crm;
       case ModuleIds.sales:
         return ModuleIds.sales;
-      case ModuleIds.service:
-        return ModuleIds.service;
       case ModuleIds.purchase:
         return ModuleIds.purchase;
       case ModuleIds.inventory:
@@ -1342,7 +1317,7 @@ class _ZohoShellState extends State<ZohoShell> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'QUIK ERP',
+                              kAppName,
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w900,
@@ -1352,7 +1327,7 @@ class _ZohoShellState extends State<ZohoShell> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              widget.companyName,
+                              kAppTagline,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
@@ -1739,9 +1714,12 @@ class _ZohoShellState extends State<ZohoShell> {
         );
 
       case ShellPage.platformTenantModules:
-        return Padding(
-          padding: const EdgeInsets.all(10),
-          child: PlatformTenantModulesScreen(platformAdminUid: widget.userUid),
+        return DashboardScreen(
+          companyId: widget.companyId,
+          userName: _resolvedEmployeeName(),
+          currentUserId: widget.userUid,
+          permissions: _currentPermissions,
+          role: _currentRole,
         );
 
       case ShellPage.salesInquiries:
@@ -2238,7 +2216,7 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.settingsGeneral:
         return ['Company', 'Security', 'Users', 'Audit'];
       default:
-        return ['Professional', 'Scalable', 'Modular', 'SaaS'];
+        return ['Professional', 'AMAN', 'Production', 'ERP'];
     }
   }
 
@@ -2247,7 +2225,7 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.salesInquiries:
         return 'Track leads and incoming inquiries, assign them to team members, monitor status, and prepare them for quotation and order conversion.';
       case ShellPage.salesQuotations:
-        return 'Generate and manage quotations for your sales team. This connects your existing quotation workflow into a cleaner SaaS module structure.';
+        return 'Generate and manage quotations for your sales team. This connects your existing quotation workflow into the AMAN Infra ERP module structure.';
       case ShellPage.crmCustomers:
         return 'Manage customer master records, view customer relationship data, and keep your CRM organized around actual business accounts.';
       case ShellPage.inventoryProducts:
@@ -2257,7 +2235,7 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.settingsGeneral:
         return 'Manage workspace preferences, company controls, users, security, notifications, integrations, and audit-related options from one professional ERP settings hub.';
       default:
-        return 'This module is part of the new professional QUIK SaaS structure. You can keep your current app working while gradually connecting this module to its own database, screens, and workflows.';
+        return 'This module is part of the dedicated AMAN Infra ERP workspace and keeps its records inside the AMAN company data boundary.';
     }
   }
 
@@ -2532,7 +2510,7 @@ class _ZohoShellState extends State<ZohoShell> {
                 Expanded(
                   child: _Panel(
                     title: 'Workspace Structure',
-                    emptyText: 'Professional SaaS modules are ready in sidebar',
+                    emptyText: 'AMAN Infra ERP modules are ready in sidebar',
                     emptyIcon: Icons.dashboard_customize_outlined,
                   ),
                 ),

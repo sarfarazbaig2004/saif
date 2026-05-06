@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/app/aman_app_config.dart';
+
 const Color zTealTop = Color(0xFF0F6A6C);
 const Color zDarkBar = Color(0xFF1E293B);
 const Color zIconRail = Color(0xFF0F172A);
@@ -46,8 +48,8 @@ const double kCardElevation = 0;
 const double kSectionGap = 16;
 const double kPagePadding = 20;
 
-const String kAppName = 'QUIK ERP';
-const String kAppTagline = 'Unified Business ERP';
+const String kAppName = AmanAppConfig.appName;
+const String kAppTagline = AmanAppConfig.workspaceName;
 
 MaterialColor createMaterialColor(Color color) {
   final strengths = <double>[.05];
@@ -181,10 +183,7 @@ ThemeData buildQuikTheme() {
         fontSize: 18,
         fontWeight: FontWeight.w800,
       ),
-      iconTheme: IconThemeData(
-        color: zText,
-        size: 20,
-      ),
+      iconTheme: IconThemeData(color: zText, size: 20),
     ),
 
     cardTheme: CardThemeData(
@@ -217,10 +216,7 @@ ThemeData buildQuikTheme() {
       filled: true,
       fillColor: Colors.white,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 15,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
       hintStyle: const TextStyle(
         color: zMuted,
         fontSize: 13.5,
@@ -231,10 +227,7 @@ ThemeData buildQuikTheme() {
         fontSize: 13.5,
         fontWeight: FontWeight.w600,
       ),
-      errorStyle: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-      ),
+      errorStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(kAppRadiusMd),
         borderSide: const BorderSide(color: zBorder),
@@ -266,10 +259,7 @@ ThemeData buildQuikTheme() {
         backgroundColor: zBlue,
         foregroundColor: Colors.white,
         elevation: 0,
-        textStyle: const TextStyle(
-          fontSize: 14.5,
-          fontWeight: FontWeight.w700,
-        ),
+        textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kAppRadiusMd),
@@ -282,10 +272,7 @@ ThemeData buildQuikTheme() {
         backgroundColor: zBlue,
         foregroundColor: Colors.white,
         elevation: 0,
-        textStyle: const TextStyle(
-          fontSize: 14.5,
-          fontWeight: FontWeight.w700,
-        ),
+        textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kAppRadiusMd),
@@ -299,10 +286,7 @@ ThemeData buildQuikTheme() {
         backgroundColor: Colors.white,
         elevation: 0,
         side: const BorderSide(color: zBorder),
-        textStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w700,
-        ),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kAppRadiusMd),
@@ -313,10 +297,7 @@ ThemeData buildQuikTheme() {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: zBlue,
-        textStyle: const TextStyle(
-          fontSize: 13.5,
-          fontWeight: FontWeight.w700,
-        ),
+        textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kAppRadiusSm),
         ),
@@ -324,9 +305,7 @@ ThemeData buildQuikTheme() {
     ),
 
     checkboxTheme: CheckboxThemeData(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(4),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
       side: const BorderSide(color: zBorder),
       fillColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) return zBlue;
