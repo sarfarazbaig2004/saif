@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
-import 'package:QUIK/modules/inventory/fabrication/models/raw_material_issue_model.dart';
+import 'package:QUIK/modules/inventory/fabrication/models/raw_material_model.dart';
+import 'package:QUIK/modules/inventory/fabrication/models/raw_material_transaction_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/repositories/fabrication_inventory_repository.dart';
 
 class MaterialIssueFormScreen extends StatefulWidget {
@@ -24,11 +25,13 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
   final _grade = TextEditingController();
   final _lengthMm = TextEditingController();
   final _unitWeightKgPerM = TextEditingController();
+  final _quantityNos = TextEditingController();
   final _quantityKg = TextEditingController();
   final _remarks = TextEditingController();
 
   DateTime _issueDate = DateTime.now();
   bool _saving = false;
+  RawMaterialModel? _selectedMaterial;
 
   String get _tenantId {
     final contextTenantId = context.tenant.selectedTenantId.trim();
@@ -41,6 +44,14 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
       FabricationInventoryRepository(tenantId: _tenantId);
 
   @override
+  void initState() {
+    super.initState();
+    _quantityNos.addListener(_autoCalculateKg);
+    _lengthMm.addListener(_autoCalculateKg);
+    _unitWeightKgPerM.addListener(_autoCalculateKg);
+  }
+
+  @override
   void dispose() {
     _issuedTo.dispose();
     _workOrderId.dispose();
@@ -48,9 +59,31 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
     _grade.dispose();
     _lengthMm.dispose();
     _unitWeightKgPerM.dispose();
+    _quantityNos.dispose();
     _quantityKg.dispose();
     _remarks.dispose();
     super.dispose();
+  }
+
+  void _autoCalculateKg() {
+    final qtyKg = double.tryParse(_quantityKg.text.trim()) ?? 0;
+    if (qtyKg > 0) return;
+    final nos = double.tryParse(_quantityNos.text.trim()) ?? 0;
+    final length = double.tryParse(_lengthMm.text.trim()) ?? 0;
+    final unitWeight = double.tryParse(_unitWeightKgPerM.text.trim()) ?? 0;
+    if (nos <= 0 || length <= 0 || unitWeight <= 0) return;
+    final kg = nos * (length / 1000) * unitWeight;
+    _quantityKg.text = kg.toStringAsFixed(3);
+  }
+
+  void _applyMaterial(RawMaterialModel? material) {
+    if (material == null) return;
+    setState(() => _selectedMaterial = material);
+    _materialDescription.text = material.descriptionThickness;
+    _grade.text = material.gradeIs;
+    _lengthMm.text = _formatNumber(material.length);
+    _unitWeightKgPerM.text = _formatNumber(material.unitWeight);
+    _autoCalculateKg();
   }
 
   Future<void> _save() async {
@@ -69,17 +102,30 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
 
     setState(() => _saving = true);
     try {
-      await _repository.saveIssueEntry(
-        RawMaterialIssueModel(
-          issueId: _repository.newIssueId(),
-          issueDate: _issueDate,
-          issuedTo: _issuedTo.text.trim(),
-          workOrderId: _workOrderId.text.trim(),
+      final material = _selectedMaterial;
+      await _repository.saveInventoryTransaction(
+        RawMaterialTransactionModel(
+          transactionId: _repository.newTransactionId(),
+          transactionType: RawMaterialTransactionType.issue,
+          transactionDate: _issueDate,
+          materialId: material?.materialId ?? '',
+          materialCode: material?.materialCode ?? '',
           materialDescription: _materialDescription.text.trim(),
           grade: _grade.text.trim(),
-          lengthMm: double.tryParse(_lengthMm.text.trim()) ?? 0,
-          unitWeightKgPerM: double.tryParse(_unitWeightKgPerM.text.trim()) ?? 0,
+          length: double.tryParse(_lengthMm.text.trim()) ?? 0,
+          unitWeight: double.tryParse(_unitWeightKgPerM.text.trim()) ?? 0,
+          uom: material?.uom ?? 'Kg',
+          category: material?.category ?? '',
+          productFamily: material?.productFamily ?? '',
+          quantityNos: double.tryParse(_quantityNos.text.trim()) ?? 0,
           quantityKg: double.tryParse(_quantityKg.text.trim()) ?? 0,
+          referenceNo: '',
+          partyOrProcess: _issuedTo.text.trim(),
+          workOrderId: _workOrderId.text.trim(),
+          heatNumber: '',
+          batchNo: '',
+          millCertificateUrl: '',
+          qaReferenceId: '',
           remarks: _remarks.text.trim(),
         ),
       );
@@ -116,7 +162,7 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
     return Scaffold(
       backgroundColor: zCanvasBg,
       appBar: AppBar(
-        title: const Text('New Material Issue'),
+        title: const Text('New Raw Material Issue'),
         actions: [
           TextButton.icon(
             onPressed: _saving ? null : _save,
@@ -128,49 +174,79 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
       body: SafeArea(
         child: Form(
           key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              Container(
+          child: StreamBuilder<List<RawMaterialModel>>(
+            stream: _repository.watchRawMaterials(activeOnly: true),
+            builder: (context, snapshot) {
+              final materials = snapshot.data ?? const <RawMaterialModel>[];
+              return ListView(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: zBorder),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _dateField(),
-                    _field(_issuedTo, 'Issued To / Process', required: true),
-                    _field(_workOrderId, 'Work Order'),
-                    _field(
-                      _materialDescription,
-                      'Section / Material',
-                      width: 420,
-                      required: true,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: zBorder),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    _field(_grade, 'Grade', required: true),
-                    _field(_lengthMm, 'Length (mm)', number: true),
-                    _field(
-                      _unitWeightKgPerM,
-                      'Unit Weight (kg/m)',
-                      number: true,
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        _dateField(),
+                        _field(
+                          _issuedTo,
+                          'Issued To / Process',
+                          required: true,
+                        ),
+                        _field(_workOrderId, 'Work Order'),
+                        _materialPicker(materials),
+                        _field(
+                          _materialDescription,
+                          'Description / Thickness',
+                          width: 420,
+                          required: true,
+                        ),
+                        _field(_grade, 'Grade / IS', required: true),
+                        _field(_lengthMm, 'Length', number: true),
+                        _field(_unitWeightKgPerM, 'Unit Weight', number: true),
+                        _field(_quantityNos, 'Issued Qty (nos)', number: true),
+                        _field(
+                          _quantityKg,
+                          'Issued Qty (kg)',
+                          number: true,
+                          required: true,
+                        ),
+                        _field(_remarks, 'Remarks', width: 420),
+                      ],
                     ),
-                    _field(
-                      _quantityKg,
-                      'Issued Qty (kg)',
-                      number: true,
-                      required: true,
-                    ),
-                    _field(_remarks, 'Remarks', width: 420),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                ],
+              );
+            },
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _materialPicker(List<RawMaterialModel> materials) {
+    return SizedBox(
+      width: 420,
+      child: DropdownButtonFormField<RawMaterialModel>(
+        initialValue: _selectedMaterial,
+        decoration: const InputDecoration(labelText: 'Raw Material'),
+        items: materials
+            .map(
+              (material) => DropdownMenuItem(
+                value: material,
+                child: Text(
+                  material.displayName,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            )
+            .toList(growable: false),
+        onChanged: _applyMaterial,
       ),
     );
   }
@@ -228,5 +304,10 @@ class _MaterialIssueFormScreenState extends State<MaterialIssueFormScreen> {
       'Dec',
     ];
     return '${value.day} ${months[value.month - 1]} ${value.year}';
+  }
+
+  String _formatNumber(double value) {
+    if (value == value.roundToDouble()) return value.toStringAsFixed(0);
+    return value.toStringAsFixed(3);
   }
 }

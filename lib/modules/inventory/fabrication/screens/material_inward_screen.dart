@@ -30,7 +30,7 @@ class FabricationMaterialInwardScreen extends StatelessWidget {
     final repository = FabricationInventoryRepository(tenantId: activeTenantId);
 
     return ProductionListScaffold<RawMaterialInwardModel>(
-      title: purchaseView ? 'GRN / Material Receipt' : 'Material Inward',
+      title: purchaseView ? 'GRN / Material Receipt' : 'Raw Material Inward',
       subtitle: purchaseView
           ? 'Receive supplier material in ERP. Saving the GRN increases raw material stock immediately.'
           : 'Record steel received from supplier challans before it becomes available in fabrication stock.',
@@ -59,7 +59,7 @@ class FabricationMaterialInwardScreen extends StatelessWidget {
           ),
         ),
         icon: const Icon(Icons.add),
-        label: Text(purchaseView ? 'New GRN' : 'New Receipt'),
+        label: Text(purchaseView ? 'New GRN' : 'New Inward'),
       ),
       itemBuilder: (context, item) {
         final subtitle = [

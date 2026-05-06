@@ -4,28 +4,46 @@ import 'package:QUIK/modules/production/core/production_firestore_utils.dart';
 
 class RawMaterialStockSummaryModel {
   final String itemId;
+  final String materialCode;
   final String materialDescription;
   final String grade;
   final String rawMaterialCategory;
   final String productFamily;
   final double lengthMm;
   final double unitWeightKgPerM;
+  final double openingKg;
+  final double inwardKg;
+  final double returnKg;
+  final double adjustmentKg;
+  final double issueKg;
+  final double scrapKg;
   final double closingStockKg;
   final double currentOpeningStockKg;
+  final double quantityNos;
+  final double reorderLevel;
   final String uom;
   final bool weightTracking;
   final DateTime? lastUpdatedAt;
 
   const RawMaterialStockSummaryModel({
     required this.itemId,
+    required this.materialCode,
     required this.materialDescription,
     required this.grade,
     required this.rawMaterialCategory,
     required this.productFamily,
     required this.lengthMm,
     required this.unitWeightKgPerM,
+    required this.openingKg,
+    required this.inwardKg,
+    required this.returnKg,
+    required this.adjustmentKg,
+    required this.issueKg,
+    required this.scrapKg,
     required this.closingStockKg,
     required this.currentOpeningStockKg,
+    required this.quantityNos,
+    required this.reorderLevel,
     required this.uom,
     required this.weightTracking,
     this.lastUpdatedAt,
@@ -38,6 +56,7 @@ class RawMaterialStockSummaryModel {
 
     return RawMaterialStockSummaryModel(
       itemId: (data['itemId'] ?? snapshot.id).toString(),
+      materialCode: (data['materialCode'] ?? '').toString(),
       materialDescription:
           (data['materialDescription'] ?? data['description'] ?? '').toString(),
       grade: (data['grade'] ?? '').toString(),
@@ -45,8 +64,16 @@ class RawMaterialStockSummaryModel {
       productFamily: (data['productFamily'] ?? '').toString(),
       lengthMm: doubleFromValue(data['lengthMm']),
       unitWeightKgPerM: doubleFromValue(data['unitWeightKgPerM']),
+      openingKg: doubleFromValue(data['openingKg']),
+      inwardKg: doubleFromValue(data['inwardKg']),
+      returnKg: doubleFromValue(data['returnKg']),
+      adjustmentKg: doubleFromValue(data['adjustmentKg']),
+      issueKg: doubleFromValue(data['issueKg']),
+      scrapKg: doubleFromValue(data['scrapKg']),
       closingStockKg: doubleFromValue(data['closingStockKg']),
       currentOpeningStockKg: doubleFromValue(data['currentOpeningStockKg']),
+      quantityNos: doubleFromValue(data['quantityNos']),
+      reorderLevel: doubleFromValue(data['reorderLevel']),
       uom: (data['uom'] ?? 'Kg').toString(),
       weightTracking:
           data['weightTracking'] == true ||

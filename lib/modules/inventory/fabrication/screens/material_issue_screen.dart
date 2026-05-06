@@ -25,7 +25,7 @@ class FabricationMaterialIssueScreen extends StatelessWidget {
     final repository = FabricationInventoryRepository(tenantId: activeTenantId);
 
     return ProductionListScaffold<RawMaterialIssueModel>(
-      title: 'Material Issue',
+      title: 'Raw Material Issue',
       subtitle:
           'Record material sent from store to cutting, punching, welding, or a work order.',
       icon: Icons.outbox_outlined,

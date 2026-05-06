@@ -6,17 +6,41 @@ import 'package:QUIK/modules/inventory/fabrication/models/raw_material_stock_sum
 import 'package:QUIK/modules/inventory/fabrication/repositories/fabrication_inventory_repository.dart';
 import 'package:QUIK/modules/inventory/fabrication/widgets/fabrication_inventory_flow_card.dart';
 
-class FabricationRawMaterialStockScreen extends StatelessWidget {
+class FabricationRawMaterialStockScreen extends StatefulWidget {
   final String tenantId;
 
   const FabricationRawMaterialStockScreen({super.key, required this.tenantId});
+
+  @override
+  State<FabricationRawMaterialStockScreen> createState() =>
+      _FabricationRawMaterialStockScreenState();
+}
+
+class _FabricationRawMaterialStockScreenState
+    extends State<FabricationRawMaterialStockScreen> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _search.addListener(() {
+      setState(() => _query = _search.text.trim().toLowerCase());
+    });
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final selectedTenantId = context.watchTenant.selectedTenantId.trim();
     final activeTenantId = selectedTenantId.isNotEmpty
         ? selectedTenantId
-        : tenantId.trim();
+        : widget.tenantId.trim();
     if (activeTenantId.isEmpty) {
       return const Center(child: Text('Select a company workspace first.'));
     }
@@ -27,7 +51,9 @@ class FabricationRawMaterialStockScreen extends StatelessWidget {
       stream: repository.watchStockSummary(),
       builder: (context, snapshot) {
         final summaries =
-            snapshot.data ?? const <RawMaterialStockSummaryModel>[];
+            (snapshot.data ?? const <RawMaterialStockSummaryModel>[])
+                .where(_matches)
+                .toList(growable: false);
         final metrics = _StockMetrics.fromRows(summaries);
 
         return Column(
@@ -38,7 +64,7 @@ class FabricationRawMaterialStockScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _ScreenHeader(metrics: metrics),
+                    _ScreenHeader(metrics: metrics, search: _search),
                     const SizedBox(height: 12),
                     const FabricationInventoryFlowCard(
                       activeStep: FabricationInventoryFlowStep.stock,
@@ -67,12 +93,26 @@ class FabricationRawMaterialStockScreen extends StatelessWidget {
       },
     );
   }
+
+  bool _matches(RawMaterialStockSummaryModel row) {
+    if (_query.isEmpty) return true;
+    final fields = [
+      row.materialCode,
+      row.materialDescription,
+      row.grade,
+      row.lengthMm.toString(),
+      row.rawMaterialCategory,
+      row.productFamily,
+    ];
+    return fields.any((field) => field.toLowerCase().contains(_query));
+  }
 }
 
 class _ScreenHeader extends StatelessWidget {
   final _StockMetrics metrics;
+  final TextEditingController search;
 
-  const _ScreenHeader({required this.metrics});
+  const _ScreenHeader({required this.metrics, required this.search});
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +140,7 @@ class _ScreenHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Raw Material Stock',
+                      'Raw Material Stock Summary',
                       style: TextStyle(
                         color: zText,
                         fontSize: 20,
@@ -109,7 +149,7 @@ class _ScreenHeader extends StatelessWidget {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Live section-wise stock register generated from GRN receipts and material issues.',
+                      'Excel-style report view calculated from raw material transactions.',
                       style: TextStyle(
                         color: zMuted,
                         fontSize: 13.2,
@@ -137,7 +177,17 @@ class _ScreenHeader extends StatelessWidget {
               ),
               _InfoChip(
                 icon: Icons.compare_arrows_outlined,
-                label: 'Updated from receipt and issue',
+                label: 'Opening + inward + return + adjustment - issue - scrap',
+              ),
+              SizedBox(
+                width: 360,
+                child: TextField(
+                  controller: search,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    labelText: 'Search material, grade, length, category',
+                  ),
+                ),
               ),
             ],
           ),
@@ -234,18 +284,32 @@ class _LiveStockTable extends StatelessWidget {
                 dataRowMinHeight: 44,
                 dataRowMaxHeight: 58,
                 columns: const [
-                  DataColumn(label: Text('Section / Material')),
-                  DataColumn(label: Text('Grade')),
-                  DataColumn(label: Text('Length (mm)')),
+                  DataColumn(label: Text('Material Code')),
+                  DataColumn(label: Text('Description / Thickness')),
+                  DataColumn(label: Text('Grade / IS')),
+                  DataColumn(label: Text('Length')),
                   DataColumn(label: Text('Unit Weight')),
-                  DataColumn(label: Text('Available Stock (kg)')),
+                  DataColumn(label: Text('Opening')),
+                  DataColumn(label: Text('Inward')),
+                  DataColumn(label: Text('Return')),
+                  DataColumn(label: Text('Adjustment')),
+                  DataColumn(label: Text('Issue')),
+                  DataColumn(label: Text('Scrap')),
+                  DataColumn(label: Text('Closing (kg)')),
+                  DataColumn(label: Text('Nos')),
                   DataColumn(label: Text('UOM')),
+                  DataColumn(label: Text('Category')),
                   DataColumn(label: Text('Last Updated')),
                 ],
                 rows: rows
                     .map((row) {
                       return DataRow(
                         cells: [
+                          DataCell(
+                            Text(
+                              row.materialCode.isEmpty ? '-' : row.materialCode,
+                            ),
+                          ),
                           DataCell(
                             ConstrainedBox(
                               constraints: const BoxConstraints(
@@ -270,8 +334,22 @@ class _LiveStockTable extends StatelessWidget {
                                   : '${row.unitWeightKgPerM.toStringAsFixed(2)} kg/m',
                             ),
                           ),
+                          DataCell(Text(_formatNumber(row.openingKg))),
+                          DataCell(Text(_formatNumber(row.inwardKg))),
+                          DataCell(Text(_formatNumber(row.returnKg))),
+                          DataCell(Text(_formatNumber(row.adjustmentKg))),
+                          DataCell(Text(_formatNumber(row.issueKg))),
+                          DataCell(Text(_formatNumber(row.scrapKg))),
                           DataCell(Text(_formatNumber(row.closingStockKg))),
+                          DataCell(Text(_formatNumber(row.quantityNos))),
                           DataCell(Text(row.uom)),
+                          DataCell(
+                            Text(
+                              row.rawMaterialCategory.isEmpty
+                                  ? '-'
+                                  : row.rawMaterialCategory,
+                            ),
+                          ),
                           DataCell(
                             Text(
                               row.lastUpdatedAt == null
@@ -293,7 +371,7 @@ class _LiveStockTable extends StatelessWidget {
               border: Border(top: BorderSide(color: zBorder)),
             ),
             child: const Text(
-              'Stock here should move automatically from two actions only: GRN / Material Receipt adds stock and Material Issue reduces stock.',
+              'This report is calculated from inventory transactions. The stored transaction ledger is the source of truth.',
               style: TextStyle(
                 color: zMuted,
                 fontSize: 12.4,

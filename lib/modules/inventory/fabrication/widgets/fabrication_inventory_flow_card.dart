@@ -52,7 +52,7 @@ class FabricationInventoryFlowCard extends StatelessWidget {
             children: [
               _FlowStepTile(
                 stepNumber: '1',
-                title: 'Material Inward',
+                title: 'Raw Material Inward',
                 description:
                     'Enter supplier challan, section, grade, length, and received qty.',
                 active: activeStep == FabricationInventoryFlowStep.inward,
@@ -60,7 +60,7 @@ class FabricationInventoryFlowCard extends StatelessWidget {
               ),
               _FlowStepTile(
                 stepNumber: '2',
-                title: 'Raw Material Stock',
+                title: 'Raw Material Stock Summary',
                 description:
                     'Track opening, received, issued, and closing balance for each section.',
                 active: activeStep == FabricationInventoryFlowStep.stock,
@@ -68,7 +68,7 @@ class FabricationInventoryFlowCard extends StatelessWidget {
               ),
               _FlowStepTile(
                 stepNumber: '3',
-                title: 'Material Issue',
+                title: 'Raw Material Issue',
                 description:
                     'Send stock to cutting, punching, welding, or a work order.',
                 active: activeStep == FabricationInventoryFlowStep.issue,

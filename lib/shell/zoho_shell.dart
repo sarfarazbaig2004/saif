@@ -15,8 +15,8 @@ import 'package:QUIK/modules/dashboard/dashboard_screen.dart';
 import 'package:QUIK/modules/dispatch/screens/dispatch_list_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_inward_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_issue_screen.dart';
+import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_master_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_stock_screen.dart';
-import 'package:QUIK/modules/inventory/products/screens_product_list.dart';
 import 'package:QUIK/modules/purchase/fabrication/screens/purchase_bill_screen.dart';
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_ledger_screen.dart';
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_master_screen.dart';
@@ -175,23 +175,23 @@ extension ShellPageX on ShellPage {
         return 'Vendor Ledger';
 
       case ShellPage.inventoryProducts:
-        return 'Products';
+        return 'Raw Materials';
       case ShellPage.inventoryStockSummary:
-        return 'Stock Summary';
+        return 'Raw Material Stock Summary';
       case ShellPage.inventoryStockIn:
-        return 'Stock In';
+        return 'Raw Material Inward';
       case ShellPage.inventoryStockOut:
-        return 'Stock Out';
+        return 'Raw Material Issue';
       case ShellPage.inventoryWarehouse:
         return 'Warehouse';
       case ShellPage.inventoryLowStock:
         return 'Low Stock Alerts';
       case ShellPage.inventoryRawMaterialStock:
-        return 'Raw Material Stock';
+        return 'Raw Material Stock Summary';
       case ShellPage.inventoryMaterialInward:
-        return 'Material Inward';
+        return 'Raw Material Inward';
       case ShellPage.inventoryMaterialIssue:
-        return 'Material Issue';
+        return 'Raw Material Issue';
 
       case ShellPage.dispatchReady:
         return 'Ready for Dispatch';
@@ -1763,9 +1763,9 @@ class _ZohoShellState extends State<ZohoShell> {
         );
 
       case ShellPage.inventoryProducts:
-        return const Padding(
+        return Padding(
           padding: EdgeInsets.all(10),
-          child: ScreensProductList(),
+          child: RawMaterialMasterScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.purchaseVendors:
@@ -2243,7 +2243,7 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.crmCustomers:
         return ['Accounts', 'Contacts', 'History', 'Relationships'];
       case ShellPage.inventoryProducts:
-        return ['Catalog', 'Stock', 'SKU', 'Pricing'];
+        return ['Master', 'Grade', 'Length', 'Stock'];
       case ShellPage.adminUsers:
         return ['Access', 'Permissions', 'Roles', 'Team'];
       case ShellPage.settingsGeneral:
@@ -2262,7 +2262,7 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.crmCustomers:
         return 'Manage customer master records, view customer relationship data, and keep your CRM organized around actual business accounts.';
       case ShellPage.inventoryProducts:
-        return 'Manage your product master, stock-facing items, and future inventory movements through a clean inventory module.';
+        return 'Manage raw material master data used by inward, issue, and transaction-backed stock summaries.';
       case ShellPage.adminUsers:
         return 'Handle user management, role-based access, and team structure for each company workspace.';
       case ShellPage.settingsGeneral:
