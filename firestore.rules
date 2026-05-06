@@ -310,7 +310,9 @@ service cloud.firestore {
           tenantWriteAllowed(tenantId) &&
           validComplianceTags(request.resource.data) &&
           validComplianceAccessCategories(request.resource.data);
-        allow delete: if false;
+        allow delete: if canAccessAman(tenantId) &&
+          isComplianceAdmin(tenantId) &&
+          resource.data.isQmsDocument != true;
       }
 
       match /{document=**} {

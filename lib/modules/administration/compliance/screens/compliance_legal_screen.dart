@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -59,6 +60,10 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
 
   bool get _canApproveQms {
     return _isAdmin || _role == 'qa';
+  }
+
+  bool get _canDeleteNormalCompliance {
+    return _role == 'software_super_admin' || _role == 'company_super_admin';
   }
 
   List<ComplianceAccessCategory> get _allowedCategories {
@@ -169,7 +174,12 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
                                 : _DocumentList(
                                     documents: registerDocuments,
                                     compact: compact,
+                                    canDelete: _canDeleteNormalCompliance,
+                                    onView: _showDocumentDetails,
                                     onOpen: _openDocument,
+                                    onEdit: _showEditDialog,
+                                    onArchive: _archiveDocument,
+                                    onDelete: _deleteNormalDocument,
                                   ),
                           ),
                         ],
@@ -187,9 +197,11 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
                                 setState(() => _showQmsHistory = value);
                               },
                               onOpen: _openDocument,
+                              onView: _showDocumentDetails,
+                              onEdit: _showEditDialog,
                               onNewRevision: _showQmsRevisionDialog,
                               onApprove: _approveQmsDocument,
-                              onArchive: _archiveQmsDocument,
+                              onArchive: _archiveDocument,
                             ),
                     ],
                   ),
@@ -637,17 +649,415 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
   }
 
   Future<void> _openDocument(ComplianceDocumentModel document) async {
-    final uri = Uri.tryParse(document.fileUrl);
+    String url = '';
+    try {
+      url = await _service.resolveDownloadUrl(document);
+    } catch (e) {
+      _showSnack('Unable to prepare document link: $e');
+      return;
+    }
+
+    final uri = Uri.tryParse(url);
     if (uri == null) {
       _showSnack('Document file link is unavailable.');
       return;
     }
-    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final opened = kIsWeb
+        ? await launchUrl(uri, webOnlyWindowName: '_blank')
+        : await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!opened) _showSnack('Unable to open document.');
+  }
+
+  Future<void> _showDocumentDetails(ComplianceDocumentModel document) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(document.title.isEmpty ? 'Document' : document.title),
+          content: SizedBox(
+            width: 460,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _DetailLine('Categories', document.tagLabel),
+                  _DetailLine('Document No', document.documentNo),
+                  _DetailLine('Issue Date', _dateLabel(document.issueDate)),
+                  _DetailLine('Expiry Date', _dateLabel(document.expiryDate)),
+                  _DetailLine(
+                    'Amendment Date',
+                    _dateLabel(document.amendmentDate),
+                  ),
+                  _DetailLine('Status', document.status.label),
+                  if (document.isQmsDocument) ...[
+                    _DetailLine('Rev No', document.revisionNo),
+                    _DetailLine('Previous Rev', document.previousRevision),
+                    _DetailLine('QMS Status', document.qmsApprovalStatus.label),
+                    _DetailLine('Approved By', document.approvedBy),
+                    _DetailLine(
+                      'Approval Date',
+                      _dateLabel(document.approvalDate),
+                    ),
+                    _DetailLine('Obsolete', document.isObsolete ? 'Yes' : 'No'),
+                  ],
+                  _DetailLine('File URL', document.fileUrl),
+                  _DetailLine('Storage Path', document.storagePath),
+                  if (document.remarks.isNotEmpty)
+                    _DetailLine('Remarks', document.remarks),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _openDocument(document);
+              },
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Open File'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _showQmsRevisionDialog(ComplianceDocumentModel document) {
     return _showUploadDialog(isQmsDocument: true, baseRevision: document);
+  }
+
+  Future<void> _showEditDialog(ComplianceDocumentModel document) async {
+    final titleCtrl = TextEditingController(text: document.title);
+    final docNoCtrl = TextEditingController(text: document.documentNo);
+    final remarksCtrl = TextEditingController(text: document.remarks);
+    final revisionCtrl = TextEditingController(text: document.revisionNo);
+    final previousRevisionCtrl = TextEditingController(
+      text: document.previousRevision,
+    );
+    var validityType = document.validityType;
+    var manualStatus = document.manualStatus;
+    var qmsStatus = document.qmsApprovalStatus;
+    var issueDate = document.issueDate;
+    var expiryDate = document.expiryDate;
+    var amendmentDate = document.amendmentDate;
+    var selectedTags = document.tags.where(_allowedTags.contains).toSet();
+    if (selectedTags.isEmpty && _allowedTags.isNotEmpty) {
+      selectedTags = {_allowedTags.first};
+    }
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> pickDate({
+              required DateTime? current,
+              required ValueChanged<DateTime?> onPicked,
+            }) async {
+              final now = DateTime.now();
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: current ?? now,
+                firstDate: DateTime(1990),
+                lastDate: DateTime(now.year + 25),
+              );
+              if (picked != null) onPicked(picked);
+            }
+
+            final editableTags = document.isQmsDocument
+                ? _allowedTags
+                      .where(
+                        (tag) =>
+                            tag.accessCategory ==
+                            ComplianceAccessCategory.quality,
+                      )
+                      .toList(growable: false)
+                : _allowedTags;
+
+            return AlertDialog(
+              title: Text(
+                document.isQmsDocument
+                    ? 'Edit QMS Metadata'
+                    : 'Edit Document Metadata',
+              ),
+              content: SingleChildScrollView(
+                child: SizedBox(
+                  width: 560,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: titleCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Document Title',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<ComplianceValidityType>(
+                        initialValue: validityType,
+                        decoration: const InputDecoration(
+                          labelText: 'Validity Type',
+                        ),
+                        items: ComplianceValidityType.values
+                            .map(
+                              (type) => DropdownMenuItem(
+                                value: type,
+                                child: Text(type.label),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setDialogState(() => validityType = value);
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Document Categories',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: editableTags.map((tag) {
+                            final selected = selectedTags.contains(tag);
+                            return FilterChip(
+                              label: Text(tag.label),
+                              selected: selected,
+                              onSelected: (value) {
+                                setDialogState(() {
+                                  if (value) {
+                                    selectedTags.add(tag);
+                                  } else if (selectedTags.length > 1) {
+                                    selectedTags.remove(tag);
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: docNoCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'Document No / QMS Code',
+                        ),
+                      ),
+                      if (document.isQmsDocument) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: revisionCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Rev No',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: previousRevisionCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Previous Revision',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DateButton(
+                              label: 'Issue Date',
+                              value: issueDate,
+                              onTap: () => pickDate(
+                                current: issueDate,
+                                onPicked: (date) {
+                                  setDialogState(() => issueDate = date);
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _DateButton(
+                              label: 'Expiry Date Optional',
+                              value: expiryDate,
+                              onTap: () => pickDate(
+                                current: expiryDate,
+                                onPicked: (date) {
+                                  setDialogState(() => expiryDate = date);
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DateButton(
+                              label: 'Amendment Date Optional',
+                              value: amendmentDate,
+                              onTap: () => pickDate(
+                                current: amendmentDate,
+                                onPicked: (date) {
+                                  setDialogState(() => amendmentDate = date);
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child:
+                                DropdownButtonFormField<
+                                  ComplianceDocumentStatus
+                                >(
+                                  initialValue: manualStatus,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Status',
+                                  ),
+                                  items:
+                                      const [
+                                            ComplianceDocumentStatus.active,
+                                            ComplianceDocumentStatus
+                                                .amendmentRequired,
+                                            ComplianceDocumentStatus.updated,
+                                          ]
+                                          .map(
+                                            (status) => DropdownMenuItem(
+                                              value: status,
+                                              child: Text(status.label),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    setDialogState(() => manualStatus = value);
+                                  },
+                                ),
+                          ),
+                        ],
+                      ),
+                      if (document.isQmsDocument) ...[
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<QmsApprovalStatus>(
+                          initialValue: qmsStatus,
+                          decoration: const InputDecoration(
+                            labelText: 'QMS Workflow Status',
+                          ),
+                          items: QmsApprovalStatus.values
+                              .map(
+                                (status) => DropdownMenuItem(
+                                  value: status,
+                                  child: Text(status.label),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: _canApproveQms
+                              ? (value) {
+                                  if (value == null) return;
+                                  setDialogState(() => qmsStatus = value);
+                                }
+                              : null,
+                        ),
+                      ],
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: remarksCtrl,
+                        maxLines: 3,
+                        decoration: const InputDecoration(labelText: 'Remarks'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton.icon(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  icon: const Icon(Icons.save_outlined),
+                  label: const Text('Save'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (saved != true) return;
+    if (titleCtrl.text.trim().isEmpty ||
+        docNoCtrl.text.trim().isEmpty ||
+        selectedTags.isEmpty) {
+      _showSnack('Title, document no and category are required.');
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      await _service.saveDocument(
+        ComplianceDocumentModel(
+          id: document.id,
+          tenantId: widget.tenantId,
+          title: titleCtrl.text.trim(),
+          tags: selectedTags.toList(growable: false),
+          validityType: validityType,
+          manualStatus: amendmentDate != null
+              ? ComplianceDocumentStatus.updated
+              : manualStatus,
+          documentNo: docNoCtrl.text.trim(),
+          issueDate: issueDate,
+          expiryDate: expiryDate,
+          amendmentDate: amendmentDate,
+          remarks: remarksCtrl.text.trim(),
+          fileName: document.fileName,
+          fileUrl: document.fileUrl,
+          storagePath: document.storagePath,
+          uploadedBy: document.uploadedBy,
+          uploadedByEmail: document.uploadedByEmail,
+          isQmsDocument: document.isQmsDocument,
+          revisionNo: document.isQmsDocument ? revisionCtrl.text.trim() : '',
+          previousRevision: document.isQmsDocument
+              ? previousRevisionCtrl.text.trim()
+              : '',
+          approvedBy: document.approvedBy,
+          approvalDate: document.approvalDate,
+          isObsolete: document.isObsolete,
+          qmsApprovalStatus: document.isQmsDocument
+              ? qmsStatus
+              : QmsApprovalStatus.approved,
+          createdAt: document.createdAt,
+          updatedAt: document.updatedAt,
+        ),
+      );
+      _showSnack('Document metadata updated.');
+    } catch (e) {
+      _showSnack('Failed to update metadata: $e');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
   }
 
   Future<void> _approveQmsDocument(ComplianceDocumentModel document) async {
@@ -671,18 +1081,69 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
     }
   }
 
-  Future<void> _archiveQmsDocument(ComplianceDocumentModel document) async {
-    if (!_canApproveQms) {
+  Future<void> _archiveDocument(ComplianceDocumentModel document) async {
+    if (document.isQmsDocument && !_canApproveQms) {
       _showSnack('Only QA or admin can archive QMS revisions.');
+      return;
+    }
+
+    if (!document.isQmsDocument && document.isObsolete) {
+      _showSnack('Document is already archived.');
       return;
     }
 
     setState(() => _isSaving = true);
     try {
       await _service.archiveDocument(document);
-      _showSnack('QMS revision marked obsolete.');
+      _showSnack(
+        document.isQmsDocument
+            ? 'QMS revision marked obsolete.'
+            : 'Compliance document archived.',
+      );
     } catch (e) {
-      _showSnack('Failed to archive revision: $e');
+      _showSnack('Failed to archive document: $e');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _deleteNormalDocument(ComplianceDocumentModel document) async {
+    if (!_canDeleteNormalCompliance || document.isQmsDocument) {
+      _showSnack('This document cannot be deleted.');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete compliance document?'),
+          content: Text(
+            'This removes ${document.title.isEmpty ? document.documentNo : document.title} and its uploaded file. QMS revision history cannot be deleted.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: FilledButton.styleFrom(backgroundColor: zDanger),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isSaving = true);
+    try {
+      await _service.deleteNormalComplianceDocument(document);
+      _showSnack('Compliance document deleted.');
+    } catch (e) {
+      _showSnack('Failed to delete document: $e');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -780,6 +1241,43 @@ class _Header extends StatelessWidget {
                 actions,
               ],
             ),
+    );
+  }
+}
+
+class _DetailLine extends StatelessWidget {
+  const _DetailLine(this.label, this.value);
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final displayValue = value.trim().isEmpty ? '-' : value.trim();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: zMuted,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 3),
+          SelectableText(
+            displayValue,
+            style: const TextStyle(
+              color: zText,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1006,7 +1504,9 @@ class _QmsDocumentControlSection extends StatelessWidget {
     required this.canApprove,
     required this.compact,
     required this.onShowHistoryChanged,
+    required this.onView,
     required this.onOpen,
+    required this.onEdit,
     required this.onNewRevision,
     required this.onApprove,
     required this.onArchive,
@@ -1017,7 +1517,9 @@ class _QmsDocumentControlSection extends StatelessWidget {
   final bool canApprove;
   final bool compact;
   final ValueChanged<bool> onShowHistoryChanged;
+  final ValueChanged<ComplianceDocumentModel> onView;
   final ValueChanged<ComplianceDocumentModel> onOpen;
+  final ValueChanged<ComplianceDocumentModel> onEdit;
   final ValueChanged<ComplianceDocumentModel> onNewRevision;
   final ValueChanged<ComplianceDocumentModel> onApprove;
   final ValueChanged<ComplianceDocumentModel> onArchive;
@@ -1079,7 +1581,9 @@ class _QmsDocumentControlSection extends StatelessWidget {
                     return _QmsRevisionCard(
                       document: documents[index],
                       canApprove: canApprove,
+                      onView: onView,
                       onOpen: onOpen,
+                      onEdit: onEdit,
                       onNewRevision: onNewRevision,
                       onApprove: onApprove,
                       onArchive: onArchive,
@@ -1089,7 +1593,9 @@ class _QmsDocumentControlSection extends StatelessWidget {
               : _QmsRevisionTable(
                   documents: documents,
                   canApprove: canApprove,
+                  onView: onView,
                   onOpen: onOpen,
+                  onEdit: onEdit,
                   onNewRevision: onNewRevision,
                   onApprove: onApprove,
                   onArchive: onArchive,
@@ -1104,7 +1610,9 @@ class _QmsRevisionTable extends StatelessWidget {
   const _QmsRevisionTable({
     required this.documents,
     required this.canApprove,
+    required this.onView,
     required this.onOpen,
+    required this.onEdit,
     required this.onNewRevision,
     required this.onApprove,
     required this.onArchive,
@@ -1112,7 +1620,9 @@ class _QmsRevisionTable extends StatelessWidget {
 
   final List<ComplianceDocumentModel> documents;
   final bool canApprove;
+  final ValueChanged<ComplianceDocumentModel> onView;
   final ValueChanged<ComplianceDocumentModel> onOpen;
+  final ValueChanged<ComplianceDocumentModel> onEdit;
   final ValueChanged<ComplianceDocumentModel> onNewRevision;
   final ValueChanged<ComplianceDocumentModel> onApprove;
   final ValueChanged<ComplianceDocumentModel> onArchive;
@@ -1173,7 +1683,9 @@ class _QmsRevisionTable extends StatelessWidget {
                     _QmsActions(
                       document: document,
                       canApprove: canApprove,
+                      onView: onView,
                       onOpen: onOpen,
+                      onEdit: onEdit,
                       onNewRevision: onNewRevision,
                       onApprove: onApprove,
                       onArchive: onArchive,
@@ -1193,7 +1705,9 @@ class _QmsRevisionCard extends StatelessWidget {
   const _QmsRevisionCard({
     required this.document,
     required this.canApprove,
+    required this.onView,
     required this.onOpen,
+    required this.onEdit,
     required this.onNewRevision,
     required this.onApprove,
     required this.onArchive,
@@ -1201,7 +1715,9 @@ class _QmsRevisionCard extends StatelessWidget {
 
   final ComplianceDocumentModel document;
   final bool canApprove;
+  final ValueChanged<ComplianceDocumentModel> onView;
   final ValueChanged<ComplianceDocumentModel> onOpen;
+  final ValueChanged<ComplianceDocumentModel> onEdit;
   final ValueChanged<ComplianceDocumentModel> onNewRevision;
   final ValueChanged<ComplianceDocumentModel> onApprove;
   final ValueChanged<ComplianceDocumentModel> onArchive;
@@ -1247,7 +1763,9 @@ class _QmsRevisionCard extends StatelessWidget {
           _QmsActions(
             document: document,
             canApprove: canApprove,
+            onView: onView,
             onOpen: onOpen,
+            onEdit: onEdit,
             onNewRevision: onNewRevision,
             onApprove: onApprove,
             onArchive: onArchive,
@@ -1262,7 +1780,9 @@ class _QmsActions extends StatelessWidget {
   const _QmsActions({
     required this.document,
     required this.canApprove,
+    required this.onView,
     required this.onOpen,
+    required this.onEdit,
     required this.onNewRevision,
     required this.onApprove,
     required this.onArchive,
@@ -1270,7 +1790,9 @@ class _QmsActions extends StatelessWidget {
 
   final ComplianceDocumentModel document;
   final bool canApprove;
+  final ValueChanged<ComplianceDocumentModel> onView;
   final ValueChanged<ComplianceDocumentModel> onOpen;
+  final ValueChanged<ComplianceDocumentModel> onEdit;
   final ValueChanged<ComplianceDocumentModel> onNewRevision;
   final ValueChanged<ComplianceDocumentModel> onApprove;
   final ValueChanged<ComplianceDocumentModel> onArchive;
@@ -1282,14 +1804,24 @@ class _QmsActions extends StatelessWidget {
       runSpacing: 6,
       children: [
         IconButton(
-          tooltip: 'Open file',
-          onPressed: () => onOpen(document),
-          icon: const Icon(Icons.open_in_new, size: 18),
+          tooltip: 'View details',
+          onPressed: () => onView(document),
+          icon: const Icon(Icons.visibility_outlined, size: 18),
+        ),
+        IconButton(
+          tooltip: 'Edit metadata',
+          onPressed: () => onEdit(document),
+          icon: const Icon(Icons.edit_outlined, size: 18),
         ),
         IconButton(
           tooltip: 'New revision',
           onPressed: () => onNewRevision(document),
           icon: const Icon(Icons.add_circle_outline, size: 18),
+        ),
+        IconButton(
+          tooltip: 'Open file',
+          onPressed: () => onOpen(document),
+          icon: const Icon(Icons.open_in_new, size: 18),
         ),
         if (canApprove &&
             document.qmsApprovalStatus != QmsApprovalStatus.approved)
@@ -1350,12 +1882,22 @@ class _DocumentList extends StatelessWidget {
   const _DocumentList({
     required this.documents,
     required this.compact,
+    required this.canDelete,
+    required this.onView,
     required this.onOpen,
+    required this.onEdit,
+    required this.onArchive,
+    required this.onDelete,
   });
 
   final List<ComplianceDocumentModel> documents;
   final bool compact;
+  final bool canDelete;
+  final ValueChanged<ComplianceDocumentModel> onView;
   final ValueChanged<ComplianceDocumentModel> onOpen;
+  final ValueChanged<ComplianceDocumentModel> onEdit;
+  final ValueChanged<ComplianceDocumentModel> onArchive;
+  final ValueChanged<ComplianceDocumentModel> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1373,7 +1915,15 @@ class _DocumentList extends StatelessWidget {
         itemCount: documents.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, index) {
-          return _DocumentCard(document: documents[index], onOpen: onOpen);
+          return _DocumentCard(
+            document: documents[index],
+            canDelete: canDelete,
+            onView: onView,
+            onOpen: onOpen,
+            onEdit: onEdit,
+            onArchive: onArchive,
+            onDelete: onDelete,
+          );
         },
       );
     }
@@ -1406,7 +1956,7 @@ class _DocumentList extends StatelessWidget {
               DataColumn(label: Text('Expiry')),
               DataColumn(label: Text('Amendment')),
               DataColumn(label: Text('Status')),
-              DataColumn(label: Text('File')),
+              DataColumn(label: Text('Actions')),
             ],
             rows: documents.map((document) {
               return DataRow(
@@ -1419,10 +1969,14 @@ class _DocumentList extends StatelessWidget {
                   DataCell(Text(_dateLabel(document.amendmentDate))),
                   DataCell(_StatusPill(status: document.status)),
                   DataCell(
-                    IconButton(
-                      tooltip: 'Open file',
-                      onPressed: () => onOpen(document),
-                      icon: const Icon(Icons.open_in_new, size: 18),
+                    _ComplianceActions(
+                      document: document,
+                      canDelete: canDelete,
+                      onView: onView,
+                      onOpen: onOpen,
+                      onEdit: onEdit,
+                      onArchive: onArchive,
+                      onDelete: onDelete,
                     ),
                   ),
                 ],
@@ -1436,10 +1990,23 @@ class _DocumentList extends StatelessWidget {
 }
 
 class _DocumentCard extends StatelessWidget {
-  const _DocumentCard({required this.document, required this.onOpen});
+  const _DocumentCard({
+    required this.document,
+    required this.canDelete,
+    required this.onView,
+    required this.onOpen,
+    required this.onEdit,
+    required this.onArchive,
+    required this.onDelete,
+  });
 
   final ComplianceDocumentModel document;
+  final bool canDelete;
+  final ValueChanged<ComplianceDocumentModel> onView;
   final ValueChanged<ComplianceDocumentModel> onOpen;
+  final ValueChanged<ComplianceDocumentModel> onEdit;
+  final ValueChanged<ComplianceDocumentModel> onArchive;
+  final ValueChanged<ComplianceDocumentModel> onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -1493,16 +2060,73 @@ class _DocumentCard extends StatelessWidget {
             Text(document.remarks, style: const TextStyle(color: zText)),
           ],
           const SizedBox(height: 10),
-          OutlinedButton.icon(
-            onPressed: () => onOpen(document),
-            icon: const Icon(Icons.open_in_new, size: 16),
-            label: Text(
-              document.fileName.isEmpty ? 'Open File' : document.fileName,
-              overflow: TextOverflow.ellipsis,
-            ),
+          _ComplianceActions(
+            document: document,
+            canDelete: canDelete,
+            onView: onView,
+            onOpen: onOpen,
+            onEdit: onEdit,
+            onArchive: onArchive,
+            onDelete: onDelete,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ComplianceActions extends StatelessWidget {
+  const _ComplianceActions({
+    required this.document,
+    required this.canDelete,
+    required this.onView,
+    required this.onOpen,
+    required this.onEdit,
+    required this.onArchive,
+    required this.onDelete,
+  });
+
+  final ComplianceDocumentModel document;
+  final bool canDelete;
+  final ValueChanged<ComplianceDocumentModel> onView;
+  final ValueChanged<ComplianceDocumentModel> onOpen;
+  final ValueChanged<ComplianceDocumentModel> onEdit;
+  final ValueChanged<ComplianceDocumentModel> onArchive;
+  final ValueChanged<ComplianceDocumentModel> onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        IconButton(
+          tooltip: 'View details',
+          onPressed: () => onView(document),
+          icon: const Icon(Icons.visibility_outlined, size: 18),
+        ),
+        IconButton(
+          tooltip: 'Edit metadata',
+          onPressed: () => onEdit(document),
+          icon: const Icon(Icons.edit_outlined, size: 18),
+        ),
+        IconButton(
+          tooltip: 'Open file',
+          onPressed: () => onOpen(document),
+          icon: const Icon(Icons.open_in_new, size: 18),
+        ),
+        IconButton(
+          tooltip: 'Archive / obsolete',
+          onPressed: () => onArchive(document),
+          icon: const Icon(Icons.archive_outlined, size: 18),
+        ),
+        if (canDelete)
+          IconButton(
+            tooltip: 'Delete document',
+            onPressed: () => onDelete(document),
+            icon: const Icon(Icons.delete_outline, size: 18, color: zDanger),
+          ),
+      ],
     );
   }
 }

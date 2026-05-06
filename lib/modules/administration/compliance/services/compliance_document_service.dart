@@ -86,6 +86,7 @@ class ComplianceDocumentService {
     final ref = _storage.ref().child(storagePath);
     final metadata = SettableMetadata(
       contentDisposition: 'inline; filename="$safeFileName"',
+      contentType: _contentTypeForFile(safeFileName),
     );
 
     await ref.putData(bytes, metadata);
@@ -105,6 +106,38 @@ class ComplianceDocumentService {
       'tenantId': normalizedTenantId,
       'companyId': normalizedTenantId,
     }, SetOptions(merge: true));
+  }
+
+  Future<String> resolveDownloadUrl(ComplianceDocumentModel document) async {
+    final currentUrl = document.fileUrl.trim();
+    if (currentUrl.isNotEmpty) return currentUrl;
+
+    final storagePath = document.storagePath.trim();
+    if (storagePath.isEmpty) return '';
+
+    return _storage.ref().child(storagePath).getDownloadURL();
+  }
+
+  Future<void> deleteNormalComplianceDocument(
+    ComplianceDocumentModel document,
+  ) async {
+    if (document.isQmsDocument) {
+      throw StateError('QMS revision history cannot be deleted.');
+    }
+
+    final normalizedTenantId = TenantFirestore.requireTenantId(tenantId);
+    final path = document.storagePath.trim();
+    if (path.startsWith(
+      'companies/$normalizedTenantId/compliance_documents/',
+    )) {
+      try {
+        await _storage.ref().child(path).delete();
+      } on FirebaseException catch (e) {
+        if (e.code != 'object-not-found') rethrow;
+      }
+    }
+
+    await _ref.doc(document.id).delete();
   }
 
   Future<void> approveDocument({
@@ -129,6 +162,24 @@ class ComplianceDocumentService {
         qmsApprovalStatus: document.qmsApprovalStatus,
       ),
     );
+  }
+
+  String _contentTypeForFile(String fileName) {
+    final lower = fileName.toLowerCase();
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+      return 'image/jpeg';
+    }
+    if (lower.endsWith('.doc')) return 'application/msword';
+    if (lower.endsWith('.docx')) {
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    }
+    if (lower.endsWith('.xls')) return 'application/vnd.ms-excel';
+    if (lower.endsWith('.xlsx')) {
+      return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    }
+    return 'application/octet-stream';
   }
 }
 

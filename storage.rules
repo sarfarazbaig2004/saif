@@ -1,0 +1,140 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function amanTenantId() {
+      return 'aman_infra';
+    }
+
+    function softwareSuperAdminEmail() {
+      return 'genzprotech@gmail.com';
+    }
+
+    function companySuperAdminEmail() {
+      return 'shawej.s@amaninfradeveloper.co.in';
+    }
+
+    function isAmanTenant(tenantId) {
+      return tenantId == amanTenantId();
+    }
+
+    function authEmail() {
+      return request.auth.token.email;
+    }
+
+    function companyUserPath(tenantId, userId) {
+      return /databases/(default)/documents/companies/$(tenantId)/users/$(userId);
+    }
+
+    function hasAmanMembership() {
+      return signedIn() && firestore.exists(companyUserPath(amanTenantId(), uid()));
+    }
+
+    function currentCompanyRole(tenantId) {
+      return firestore.exists(companyUserPath(tenantId, uid()))
+        ? firestore.get(companyUserPath(tenantId, uid())).data.role
+        : '';
+    }
+
+    function isSoftwareSuperAdmin(tenantId) {
+      return signedIn() &&
+        isAmanTenant(tenantId) &&
+        (
+          authEmail() == softwareSuperAdminEmail() ||
+          currentCompanyRole(tenantId) == 'software_super_admin'
+        );
+    }
+
+    function isCompanySuperAdmin(tenantId) {
+      return signedIn() &&
+        isAmanTenant(tenantId) &&
+        (
+          authEmail() == companySuperAdminEmail() ||
+          currentCompanyRole(tenantId) == 'company_super_admin'
+        );
+    }
+
+    function isComplianceAdmin(tenantId) {
+      return isSoftwareSuperAdmin(tenantId) || isCompanySuperAdmin(tenantId);
+    }
+
+    function canAccessAman(tenantId) {
+      return signedIn() &&
+        isAmanTenant(tenantId) &&
+        (
+          isComplianceAdmin(tenantId) ||
+          hasAmanMembership()
+        );
+    }
+
+    function complianceDocPath(tenantId, documentId) {
+      return /databases/(default)/documents/companies/$(tenantId)/compliance_documents/$(documentId);
+    }
+
+    function complianceDocExists(tenantId, documentId) {
+      return firestore.exists(complianceDocPath(tenantId, documentId));
+    }
+
+    function complianceDoc(tenantId, documentId) {
+      return firestore.get(complianceDocPath(tenantId, documentId)).data;
+    }
+
+    function complianceDocHasAccessCategories(tenantId, documentId) {
+      return complianceDoc(tenantId, documentId).accessCategories is list;
+    }
+
+    function isFinanceRole(tenantId) {
+      return currentCompanyRole(tenantId) == 'finance';
+    }
+
+    function isHrRole(tenantId) {
+      return currentCompanyRole(tenantId) == 'hr' ||
+        currentCompanyRole(tenantId) == 'HR';
+    }
+
+    function isProductionQaRole(tenantId) {
+      return currentCompanyRole(tenantId) == 'production' ||
+        currentCompanyRole(tenantId) == 'qa' ||
+        currentCompanyRole(tenantId) == 'QA';
+    }
+
+    function canReadComplianceDoc(tenantId, documentId) {
+      return canAccessAman(tenantId) &&
+        (
+          !complianceDocExists(tenantId, documentId) ||
+          isComplianceAdmin(tenantId) ||
+          (complianceDocHasAccessCategories(tenantId, documentId) &&
+            isFinanceRole(tenantId) &&
+            complianceDoc(tenantId, documentId).accessCategories.hasAny(['financial'])) ||
+          (complianceDocHasAccessCategories(tenantId, documentId) &&
+            isHrRole(tenantId) &&
+            complianceDoc(tenantId, documentId).accessCategories.hasAny(['hr'])) ||
+          (complianceDocHasAccessCategories(tenantId, documentId) &&
+            isProductionQaRole(tenantId) &&
+            complianceDoc(tenantId, documentId).accessCategories.hasAny(['quality']))
+        );
+    }
+
+    match /companies/{tenantId}/compliance_documents/{documentId}/{fileName} {
+      allow read: if canReadComplianceDoc(tenantId, documentId);
+      allow create, update: if canAccessAman(tenantId);
+      allow delete: if isComplianceAdmin(tenantId) &&
+        (
+          !complianceDocExists(tenantId, documentId) ||
+          complianceDoc(tenantId, documentId).isQmsDocument != true
+        );
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
