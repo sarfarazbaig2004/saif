@@ -608,17 +608,17 @@ class _ZohoShellState extends State<ZohoShell> {
       return false;
     }
 
+    if (isAdminOrManager) return true;
+
     if (_isGeneralInventoryPage(page) &&
         _isFabricationInventory &&
-        !_isFabricationInventoryPage(page)) {
+        !_isFabricationInventoryCompatiblePage(page)) {
       return false;
     }
 
-    if (_isFabricationInventoryPage(page) && !_isFabricationInventory) {
+    if (_isFabricationOnlyInventoryPage(page) && !_isFabricationInventory) {
       return false;
     }
-
-    if (isAdminOrManager) return true;
 
     switch (page) {
       case ShellPage.dashboard:
@@ -812,7 +812,7 @@ class _ZohoShellState extends State<ZohoShell> {
         page == ShellPage.inventoryLowStock;
   }
 
-  bool _isFabricationInventoryPage(ShellPage page) {
+  bool _isFabricationInventoryCompatiblePage(ShellPage page) {
     return page == ShellPage.inventoryProducts ||
         page == ShellPage.inventoryStockSummary ||
         page == ShellPage.inventoryStockIn ||
@@ -820,6 +820,12 @@ class _ZohoShellState extends State<ZohoShell> {
         page == ShellPage.inventoryWarehouse ||
         page == ShellPage.inventoryLowStock ||
         page == ShellPage.inventoryRawMaterialStock ||
+        page == ShellPage.inventoryMaterialInward ||
+        page == ShellPage.inventoryMaterialIssue;
+  }
+
+  bool _isFabricationOnlyInventoryPage(ShellPage page) {
+    return page == ShellPage.inventoryRawMaterialStock ||
         page == ShellPage.inventoryMaterialInward ||
         page == ShellPage.inventoryMaterialIssue;
   }
@@ -848,65 +854,65 @@ class _ZohoShellState extends State<ZohoShell> {
 
   List<SidebarGroup> get _allSidebarGroups {
     if (_resolvedIndustry == 'export_import') {
-  return [
-    SidebarGroup(
-      key: 'crm',
-      title: 'CRM',
-      icon: Icons.people_alt_outlined,
-      children: [ShellPage.crmCustomers],
-    ),
+      return [
+        SidebarGroup(
+          key: 'crm',
+          title: 'CRM',
+          icon: Icons.people_alt_outlined,
+          children: [ShellPage.crmCustomers],
+        ),
 
-    SidebarGroup(
-      key: 'inventory',
-      title: 'Inventory',
-      icon: Icons.inventory_2_outlined,
-      children: _inventorySidebarPages,
-    ),
+        SidebarGroup(
+          key: 'inventory',
+          title: 'Inventory',
+          icon: Icons.inventory_2_outlined,
+          children: _inventorySidebarPages,
+        ),
 
-    SidebarGroup(
-      key: 'hr',
-      title: 'HR',
-      icon: Icons.badge_outlined,
-      children: [ShellPage.hrHome],
-    ),
+        SidebarGroup(
+          key: 'hr',
+          title: 'HR',
+          icon: Icons.badge_outlined,
+          children: [ShellPage.hrHome],
+        ),
 
-    SidebarGroup(
-      key: 'finance',
-      title: 'Finance',
-      icon: Icons.account_balance_wallet_outlined,
-      children: [
-        ShellPage.financeProforma,
-        ShellPage.financeTaxInvoice,
-        ShellPage.financePaymentsReceived,
-        ShellPage.financeOutstanding,
-        ShellPage.financeExpenses,
-      ],
-    ),
+        SidebarGroup(
+          key: 'finance',
+          title: 'Finance',
+          icon: Icons.account_balance_wallet_outlined,
+          children: [
+            ShellPage.financeProforma,
+            ShellPage.financeTaxInvoice,
+            ShellPage.financePaymentsReceived,
+            ShellPage.financeOutstanding,
+            ShellPage.financeExpenses,
+          ],
+        ),
 
-    SidebarGroup(
-      key: 'reports',
-      title: 'Reports',
-      icon: Icons.assessment_outlined,
-      children: [
-        ShellPage.reportsSales,
-        ShellPage.reportsCustomer,
-        ShellPage.reportsPayment,
-      ],
-    ),
+        SidebarGroup(
+          key: 'reports',
+          title: 'Reports',
+          icon: Icons.assessment_outlined,
+          children: [
+            ShellPage.reportsSales,
+            ShellPage.reportsCustomer,
+            ShellPage.reportsPayment,
+          ],
+        ),
 
-    SidebarGroup(
-      key: 'admin',
-      title: 'Administration',
-      icon: Icons.admin_panel_settings_outlined,
-      children: [
-        ShellPage.adminUsers,
-        ShellPage.adminModules,
-        ShellPage.adminInventoryProfile,
-        ShellPage.adminComplianceLegal,
-      ],
-    ),
-  ];
-}
+        SidebarGroup(
+          key: 'admin',
+          title: 'Administration',
+          icon: Icons.admin_panel_settings_outlined,
+          children: [
+            ShellPage.adminUsers,
+            ShellPage.adminModules,
+            ShellPage.adminInventoryProfile,
+            ShellPage.adminComplianceLegal,
+          ],
+        ),
+      ];
+    }
 
     return [
       const SidebarGroup(

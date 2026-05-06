@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import 'package:QUIK/core/app/aman_app_config.dart';
 import 'package:QUIK/core/inventory/models/inventory_profile_config.dart';
 
 class InventoryConfigService {
@@ -44,31 +45,12 @@ class InventoryConfigService {
 
     final ref = _profileRef(normalizedTenantId);
     final defaultProfile =
-        profile ?? _defaultProfileForCompanyData(companyData ?? const {});
+        profile ??
+        _defaultProfileForTenant(normalizedTenantId, companyData ?? const {});
 
     await _firestore.runTransaction((transaction) async {
       final snapshot = await transaction.get(ref);
       if (snapshot.exists) {
-        final shouldEnforceIndustryDefault =
-            profile != null || (companyData != null && companyData.isNotEmpty);
-        final existingProfileType = (snapshot.data()?['profileType'] ?? '')
-            .toString()
-            .trim();
-
-        if (shouldEnforceIndustryDefault &&
-            existingProfileType != defaultProfile.profileType) {
-          transaction.set(ref, {
-            ...defaultProfile.toFirestore(),
-            'companyId': normalizedTenantId,
-            'tenantId': normalizedTenantId,
-            'updatedBy': source,
-          }, SetOptions(merge: true));
-          debugPrint(
-            'InventoryConfigService: profile corrected for $normalizedTenantId',
-          );
-          return;
-        }
-
         debugPrint(
           'InventoryConfigService: existing profile kept for $normalizedTenantId',
         );
@@ -136,10 +118,12 @@ class InventoryConfigService {
     }, SetOptions(merge: true));
   }
 
-  InventoryProfileConfig _defaultProfileForCompanyData(
+  InventoryProfileConfig _defaultProfileForTenant(
+    String tenantId,
     Map<String, dynamic> companyData,
   ) {
-    return _isFabricationCompany(companyData)
+    return tenantId.trim() == AmanAppConfig.tenantId ||
+            _isFabricationCompany(companyData)
         ? InventoryProfileConfig.fabrication()
         : InventoryProfileConfig.general();
   }

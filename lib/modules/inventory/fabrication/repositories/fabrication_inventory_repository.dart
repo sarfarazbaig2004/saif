@@ -103,20 +103,19 @@ class FabricationInventoryRepository {
     RawMaterialTransactionType? type,
     int limit = 50,
   }) {
-    Query<Map<String, dynamic>> query = _transactionsRef;
-    if (type != null) {
-      query = query.where('transactionType', isEqualTo: type.key);
-    }
-
-    return query
+    final fetchLimit = type == null ? limit : limit * 4;
+    return _transactionsRef
         .orderBy('transactionDate', descending: true)
-        .limit(limit)
+        .limit(fetchLimit)
         .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
+        .map((snapshot) {
+          final rows = snapshot.docs
               .map(RawMaterialTransactionModel.fromFirestore)
-              .toList(growable: false),
-        );
+              .where((row) => type == null || row.transactionType == type)
+              .take(limit)
+              .toList(growable: false);
+          return rows;
+        });
   }
 
   Stream<List<RawMaterialInwardModel>> watchInwardEntries({int limit = 50}) {
