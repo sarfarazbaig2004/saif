@@ -16,7 +16,12 @@ enum ComplianceDocumentTag {
   firstAid,
   auditReport,
   balanceSheet,
-  inspectionDocument,
+  incomingMaterialInspection,
+  inProcessInspection,
+  finalInspection,
+  galvanizingInspection,
+  dispatchClearance,
+  clientInspectionReport,
 }
 
 enum ComplianceDocumentStatus {
@@ -109,8 +114,18 @@ extension ComplianceDocumentTagX on ComplianceDocumentTag {
         return 'audit_report';
       case ComplianceDocumentTag.balanceSheet:
         return 'balance_sheet';
-      case ComplianceDocumentTag.inspectionDocument:
-        return 'inspection_document';
+      case ComplianceDocumentTag.incomingMaterialInspection:
+        return 'incoming_material_inspection';
+      case ComplianceDocumentTag.inProcessInspection:
+        return 'in_process_inspection';
+      case ComplianceDocumentTag.finalInspection:
+        return 'final_inspection';
+      case ComplianceDocumentTag.galvanizingInspection:
+        return 'galvanizing_inspection';
+      case ComplianceDocumentTag.dispatchClearance:
+        return 'dispatch_clearance';
+      case ComplianceDocumentTag.clientInspectionReport:
+        return 'client_inspection_report';
     }
   }
 
@@ -138,8 +153,18 @@ extension ComplianceDocumentTagX on ComplianceDocumentTag {
         return 'Audit Report';
       case ComplianceDocumentTag.balanceSheet:
         return 'Balance Sheet';
-      case ComplianceDocumentTag.inspectionDocument:
-        return 'Inspection Document';
+      case ComplianceDocumentTag.incomingMaterialInspection:
+        return 'Incoming Material Inspection';
+      case ComplianceDocumentTag.inProcessInspection:
+        return 'In-Process Inspection';
+      case ComplianceDocumentTag.finalInspection:
+        return 'Final Inspection';
+      case ComplianceDocumentTag.galvanizingInspection:
+        return 'Galvanizing Inspection';
+      case ComplianceDocumentTag.dispatchClearance:
+        return 'Dispatch Clearance';
+      case ComplianceDocumentTag.clientInspectionReport:
+        return 'Client Inspection Report';
     }
   }
 
@@ -157,7 +182,12 @@ extension ComplianceDocumentTagX on ComplianceDocumentTag {
       case ComplianceDocumentTag.firstAid:
         return ComplianceAccessCategory.hr;
       case ComplianceDocumentTag.iso:
-      case ComplianceDocumentTag.inspectionDocument:
+      case ComplianceDocumentTag.incomingMaterialInspection:
+      case ComplianceDocumentTag.inProcessInspection:
+      case ComplianceDocumentTag.finalInspection:
+      case ComplianceDocumentTag.galvanizingInspection:
+      case ComplianceDocumentTag.dispatchClearance:
+      case ComplianceDocumentTag.clientInspectionReport:
         return ComplianceAccessCategory.quality;
       case ComplianceDocumentTag.factoryLicense:
         return ComplianceAccessCategory.legal;
@@ -171,7 +201,21 @@ extension ComplianceDocumentTagX on ComplianceDocumentTag {
         this == ComplianceDocumentTag.msme;
   }
 
+  bool get isIsoQmsTag => this == ComplianceDocumentTag.iso;
+
+  bool get isInspectionTag {
+    return this == ComplianceDocumentTag.incomingMaterialInspection ||
+        this == ComplianceDocumentTag.inProcessInspection ||
+        this == ComplianceDocumentTag.finalInspection ||
+        this == ComplianceDocumentTag.galvanizingInspection ||
+        this == ComplianceDocumentTag.dispatchClearance ||
+        this == ComplianceDocumentTag.clientInspectionReport;
+  }
+
   static ComplianceDocumentTag fromKey(String key) {
+    if (key == 'inspection_document') {
+      return ComplianceDocumentTag.finalInspection;
+    }
     return ComplianceDocumentTag.values.firstWhere(
       (tag) => tag.key == key,
       orElse: () => ComplianceDocumentTag.gst,

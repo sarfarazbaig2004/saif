@@ -172,7 +172,12 @@ service cloud.firestore {
           'first_aid',
           'audit_report',
           'balance_sheet',
-          'inspection_document',
+          'incoming_material_inspection',
+          'in_process_inspection',
+          'final_inspection',
+          'galvanizing_inspection',
+          'dispatch_clearance',
+          'client_inspection_report',
         ]);
     }
 

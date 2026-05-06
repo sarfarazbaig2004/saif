@@ -8,6 +8,8 @@ import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/administration/compliance/models/compliance_document_model.dart';
 import 'package:QUIK/modules/administration/compliance/services/compliance_document_service.dart';
 
+enum _QmsDocumentBucket { all, iso, inspection }
+
 class ComplianceLegalScreen extends StatefulWidget {
   const ComplianceLegalScreen({
     super.key,
@@ -32,6 +34,7 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
   late final ComplianceDocumentService _service;
   ComplianceAccessCategory? _categoryFilter;
   ComplianceDocumentStatus? _statusFilter;
+  _QmsDocumentBucket _qmsBucket = _QmsDocumentBucket.all;
   bool _showQmsHistory = false;
   bool _isSaving = false;
 
@@ -87,6 +90,17 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
     return _allowedCategories.any(document.hasAccessCategory);
   }
 
+  bool _matchesQmsBucket(ComplianceDocumentModel document) {
+    switch (_qmsBucket) {
+      case _QmsDocumentBucket.all:
+        return true;
+      case _QmsDocumentBucket.iso:
+        return document.tags.any((tag) => tag.isIsoQmsTag);
+      case _QmsDocumentBucket.inspection:
+        return document.tags.any((tag) => tag.isInspectionTag);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_allowedCategories.isEmpty) {
@@ -116,7 +130,8 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
                 return document.isQmsDocument &&
                     document.hasAccessCategory(
                       ComplianceAccessCategory.quality,
-                    );
+                    ) &&
+                    _matchesQmsBucket(document);
               })
               .toList(growable: false),
         );
@@ -191,8 +206,12 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
                           : _QmsDocumentControlSection(
                               documents: qmsDocuments,
                               showHistory: _showQmsHistory,
+                              selectedBucket: _qmsBucket,
                               canApprove: _canApproveQms,
                               compact: compact,
+                              onBucketChanged: (value) {
+                                setState(() => _qmsBucket = value);
+                              },
                               onShowHistoryChanged: (value) {
                                 setState(() => _showQmsHistory = value);
                               },
@@ -296,15 +315,14 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
     ComplianceValidityType validityType = ComplianceValidityType.expiryBased;
     ComplianceDocumentStatus selectedStatus = ComplianceDocumentStatus.active;
     final dialogTags = isQmsDocument
-        ? _allowedTags
-              .where(
-                (tag) => tag.accessCategory == ComplianceAccessCategory.quality,
-              )
-              .toList(growable: false)
+        ? _qualityTagsForBucket(_qmsBucket)
         : _allowedTags;
-    final defaultTag = isQmsDocument
-        ? ComplianceDocumentTag.iso
-        : dialogTags.first;
+    if (dialogTags.isEmpty) {
+      _showSnack('No document categories are available for this role.');
+      return;
+    }
+
+    final defaultTag = dialogTags.first;
     final selectedTags = <ComplianceDocumentTag>{
       ...?baseRevision?.tags,
       defaultTag,
@@ -648,6 +666,33 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
     }
   }
 
+  List<ComplianceDocumentTag> _qualityTagsForBucket(_QmsDocumentBucket bucket) {
+    final qualityTags = _allowedTags.where((tag) {
+      return tag.accessCategory == ComplianceAccessCategory.quality;
+    });
+
+    switch (bucket) {
+      case _QmsDocumentBucket.iso:
+        return qualityTags
+            .where((tag) => tag.isIsoQmsTag)
+            .toList(growable: false);
+      case _QmsDocumentBucket.inspection:
+        return qualityTags
+            .where((tag) => tag.isInspectionTag)
+            .toList(growable: false);
+      case _QmsDocumentBucket.all:
+        return qualityTags.toList(growable: false);
+    }
+  }
+
+  _QmsDocumentBucket _bucketForDocument(ComplianceDocumentModel document) {
+    final hasIso = document.tags.any((tag) => tag.isIsoQmsTag);
+    final hasInspection = document.tags.any((tag) => tag.isInspectionTag);
+    if (hasIso && !hasInspection) return _QmsDocumentBucket.iso;
+    if (hasInspection && !hasIso) return _QmsDocumentBucket.inspection;
+    return _QmsDocumentBucket.all;
+  }
+
   Future<void> _openDocument(ComplianceDocumentModel document) async {
     String url = '';
     try {
@@ -771,13 +816,7 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
             }
 
             final editableTags = document.isQmsDocument
-                ? _allowedTags
-                      .where(
-                        (tag) =>
-                            tag.accessCategory ==
-                            ComplianceAccessCategory.quality,
-                      )
-                      .toList(growable: false)
+                ? _qualityTagsForBucket(_bucketForDocument(document))
                 : _allowedTags;
 
             return AlertDialog(
@@ -1501,8 +1540,10 @@ class _QmsDocumentControlSection extends StatelessWidget {
   const _QmsDocumentControlSection({
     required this.documents,
     required this.showHistory,
+    required this.selectedBucket,
     required this.canApprove,
     required this.compact,
+    required this.onBucketChanged,
     required this.onShowHistoryChanged,
     required this.onView,
     required this.onOpen,
@@ -1514,8 +1555,10 @@ class _QmsDocumentControlSection extends StatelessWidget {
 
   final List<ComplianceDocumentModel> documents;
   final bool showHistory;
+  final _QmsDocumentBucket selectedBucket;
   final bool canApprove;
   final bool compact;
+  final ValueChanged<_QmsDocumentBucket> onBucketChanged;
   final ValueChanged<bool> onShowHistoryChanged;
   final ValueChanged<ComplianceDocumentModel> onView;
   final ValueChanged<ComplianceDocumentModel> onOpen;
@@ -1539,7 +1582,6 @@ class _QmsDocumentControlSection extends StatelessWidget {
           child: Wrap(
             spacing: 12,
             runSpacing: 8,
-            alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               const Row(
@@ -1552,6 +1594,29 @@ class _QmsDocumentControlSection extends StatelessWidget {
                     style: TextStyle(color: zText, fontWeight: FontWeight.w800),
                   ),
                 ],
+              ),
+              SegmentedButton<_QmsDocumentBucket>(
+                segments: const [
+                  ButtonSegment(
+                    value: _QmsDocumentBucket.all,
+                    label: Text('All'),
+                    icon: Icon(Icons.folder_copy_outlined),
+                  ),
+                  ButtonSegment(
+                    value: _QmsDocumentBucket.iso,
+                    label: Text('QMS / ISO'),
+                    icon: Icon(Icons.rule_folder_outlined),
+                  ),
+                  ButtonSegment(
+                    value: _QmsDocumentBucket.inspection,
+                    label: Text('Inspections'),
+                    icon: Icon(Icons.fact_check_outlined),
+                  ),
+                ],
+                selected: {selectedBucket},
+                onSelectionChanged: (selection) {
+                  onBucketChanged(selection.first);
+                },
               ),
               FilterChip(
                 selected: showHistory,
