@@ -61,10 +61,13 @@ class JobCardDetailScreen extends StatelessWidget {
                 _detail('Project Code', jobCard.projectCode),
                 _detail('Customer', jobCard.customerName),
                 _detail('PO Number', jobCard.poNumber),
+                _detail('Division', jobCard.division),
                 _detail('Product Code', jobCard.productCode),
                 _detail('Product Name', jobCard.productName),
+                _detail('Contractor', jobCard.contractor),
                 _detail('Drawing No', jobCard.drawingNo),
                 _detail('Drawing Revision', jobCard.drawingRevision),
+                _detail('Revision No', jobCard.revisionNo),
               ],
             ),
             const SizedBox(height: 12),
@@ -72,6 +75,7 @@ class JobCardDetailScreen extends StatelessWidget {
               title: 'Planning',
               children: [
                 _detail('BOM ID', jobCard.bomId),
+                _detail('BOM Reference', jobCard.bomReference),
                 _detail('BOQ ID', jobCard.boqId),
                 _detail('Planned Qty', _qty(jobCard.plannedQty, jobCard.unit)),
                 _detail(
@@ -81,11 +85,31 @@ class JobCardDetailScreen extends StatelessWidget {
                 _detail('Balance Qty', _qty(jobCard.balanceQty, jobCard.unit)),
                 _detail('Planned Start', _date(jobCard.plannedStartDate)),
                 _detail('Planned End', _date(jobCard.plannedEndDate)),
+                _detail('Target Date', _date(jobCard.targetDate)),
                 _detail(
                   'Dispatch Commitment',
                   _date(jobCard.dispatchCommitmentDate),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            _SectionCard(
+              title: 'Quantity Breakup',
+              children: jobCard.quantityLines.isEmpty
+                  ? [
+                      _detail(
+                        'Quantity',
+                        _qty(jobCard.plannedQty, jobCard.unit),
+                      ),
+                    ]
+                  : jobCard.quantityLines
+                        .map(
+                          (line) => _detail(
+                            line.label.isEmpty ? 'Quantity' : line.label,
+                            _qty(line.quantity, line.unit),
+                          ),
+                        )
+                        .toList(growable: false),
             ),
             const SizedBox(height: 12),
             _SectionCard(

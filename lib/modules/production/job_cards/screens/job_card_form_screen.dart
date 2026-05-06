@@ -16,7 +16,6 @@ class JobCardFormScreen extends StatefulWidget {
 }
 
 class _JobCardFormScreenState extends State<JobCardFormScreen> {
-  static const _priorities = ['low', 'normal', 'high', 'urgent'];
   static const _statuses = [
     'draft',
     'planned',
@@ -33,11 +32,15 @@ class _JobCardFormScreenState extends State<JobCardFormScreen> {
   final _projectCode = TextEditingController();
   final _customerName = TextEditingController();
   final _poNumber = TextEditingController();
+  final _division = TextEditingController();
   final _productCode = TextEditingController();
   final _productName = TextEditingController();
+  final _contractor = TextEditingController();
   final _drawingNo = TextEditingController();
   final _drawingRevision = TextEditingController();
+  final _revisionNo = TextEditingController();
   final _bomId = TextEditingController();
+  final _bomReference = TextEditingController();
   final _boqId = TextEditingController();
   final _plannedQty = TextEditingController();
   final _completedQty = TextEditingController(text: '0');
@@ -47,10 +50,11 @@ class _JobCardFormScreenState extends State<JobCardFormScreen> {
 
   DateTime? _plannedStartDate;
   DateTime? _plannedEndDate;
+  DateTime? _targetDate;
   DateTime? _dispatchCommitmentDate;
-  String _priority = 'normal';
   String _status = 'draft';
   bool _saving = false;
+  final List<_QuantityLineControllers> _quantityLines = [];
 
   @override
   void initState() {
@@ -79,28 +83,67 @@ class _JobCardFormScreenState extends State<JobCardFormScreen> {
     _poNumber.text = jobCard.poNumber;
     _productCode.text = jobCard.productCode;
     _productName.text = jobCard.productName;
+    _division.text = jobCard.division;
+    _contractor.text = jobCard.contractor;
     _drawingNo.text = jobCard.drawingNo;
     _drawingRevision.text = jobCard.drawingRevision;
+    _revisionNo.text = jobCard.revisionNo;
     _bomId.text = jobCard.bomId;
+    _bomReference.text = jobCard.bomReference;
     _boqId.text = jobCard.boqId;
     _plannedQty.text = _numText(jobCard.plannedQty);
     _completedQty.text = _numText(jobCard.completedQty);
     _unit.text = jobCard.unit.isEmpty ? 'nos' : jobCard.unit;
     _plannedStartDate = jobCard.plannedStartDate;
     _plannedEndDate = jobCard.plannedEndDate;
+    _targetDate = jobCard.targetDate;
     _dispatchCommitmentDate = jobCard.dispatchCommitmentDate;
-    _priority = _priorities.contains(jobCard.priority)
-        ? jobCard.priority
-        : 'normal';
     _status = _statuses.contains(jobCard.status) ? jobCard.status : 'draft';
     _delayReason.text = jobCard.delayReason;
     _remarks.text = jobCard.remarks;
+    for (final line in jobCard.quantityLines) {
+      _quantityLines.add(_QuantityLineControllers.fromLine(line));
+    }
+  }
+
+  void _addQuantityLine() {
+    setState(() {
+      _quantityLines.add(
+        _QuantityLineControllers(
+          label: 'Lot ${_quantityLines.length + 1}',
+          unit: _unit.text.trim().isEmpty ? 'nos' : _unit.text.trim(),
+        ),
+      );
+    });
+  }
+
+  void _removeQuantityLine(int index) {
+    final line = _quantityLines.removeAt(index);
+    line.dispose();
+    setState(() {});
+  }
+
+  List<JobCardQuantityLine> _readQuantityLines() {
+    return _quantityLines
+        .map(
+          (line) => JobCardQuantityLine(
+            label: line.label.text.trim(),
+            quantity: double.tryParse(line.quantity.text.trim()) ?? 0,
+            unit: line.unit.text.trim().isEmpty ? 'nos' : line.unit.text.trim(),
+          ),
+        )
+        .where((line) => line.quantity > 0)
+        .toList(growable: false);
   }
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_activeTenantId.isEmpty) {
       _showSnack('Missing company workspace. Job card was not saved.');
+      return;
+    }
+    if (_targetDate == null) {
+      _showSnack('Target date is required.');
       return;
     }
     if (_dispatchCommitmentDate == null) {
@@ -113,6 +156,7 @@ class _JobCardFormScreenState extends State<JobCardFormScreen> {
       final plannedQty = double.tryParse(_plannedQty.text.trim()) ?? 0;
       final completedQty = double.tryParse(_completedQty.text.trim()) ?? 0;
       final balanceQty = plannedQty - completedQty;
+      final quantityLines = _readQuantityLines();
       final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
 
       final jobCard = JobCardModel(
@@ -121,20 +165,34 @@ class _JobCardFormScreenState extends State<JobCardFormScreen> {
         projectCode: _projectCode.text.trim(),
         customerName: _customerName.text.trim(),
         poNumber: _poNumber.text.trim(),
+        division: _division.text.trim(),
         productCode: _productCode.text.trim(),
         productName: _productName.text.trim(),
+        contractor: _contractor.text.trim(),
         drawingNo: _drawingNo.text.trim(),
         drawingRevision: _drawingRevision.text.trim(),
+        revisionNo: _revisionNo.text.trim(),
         bomId: _bomId.text.trim(),
+        bomReference: _bomReference.text.trim(),
         boqId: _boqId.text.trim(),
         plannedQty: plannedQty,
         completedQty: completedQty,
         balanceQty: balanceQty < 0 ? 0 : balanceQty,
+        quantityLines: quantityLines.isEmpty
+            ? [
+                JobCardQuantityLine(
+                  label: 'Total',
+                  quantity: plannedQty,
+                  unit: _unit.text.trim().isEmpty ? 'nos' : _unit.text.trim(),
+                ),
+              ]
+            : quantityLines,
         unit: _unit.text.trim().isEmpty ? 'nos' : _unit.text.trim(),
         plannedStartDate: _plannedStartDate,
         plannedEndDate: _plannedEndDate,
+        targetDate: _targetDate,
         dispatchCommitmentDate: _dispatchCommitmentDate,
-        priority: _priority,
+        priority: 'normal',
         status: _status,
         delayReason: _delayReason.text.trim(),
         remarks: _remarks.text.trim(),
@@ -187,17 +245,24 @@ class _JobCardFormScreenState extends State<JobCardFormScreen> {
     _projectCode.dispose();
     _customerName.dispose();
     _poNumber.dispose();
+    _division.dispose();
     _productCode.dispose();
     _productName.dispose();
+    _contractor.dispose();
     _drawingNo.dispose();
     _drawingRevision.dispose();
+    _revisionNo.dispose();
     _bomId.dispose();
+    _bomReference.dispose();
     _boqId.dispose();
     _plannedQty.dispose();
     _completedQty.dispose();
     _unit.dispose();
     _delayReason.dispose();
     _remarks.dispose();
+    for (final line in _quantityLines) {
+      line.dispose();
+    }
     super.dispose();
   }
 
@@ -230,15 +295,9 @@ class _JobCardFormScreenState extends State<JobCardFormScreen> {
                   runSpacing: 12,
                   children: [
                     _field(_jobCardNo, 'Job Card No', required: true),
-                    _field(_projectCode, 'Project Code'),
-                    _field(_customerName, 'Customer Name'),
+                    _field(_projectCode, 'Project / PO'),
                     _field(_poNumber, 'PO Number'),
-                    _dropdown(
-                      label: 'Priority',
-                      value: _priority,
-                      values: _priorities,
-                      onChanged: (value) => setState(() => _priority = value),
-                    ),
+                    _field(_division, 'Division'),
                     _dropdown(
                       label: 'Status',
                       value: _status,
@@ -255,11 +314,14 @@ class _JobCardFormScreenState extends State<JobCardFormScreen> {
                   spacing: 12,
                   runSpacing: 12,
                   children: [
-                    _field(_productCode, 'Product Code', required: true),
-                    _field(_productName, 'Product Name'),
+                    _field(_productName, 'Item / Product', required: true),
+                    _field(_productCode, 'Product Code'),
+                    _field(_contractor, 'Contractor'),
                     _field(_drawingNo, 'Drawing No'),
                     _field(_drawingRevision, 'Drawing Revision', width: 170),
+                    _field(_revisionNo, 'Revision No', width: 150),
                     _field(_bomId, 'BOM ID'),
+                    _field(_bomReference, 'BOM Reference'),
                     _field(_boqId, 'BOQ ID'),
                   ],
                 ),
@@ -292,11 +354,12 @@ class _JobCardFormScreenState extends State<JobCardFormScreen> {
                       ),
                     ),
                     _dateButton(
-                      label: 'Planned End',
-                      value: _plannedEndDate,
+                      label: 'Target Date',
+                      value: _targetDate,
+                      required: true,
                       onTap: () => _pickDate(
-                        value: _plannedEndDate,
-                        onChanged: (value) => _plannedEndDate = value,
+                        value: _targetDate,
+                        onChanged: (value) => _targetDate = value,
                       ),
                     ),
                     _dateButton(
@@ -307,6 +370,34 @@ class _JobCardFormScreenState extends State<JobCardFormScreen> {
                         value: _dispatchCommitmentDate,
                         onChanged: (value) => _dispatchCommitmentDate = value,
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              _SectionCard(
+                title: 'Quantity Breakup',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_quantityLines.isEmpty)
+                      const Text(
+                        'Add quantity rows when a job card needs multiple lots, stages, or contractor splits.',
+                        style: TextStyle(
+                          color: zMuted,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      )
+                    else
+                      ..._quantityLines.asMap().entries.map(
+                        (entry) => _quantityLineRow(entry.key, entry.value),
+                      ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      onPressed: _addQuantityLine,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Quantity'),
                     ),
                   ],
                 ),
@@ -354,6 +445,27 @@ class _JobCardFormScreenState extends State<JobCardFormScreen> {
                 ? (value) =>
                       (value ?? '').trim().isEmpty ? '$label is required' : null
                 : null),
+      ),
+    );
+  }
+
+  Widget _quantityLineRow(int index, _QuantityLineControllers line) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          _field(line.label, 'Label', width: 190),
+          _field(line.quantity, 'Quantity', width: 150, number: true),
+          _field(line.unit, 'Unit', width: 120),
+          IconButton.outlined(
+            tooltip: 'Remove quantity',
+            onPressed: () => _removeQuantityLine(index),
+            icon: const Icon(Icons.delete_outline),
+          ),
+        ],
       ),
     );
   }
@@ -467,5 +579,35 @@ class _SectionCard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _QuantityLineControllers {
+  final TextEditingController label;
+  final TextEditingController quantity;
+  final TextEditingController unit;
+
+  _QuantityLineControllers({
+    String label = '',
+    String quantity = '',
+    String unit = 'nos',
+  }) : label = TextEditingController(text: label),
+       quantity = TextEditingController(text: quantity),
+       unit = TextEditingController(text: unit);
+
+  factory _QuantityLineControllers.fromLine(JobCardQuantityLine line) {
+    return _QuantityLineControllers(
+      label: line.label,
+      quantity: line.quantity == line.quantity.roundToDouble()
+          ? line.quantity.toStringAsFixed(0)
+          : line.quantity.toStringAsFixed(2),
+      unit: line.unit,
+    );
+  }
+
+  void dispose() {
+    label.dispose();
+    quantity.dispose();
+    unit.dispose();
   }
 }

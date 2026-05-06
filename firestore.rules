@@ -79,8 +79,62 @@ service cloud.firestore {
         );
     }
 
+    function isSoftwareSuperAdminMember(tenantId) {
+      return signedIn() &&
+        isAmanTenant(tenantId) &&
+        (
+          isSoftwareSuperAdminAuth() ||
+          currentCompanyRole(tenantId) == 'software_super_admin'
+        );
+    }
+
     function isCompanyUserAdmin(tenantId) {
-      return isSoftwareSuperAdminAuth() || isCompanySuperAdmin(tenantId);
+      return isSoftwareSuperAdminMember(tenantId) || isCompanySuperAdmin(tenantId);
+    }
+
+    function isComplianceAdmin(tenantId) {
+      return isSoftwareSuperAdminMember(tenantId) || isCompanySuperAdmin(tenantId);
+    }
+
+    function isFinanceRole(tenantId) {
+      return currentCompanyRole(tenantId) == 'finance';
+    }
+
+    function isHrRole(tenantId) {
+      return currentCompanyRole(tenantId) == 'hr' ||
+        currentCompanyRole(tenantId) == 'HR';
+    }
+
+    function isProductionQaRole(tenantId) {
+      return currentCompanyRole(tenantId) == 'production' ||
+        currentCompanyRole(tenantId) == 'qa' ||
+        currentCompanyRole(tenantId) == 'QA';
+    }
+
+    function canAccessComplianceCategory(tenantId, category) {
+      return canAccessAman(tenantId) &&
+        (
+          isComplianceAdmin(tenantId) ||
+          (isFinanceRole(tenantId) && category == 'financial') ||
+          (isHrRole(tenantId) && category == 'hr') ||
+          (isProductionQaRole(tenantId) && category == 'quality')
+        );
+    }
+
+    function complianceTypeMatchesCategory(data) {
+      return (
+        data.category == 'financial' &&
+        data.documentType in ['gst', 'pan', 'audit_report', 'balance_sheet']
+      ) || (
+        data.category == 'hr' &&
+        data.documentType in ['pf_esic']
+      ) || (
+        data.category == 'quality' &&
+        data.documentType in ['iso', 'inspection_document']
+      ) || (
+        data.category == 'legal' &&
+        data.documentType in ['msme', 'factory_license']
+      );
     }
 
     function canAccessAman(tenantId) {
@@ -198,6 +252,18 @@ service cloud.firestore {
         allow create: if canCreateCompanyUser(tenantId) && tenantWriteAllowed(tenantId);
         allow update: if canUpdateCompanyUser(tenantId) && tenantWriteAllowed(tenantId);
         allow delete: if false;
+      }
+
+      match /compliance_documents/{documentId} {
+        allow read: if canAccessComplianceCategory(tenantId, resource.data.category);
+        allow create: if canAccessComplianceCategory(tenantId, request.resource.data.category) &&
+          tenantWriteAllowed(tenantId) &&
+          complianceTypeMatchesCategory(request.resource.data);
+        allow update: if canAccessComplianceCategory(tenantId, resource.data.category) &&
+          canAccessComplianceCategory(tenantId, request.resource.data.category) &&
+          tenantWriteAllowed(tenantId) &&
+          complianceTypeMatchesCategory(request.resource.data);
+        allow delete: if canAccessAman(tenantId) && isComplianceAdmin(tenantId);
       }
 
       match /{document=**} {

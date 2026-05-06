@@ -7,6 +7,7 @@ import 'package:QUIK/core/modules/module_registry.dart';
 import 'package:QUIK/core/modules/providers/module_access_provider.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/administration/inventory/screen_inventory_profile_settings.dart';
+import 'package:QUIK/modules/administration/compliance/screens/compliance_legal_screen.dart';
 import 'package:QUIK/modules/administration/modules/screen_company_modules.dart';
 import 'package:QUIK/modules/administration/users/screen_user_management.dart';
 import 'package:QUIK/modules/crm/customers/screens_customer_list.dart';
@@ -120,6 +121,7 @@ enum ShellPage {
   adminRoles,
   adminModules,
   adminInventoryProfile,
+  adminComplianceLegal,
   adminCompanyProfile,
   adminBranches,
   adminAuditLogs,
@@ -258,6 +260,8 @@ extension ShellPageX on ShellPage {
         return 'Company Modules';
       case ShellPage.adminInventoryProfile:
         return 'Inventory Profile';
+      case ShellPage.adminComplianceLegal:
+        return 'Compliance & Legal';
       case ShellPage.adminCompanyProfile:
         return 'Company Profile';
       case ShellPage.adminBranches:
@@ -390,6 +394,8 @@ extension ShellPageX on ShellPage {
         return Icons.widgets_outlined;
       case ShellPage.adminInventoryProfile:
         return Icons.tune_outlined;
+      case ShellPage.adminComplianceLegal:
+        return Icons.gavel_outlined;
       case ShellPage.adminCompanyProfile:
         return Icons.apartment_outlined;
       case ShellPage.adminBranches:
@@ -513,6 +519,15 @@ class _ZohoShellState extends State<ZohoShell> {
         r == 'superadmin' ||
         r == 'admin' ||
         r == 'manager';
+  }
+
+  bool get _canViewComplianceLegal {
+    if (isAdminOrManager) return true;
+    return _currentRole == 'finance' ||
+        _currentRole == 'hr' ||
+        _currentRole == 'production' ||
+        _currentRole == 'qa' ||
+        _hasPermission('administration', 'complianceLegal');
   }
 
   bool get _isMirajTenant {
@@ -726,6 +741,8 @@ class _ZohoShellState extends State<ZohoShell> {
         return false;
       case ShellPage.adminInventoryProfile:
         return false;
+      case ShellPage.adminComplianceLegal:
+        return _canViewComplianceLegal;
       case ShellPage.adminCompanyProfile:
         return _hasPermission('administration', 'companyProfile');
       case ShellPage.adminBranches:
@@ -862,6 +879,7 @@ class _ZohoShellState extends State<ZohoShell> {
             ShellPage.adminUsers,
             ShellPage.adminModules,
             ShellPage.adminInventoryProfile,
+            ShellPage.adminComplianceLegal,
           ],
         ),
       ];
@@ -978,6 +996,7 @@ class _ZohoShellState extends State<ZohoShell> {
           ShellPage.adminRoles,
           ShellPage.adminModules,
           ShellPage.adminInventoryProfile,
+          ShellPage.adminComplianceLegal,
           ShellPage.adminCompanyProfile,
           ShellPage.adminBranches,
           ShellPage.adminAuditLogs,
@@ -1097,6 +1116,7 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.adminUsers:
       case ShellPage.adminModules:
       case ShellPage.adminInventoryProfile:
+      case ShellPage.adminComplianceLegal:
       case ShellPage.settingsGeneral:
       case ShellPage.financeProforma:
       case ShellPage.financeTaxInvoice:
@@ -1885,6 +1905,17 @@ class _ZohoShellState extends State<ZohoShell> {
           child: ScreenInventoryProfileSettings(
             companyId: widget.companyId,
             companyName: widget.companyName,
+          ),
+        );
+
+      case ShellPage.adminComplianceLegal:
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: ComplianceLegalScreen(
+            tenantId: widget.companyId,
+            currentUserUid: widget.userUid,
+            currentUserEmail: widget.userEmail,
+            currentRole: _currentRole,
           ),
         );
 
