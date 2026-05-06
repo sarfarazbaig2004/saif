@@ -121,20 +121,65 @@ service cloud.firestore {
         );
     }
 
-    function complianceTypeMatchesCategory(data) {
-      return (
-        data.category == 'financial' &&
-        data.documentType in ['gst', 'pan', 'audit_report', 'balance_sheet']
-      ) || (
-        data.category == 'hr' &&
-        data.documentType in ['pf_esic']
-      ) || (
-        data.category == 'quality' &&
-        data.documentType in ['iso', 'inspection_document']
-      ) || (
-        data.category == 'legal' &&
-        data.documentType in ['msme', 'factory_license']
-      );
+    function canReadComplianceAccessCategories(tenantId, categories) {
+      return canAccessAman(tenantId) &&
+        (
+          isComplianceAdmin(tenantId) ||
+          (isFinanceRole(tenantId) && categories.hasAny(['financial'])) ||
+          (isHrRole(tenantId) && categories.hasAny(['hr'])) ||
+          (isProductionQaRole(tenantId) && categories.hasAny(['quality']))
+        );
+    }
+
+    function canWriteComplianceAccessCategories(tenantId, categories) {
+      return canAccessAman(tenantId) &&
+        (
+          isComplianceAdmin(tenantId) ||
+          (isFinanceRole(tenantId) && categories.hasOnly(['financial'])) ||
+          (isHrRole(tenantId) && categories.hasOnly(['hr'])) ||
+          (isProductionQaRole(tenantId) && categories.hasOnly(['quality']))
+        );
+    }
+
+    function hasComplianceAccessCategories(data) {
+      return 'accessCategories' in data && data.accessCategories is list;
+    }
+
+    function canReadComplianceDocument(tenantId, data) {
+      return hasComplianceAccessCategories(data)
+        ? canReadComplianceAccessCategories(tenantId, data.accessCategories)
+        : canAccessComplianceCategory(tenantId, data.category);
+    }
+
+    function canWriteComplianceDocument(tenantId, data) {
+      return hasComplianceAccessCategories(data) &&
+        canWriteComplianceAccessCategories(tenantId, data.accessCategories);
+    }
+
+    function validComplianceTags(data) {
+      return 'documentCategories' in data &&
+        data.documentCategories is list &&
+        data.documentCategories.size() > 0 &&
+        data.documentCategories.hasOnly([
+          'gst',
+          'pan',
+          'aadhaar',
+          'pf',
+          'esic',
+          'msme',
+          'factory_license',
+          'iso',
+          'first_aid',
+          'audit_report',
+          'balance_sheet',
+          'inspection_document',
+        ]);
+    }
+
+    function validComplianceAccessCategories(data) {
+      return hasComplianceAccessCategories(data) &&
+        data.accessCategories.size() > 0 &&
+        data.accessCategories.hasOnly(['financial', 'hr', 'quality', 'legal']);
     }
 
     function canAccessAman(tenantId) {
@@ -255,15 +300,17 @@ service cloud.firestore {
       }
 
       match /compliance_documents/{documentId} {
-        allow read: if canAccessComplianceCategory(tenantId, resource.data.category);
-        allow create: if canAccessComplianceCategory(tenantId, request.resource.data.category) &&
+        allow read: if canReadComplianceDocument(tenantId, resource.data);
+        allow create: if canWriteComplianceDocument(tenantId, request.resource.data) &&
           tenantWriteAllowed(tenantId) &&
-          complianceTypeMatchesCategory(request.resource.data);
-        allow update: if canAccessComplianceCategory(tenantId, resource.data.category) &&
-          canAccessComplianceCategory(tenantId, request.resource.data.category) &&
+          validComplianceTags(request.resource.data) &&
+          validComplianceAccessCategories(request.resource.data);
+        allow update: if canReadComplianceDocument(tenantId, resource.data) &&
+          canWriteComplianceDocument(tenantId, request.resource.data) &&
           tenantWriteAllowed(tenantId) &&
-          complianceTypeMatchesCategory(request.resource.data);
-        allow delete: if canAccessAman(tenantId) && isComplianceAdmin(tenantId);
+          validComplianceTags(request.resource.data) &&
+          validComplianceAccessCategories(request.resource.data);
+        allow delete: if false;
       }
 
       match /{document=**} {

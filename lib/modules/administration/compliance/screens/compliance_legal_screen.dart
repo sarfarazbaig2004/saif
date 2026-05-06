@@ -25,16 +25,26 @@ class ComplianceLegalScreen extends StatefulWidget {
   State<ComplianceLegalScreen> createState() => _ComplianceLegalScreenState();
 }
 
-class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
+class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
   late final ComplianceDocumentService _service;
-  ComplianceDocumentCategory? _categoryFilter;
-  ComplianceExpiryStatus? _statusFilter;
+  ComplianceAccessCategory? _categoryFilter;
+  ComplianceDocumentStatus? _statusFilter;
+  bool _showQmsHistory = false;
   bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _service = ComplianceDocumentService(tenantId: widget.tenantId);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   String get _role => widget.currentRole.trim().toLowerCase();
@@ -47,25 +57,29 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
         _role == 'manager';
   }
 
-  List<ComplianceDocumentCategory> get _allowedCategories {
-    if (_isAdmin) return ComplianceDocumentCategory.values;
-    if (_role == 'finance') return const [ComplianceDocumentCategory.financial];
-    if (_role == 'hr') return const [ComplianceDocumentCategory.hr];
+  bool get _canApproveQms {
+    return _isAdmin || _role == 'qa';
+  }
+
+  List<ComplianceAccessCategory> get _allowedCategories {
+    if (_isAdmin) return ComplianceAccessCategory.values;
+    if (_role == 'finance') return const [ComplianceAccessCategory.financial];
+    if (_role == 'hr') return const [ComplianceAccessCategory.hr];
     if (_role == 'production' || _role == 'qa') {
-      return const [ComplianceDocumentCategory.quality];
+      return const [ComplianceAccessCategory.quality];
     }
     return const [];
   }
 
-  List<ComplianceDocumentType> get _allowedTypes {
+  List<ComplianceDocumentTag> get _allowedTags {
     final categories = _allowedCategories.toSet();
-    return ComplianceDocumentType.values
-        .where((type) => categories.contains(type.category))
+    return ComplianceDocumentTag.values
+        .where((tag) => categories.contains(tag.accessCategory))
         .toList(growable: false);
   }
 
   bool _canSee(ComplianceDocumentModel document) {
-    return _allowedCategories.contains(document.category);
+    return _allowedCategories.any(document.hasAccessCategory);
   }
 
   @override
@@ -78,18 +92,29 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
       stream: _service.watchDocuments(allowedCategories: _allowedCategories),
       builder: (context, snapshot) {
         final allDocuments = snapshot.data ?? const <ComplianceDocumentModel>[];
-        final visibleDocuments = allDocuments
+        final registerDocuments = allDocuments
             .where(_canSee)
+            .where((document) => !document.isQmsDocument)
             .where((document) {
               final categoryMatches =
                   _categoryFilter == null ||
-                  document.category == _categoryFilter;
+                  document.hasAccessCategory(_categoryFilter!);
               final statusMatches =
-                  _statusFilter == null ||
-                  document.expiryStatus == _statusFilter;
+                  _statusFilter == null || document.status == _statusFilter;
               return categoryMatches && statusMatches;
             })
             .toList(growable: false);
+        final qmsDocuments = _qmsDisplayDocuments(
+          allDocuments
+              .where(_canSee)
+              .where((document) {
+                return document.isQmsDocument &&
+                    document.hasAccessCategory(
+                      ComplianceAccessCategory.quality,
+                    );
+              })
+              .toList(growable: false),
+        );
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -99,34 +124,75 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
               children: [
                 _Header(
                   isSaving: _isSaving,
-                  onUpload: _showUploadDialog,
+                  onUpload: () => _showUploadDialog(isQmsDocument: false),
+                  onUploadQms:
+                      _allowedCategories.contains(
+                        ComplianceAccessCategory.quality,
+                      )
+                      ? () => _showUploadDialog(isQmsDocument: true)
+                      : null,
                   compact: compact,
                 ),
                 const SizedBox(height: 12),
-                _SummaryStrip(documents: allDocuments.where(_canSee).toList()),
-                const SizedBox(height: 12),
-                _Filters(
-                  allowedCategories: _allowedCategories,
-                  categoryFilter: _categoryFilter,
-                  statusFilter: _statusFilter,
-                  onCategoryChanged: (value) {
-                    setState(() => _categoryFilter = value);
-                  },
-                  onStatusChanged: (value) {
-                    setState(() => _statusFilter = value);
-                  },
-                ),
+                _SectionTabs(controller: _tabController),
                 const SizedBox(height: 12),
                 Expanded(
-                  child: snapshot.connectionState == ConnectionState.waiting
-                      ? const Center(
-                          child: CircularProgressIndicator(color: zBlue),
-                        )
-                      : _DocumentList(
-                          documents: visibleDocuments,
-                          compact: compact,
-                          onOpen: _openDocument,
-                        ),
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _SummaryStrip(documents: registerDocuments),
+                          const SizedBox(height: 12),
+                          _Filters(
+                            allowedCategories: _allowedCategories,
+                            categoryFilter: _categoryFilter,
+                            statusFilter: _statusFilter,
+                            onCategoryChanged: (value) {
+                              setState(() => _categoryFilter = value);
+                            },
+                            onStatusChanged: (value) {
+                              setState(() => _statusFilter = value);
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          Expanded(
+                            child:
+                                snapshot.connectionState ==
+                                    ConnectionState.waiting
+                                ? const Center(
+                                    child: CircularProgressIndicator(
+                                      color: zBlue,
+                                    ),
+                                  )
+                                : _DocumentList(
+                                    documents: registerDocuments,
+                                    compact: compact,
+                                    onOpen: _openDocument,
+                                  ),
+                          ),
+                        ],
+                      ),
+                      snapshot.connectionState == ConnectionState.waiting
+                          ? const Center(
+                              child: CircularProgressIndicator(color: zBlue),
+                            )
+                          : _QmsDocumentControlSection(
+                              documents: qmsDocuments,
+                              showHistory: _showQmsHistory,
+                              canApprove: _canApproveQms,
+                              compact: compact,
+                              onShowHistoryChanged: (value) {
+                                setState(() => _showQmsHistory = value);
+                              },
+                              onOpen: _openDocument,
+                              onNewRevision: _showQmsRevisionDialog,
+                              onApprove: _approveQmsDocument,
+                              onArchive: _archiveQmsDocument,
+                            ),
+                    ],
+                  ),
                 ),
               ],
             );
@@ -134,6 +200,43 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
         );
       },
     );
+  }
+
+  List<ComplianceDocumentModel> _qmsDisplayDocuments(
+    List<ComplianceDocumentModel> documents,
+  ) {
+    if (_showQmsHistory) {
+      return documents..sort(_compareQmsDocuments);
+    }
+
+    final latestByKey = <String, ComplianceDocumentModel>{};
+    for (final document in documents.where(
+      (document) =>
+          document.qmsApprovalStatus == QmsApprovalStatus.approved &&
+          !document.isObsolete,
+    )) {
+      final current = latestByKey[document.qmsKey];
+      if (current == null ||
+          document.revisionSortValue > current.revisionSortValue ||
+          (document.revisionSortValue == current.revisionSortValue &&
+              (document.approvalDate ?? DateTime(1900)).isAfter(
+                current.approvalDate ?? DateTime(1900),
+              ))) {
+        latestByKey[document.qmsKey] = document;
+      }
+    }
+
+    return latestByKey.values.toList(growable: false)
+      ..sort(_compareQmsDocuments);
+  }
+
+  int _compareQmsDocuments(
+    ComplianceDocumentModel a,
+    ComplianceDocumentModel b,
+  ) {
+    final titleCompare = a.title.compareTo(b.title);
+    if (titleCompare != 0) return titleCompare;
+    return b.revisionSortValue.compareTo(a.revisionSortValue);
   }
 
   Widget _accessDenied() {
@@ -171,13 +274,48 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
     );
   }
 
-  Future<void> _showUploadDialog() async {
+  Future<void> _showUploadDialog({
+    required bool isQmsDocument,
+    ComplianceDocumentModel? baseRevision,
+  }) async {
+    final titleCtrl = TextEditingController();
     final docNoCtrl = TextEditingController();
     final remarksCtrl = TextEditingController();
-    ComplianceDocumentType selectedType = _allowedTypes.first;
+    ComplianceValidityType validityType = ComplianceValidityType.expiryBased;
+    ComplianceDocumentStatus selectedStatus = ComplianceDocumentStatus.active;
+    final dialogTags = isQmsDocument
+        ? _allowedTags
+              .where(
+                (tag) => tag.accessCategory == ComplianceAccessCategory.quality,
+              )
+              .toList(growable: false)
+        : _allowedTags;
+    final defaultTag = isQmsDocument
+        ? ComplianceDocumentTag.iso
+        : dialogTags.first;
+    final selectedTags = <ComplianceDocumentTag>{
+      ...?baseRevision?.tags,
+      defaultTag,
+    }.where(dialogTags.contains).toSet();
     DateTime? issueDate;
     DateTime? expiryDate;
+    DateTime? amendmentDate;
+    final revisionCtrl = TextEditingController();
+    final previousRevisionCtrl = TextEditingController();
     PlatformFile? pickedFile;
+
+    if (baseRevision != null) {
+      titleCtrl.text = baseRevision.title;
+      docNoCtrl.text = baseRevision.documentNo;
+      validityType = baseRevision.validityType;
+      previousRevisionCtrl.text = baseRevision.revisionNo;
+      final nextRevision = baseRevision.revisionSortValue + 1;
+      revisionCtrl.text = nextRevision <= 0
+          ? '01'
+          : nextRevision.toString().padLeft(2, '0');
+    } else if (isQmsDocument) {
+      revisionCtrl.text = '00';
+    }
 
     final saved = await showDialog<bool>(
       context: context,
@@ -199,19 +337,30 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
             }
 
             return AlertDialog(
-              title: const Text('Upload Compliance Document'),
+              title: Text(
+                isQmsDocument
+                    ? 'Upload QMS / ISO Revision'
+                    : 'Upload Compliance Document',
+              ),
               content: SingleChildScrollView(
                 child: SizedBox(
-                  width: 520,
+                  width: 560,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      DropdownButtonFormField<ComplianceDocumentType>(
-                        initialValue: selectedType,
+                      TextField(
+                        controller: titleCtrl,
                         decoration: const InputDecoration(
-                          labelText: 'Document Type',
+                          labelText: 'Document Title',
                         ),
-                        items: _allowedTypes
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<ComplianceValidityType>(
+                        initialValue: validityType,
+                        decoration: const InputDecoration(
+                          labelText: 'Validity Type',
+                        ),
+                        items: ComplianceValidityType.values
                             .map(
                               (type) => DropdownMenuItem(
                                 value: type,
@@ -221,16 +370,72 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
                             .toList(),
                         onChanged: (value) {
                           if (value == null) return;
-                          setDialogState(() => selectedType = value);
+                          setDialogState(() => validityType = value);
                         },
+                      ),
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Document Categories',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: dialogTags.map((tag) {
+                            final selected = selectedTags.contains(tag);
+                            return FilterChip(
+                              label: Text(tag.label),
+                              selected: selected,
+                              onSelected: (value) {
+                                setDialogState(() {
+                                  if (value) {
+                                    selectedTags.add(tag);
+                                  } else if (selectedTags.length > 1) {
+                                    selectedTags.remove(tag);
+                                  }
+                                });
+                              },
+                            );
+                          }).toList(),
+                        ),
                       ),
                       const SizedBox(height: 10),
                       TextField(
                         controller: docNoCtrl,
                         decoration: const InputDecoration(
-                          labelText: 'Document No',
+                          labelText: 'Document No / QMS Code',
                         ),
                       ),
+                      if (isQmsDocument) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: revisionCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Rev No',
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: TextField(
+                                controller: previousRevisionCtrl,
+                                decoration: const InputDecoration(
+                                  labelText: 'Previous Revision',
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 10),
                       Row(
                         children: [
@@ -249,7 +454,7 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
                           const SizedBox(width: 10),
                           Expanded(
                             child: _DateButton(
-                              label: 'Expiry Date',
+                              label: 'Expiry Date Optional',
                               value: expiryDate,
                               onTap: () => pickDate(
                                 current: expiryDate,
@@ -258,6 +463,55 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
                                 },
                               ),
                             ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DateButton(
+                              label: 'Amendment Date Optional',
+                              value: amendmentDate,
+                              onTap: () => pickDate(
+                                current: amendmentDate,
+                                onPicked: (date) {
+                                  setDialogState(() => amendmentDate = date);
+                                },
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child:
+                                DropdownButtonFormField<
+                                  ComplianceDocumentStatus
+                                >(
+                                  initialValue: selectedStatus,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Amendment Status',
+                                  ),
+                                  items:
+                                      const [
+                                            ComplianceDocumentStatus.active,
+                                            ComplianceDocumentStatus
+                                                .amendmentRequired,
+                                            ComplianceDocumentStatus.updated,
+                                          ]
+                                          .map(
+                                            (status) => DropdownMenuItem(
+                                              value: status,
+                                              child: Text(status.label),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: (value) {
+                                    if (value == null) return;
+                                    setDialogState(
+                                      () => selectedStatus = value,
+                                    );
+                                  },
+                                ),
                           ),
                         ],
                       ),
@@ -318,8 +572,12 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
     if (saved != true) return;
     final file = pickedFile;
     final bytes = file?.bytes;
-    if (docNoCtrl.text.trim().isEmpty || file == null || bytes == null) {
-      _showSnack('Document no and file upload are required.');
+    if (titleCtrl.text.trim().isEmpty ||
+        docNoCtrl.text.trim().isEmpty ||
+        selectedTags.isEmpty ||
+        file == null ||
+        bytes == null) {
+      _showSnack('Title, document no, category and file upload are required.');
       return;
     }
 
@@ -335,21 +593,42 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
         ComplianceDocumentModel(
           id: documentId,
           tenantId: widget.tenantId,
-          documentType: selectedType,
+          title: titleCtrl.text.trim(),
+          tags: selectedTags.toList(growable: false),
+          validityType: validityType,
+          manualStatus: amendmentDate != null
+              ? ComplianceDocumentStatus.updated
+              : selectedStatus,
           documentNo: docNoCtrl.text.trim(),
           issueDate: issueDate,
           expiryDate: expiryDate,
+          amendmentDate: amendmentDate,
           remarks: remarksCtrl.text.trim(),
           fileName: upload.fileName,
           fileUrl: upload.fileUrl,
           storagePath: upload.storagePath,
           uploadedBy: widget.currentUserUid,
           uploadedByEmail: widget.currentUserEmail,
+          isQmsDocument: isQmsDocument,
+          revisionNo: isQmsDocument ? revisionCtrl.text.trim() : '',
+          previousRevision: isQmsDocument
+              ? previousRevisionCtrl.text.trim()
+              : '',
+          approvedBy: '',
+          approvalDate: null,
+          isObsolete: false,
+          qmsApprovalStatus: isQmsDocument
+              ? QmsApprovalStatus.pendingApproval
+              : QmsApprovalStatus.approved,
           createdAt: null,
           updatedAt: null,
         ),
       );
-      _showSnack('Compliance document uploaded.');
+      _showSnack(
+        isQmsDocument
+            ? 'QMS revision uploaded for approval.'
+            : 'Compliance document uploaded.',
+      );
     } catch (e) {
       _showSnack('Failed to upload document: $e');
     } finally {
@@ -367,6 +646,48 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen> {
     if (!opened) _showSnack('Unable to open document.');
   }
 
+  Future<void> _showQmsRevisionDialog(ComplianceDocumentModel document) {
+    return _showUploadDialog(isQmsDocument: true, baseRevision: document);
+  }
+
+  Future<void> _approveQmsDocument(ComplianceDocumentModel document) async {
+    if (!_canApproveQms) {
+      _showSnack('Only QA or admin can approve QMS revisions.');
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      await _service.approveDocument(
+        document: document,
+        approvedBy: widget.currentUserEmail,
+        approvalDate: DateTime.now(),
+      );
+      _showSnack('QMS revision approved.');
+    } catch (e) {
+      _showSnack('Failed to approve revision: $e');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _archiveQmsDocument(ComplianceDocumentModel document) async {
+    if (!_canApproveQms) {
+      _showSnack('Only QA or admin can archive QMS revisions.');
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      await _service.archiveDocument(document);
+      _showSnack('QMS revision marked obsolete.');
+    } catch (e) {
+      _showSnack('Failed to archive revision: $e');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   void _showSnack(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(
@@ -379,11 +700,13 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.isSaving,
     required this.onUpload,
+    required this.onUploadQms,
     required this.compact,
   });
 
   final bool isSaving;
   final VoidCallback onUpload;
+  final VoidCallback? onUploadQms;
   final bool compact;
 
   @override
@@ -401,7 +724,7 @@ class _Header extends StatelessWidget {
         ),
         SizedBox(height: 4),
         Text(
-          'GST, PAN, MSME, licenses, ISO, PF/ESIC, audits and balance sheets',
+          'GST, PAN, Aadhaar, MSME, licenses, ISO, PF, ESIC and audit files',
           style: TextStyle(
             color: zMuted,
             fontSize: 13,
@@ -411,7 +734,7 @@ class _Header extends StatelessWidget {
       ],
     );
 
-    final action = FilledButton.icon(
+    final uploadAction = FilledButton.icon(
       onPressed: isSaving ? null : onUpload,
       icon: isSaving
           ? const SizedBox(
@@ -421,6 +744,16 @@ class _Header extends StatelessWidget {
             )
           : const Icon(Icons.upload_file_outlined),
       label: const Text('Upload'),
+    );
+    final qmsAction = OutlinedButton.icon(
+      onPressed: isSaving ? null : onUploadQms,
+      icon: const Icon(Icons.rule_folder_outlined),
+      label: const Text('QMS Revision'),
+    );
+    final actions = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [if (onUploadQms != null) qmsAction, uploadAction],
     );
 
     return Container(
@@ -433,7 +766,7 @@ class _Header extends StatelessWidget {
       child: compact
           ? Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [title, const SizedBox(height: 12), action],
+              children: [title, const SizedBox(height: 12), actions],
             )
           : Row(
               children: [
@@ -444,9 +777,36 @@ class _Header extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(child: title),
-                action,
+                actions,
               ],
             ),
+    );
+  }
+}
+
+class _SectionTabs extends StatelessWidget {
+  const _SectionTabs({required this.controller});
+
+  final TabController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: zBorder),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TabBar(
+        controller: controller,
+        labelColor: zBlue,
+        unselectedLabelColor: zMuted,
+        indicatorColor: zBlue,
+        tabs: const [
+          Tab(text: 'Compliance Register'),
+          Tab(text: 'QMS / ISO Control'),
+        ],
+      ),
     );
   }
 }
@@ -459,13 +819,21 @@ class _SummaryStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = documents
-        .where((doc) => doc.expiryStatus == ComplianceExpiryStatus.active)
+        .where((doc) => doc.status == ComplianceDocumentStatus.active)
         .length;
     final soon = documents
-        .where((doc) => doc.expiryStatus == ComplianceExpiryStatus.expiringSoon)
+        .where((doc) => doc.status == ComplianceDocumentStatus.expiringSoon)
         .length;
     final expired = documents
-        .where((doc) => doc.expiryStatus == ComplianceExpiryStatus.expired)
+        .where((doc) => doc.status == ComplianceDocumentStatus.expired)
+        .length;
+    final amendmentRequired = documents
+        .where(
+          (doc) => doc.status == ComplianceDocumentStatus.amendmentRequired,
+        )
+        .length;
+    final updated = documents
+        .where((doc) => doc.status == ComplianceDocumentStatus.updated)
         .length;
 
     return Wrap(
@@ -495,6 +863,18 @@ class _SummaryStrip extends StatelessWidget {
           value: expired.toString(),
           color: zDanger,
           icon: Icons.error_outline,
+        ),
+        _SummaryTile(
+          label: 'Amendment Required',
+          value: amendmentRequired.toString(),
+          color: zPurple,
+          icon: Icons.edit_calendar_outlined,
+        ),
+        _SummaryTile(
+          label: 'Updated',
+          value: updated.toString(),
+          color: zInfo,
+          icon: Icons.verified_outlined,
         ),
       ],
     );
@@ -567,11 +947,11 @@ class _Filters extends StatelessWidget {
     required this.onStatusChanged,
   });
 
-  final List<ComplianceDocumentCategory> allowedCategories;
-  final ComplianceDocumentCategory? categoryFilter;
-  final ComplianceExpiryStatus? statusFilter;
-  final ValueChanged<ComplianceDocumentCategory?> onCategoryChanged;
-  final ValueChanged<ComplianceExpiryStatus?> onStatusChanged;
+  final List<ComplianceAccessCategory> allowedCategories;
+  final ComplianceAccessCategory? categoryFilter;
+  final ComplianceDocumentStatus? statusFilter;
+  final ValueChanged<ComplianceAccessCategory?> onCategoryChanged;
+  final ValueChanged<ComplianceDocumentStatus?> onStatusChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -581,7 +961,7 @@ class _Filters extends StatelessWidget {
       children: [
         SizedBox(
           width: 240,
-          child: DropdownButtonFormField<ComplianceDocumentCategory?>(
+          child: DropdownButtonFormField<ComplianceAccessCategory?>(
             initialValue: categoryFilter,
             decoration: const InputDecoration(labelText: 'Category'),
             items: [
@@ -601,12 +981,12 @@ class _Filters extends StatelessWidget {
         ),
         SizedBox(
           width: 220,
-          child: DropdownButtonFormField<ComplianceExpiryStatus?>(
+          child: DropdownButtonFormField<ComplianceDocumentStatus?>(
             initialValue: statusFilter,
-            decoration: const InputDecoration(labelText: 'Expiry Alert'),
+            decoration: const InputDecoration(labelText: 'Status'),
             items: [
-              const DropdownMenuItem(value: null, child: Text('All Alerts')),
-              ...ComplianceExpiryStatus.values.map(
+              const DropdownMenuItem(value: null, child: Text('All Statuses')),
+              ...ComplianceDocumentStatus.values.map(
                 (status) =>
                     DropdownMenuItem(value: status, child: Text(status.label)),
               ),
@@ -615,6 +995,353 @@ class _Filters extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _QmsDocumentControlSection extends StatelessWidget {
+  const _QmsDocumentControlSection({
+    required this.documents,
+    required this.showHistory,
+    required this.canApprove,
+    required this.compact,
+    required this.onShowHistoryChanged,
+    required this.onOpen,
+    required this.onNewRevision,
+    required this.onApprove,
+    required this.onArchive,
+  });
+
+  final List<ComplianceDocumentModel> documents;
+  final bool showHistory;
+  final bool canApprove;
+  final bool compact;
+  final ValueChanged<bool> onShowHistoryChanged;
+  final ValueChanged<ComplianceDocumentModel> onOpen;
+  final ValueChanged<ComplianceDocumentModel> onNewRevision;
+  final ValueChanged<ComplianceDocumentModel> onApprove;
+  final ValueChanged<ComplianceDocumentModel> onArchive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: zBorder),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.rule_folder_outlined, color: zBlue, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'Latest approved revisions are shown by default',
+                    style: TextStyle(color: zText, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+              FilterChip(
+                selected: showHistory,
+                label: const Text('Show revision history'),
+                onSelected: onShowHistoryChanged,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: documents.isEmpty
+              ? const Center(
+                  child: Text(
+                    'No QMS / ISO documents found.',
+                    style: TextStyle(
+                      color: zMuted,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              : compact
+              ? ListView.separated(
+                  itemCount: documents.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    return _QmsRevisionCard(
+                      document: documents[index],
+                      canApprove: canApprove,
+                      onOpen: onOpen,
+                      onNewRevision: onNewRevision,
+                      onApprove: onApprove,
+                      onArchive: onArchive,
+                    );
+                  },
+                )
+              : _QmsRevisionTable(
+                  documents: documents,
+                  canApprove: canApprove,
+                  onOpen: onOpen,
+                  onNewRevision: onNewRevision,
+                  onApprove: onApprove,
+                  onArchive: onArchive,
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QmsRevisionTable extends StatelessWidget {
+  const _QmsRevisionTable({
+    required this.documents,
+    required this.canApprove,
+    required this.onOpen,
+    required this.onNewRevision,
+    required this.onApprove,
+    required this.onArchive,
+  });
+
+  final List<ComplianceDocumentModel> documents;
+  final bool canApprove;
+  final ValueChanged<ComplianceDocumentModel> onOpen;
+  final ValueChanged<ComplianceDocumentModel> onNewRevision;
+  final ValueChanged<ComplianceDocumentModel> onApprove;
+  final ValueChanged<ComplianceDocumentModel> onArchive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: zBorder),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SingleChildScrollView(
+          child: DataTable(
+            headingTextStyle: const TextStyle(
+              color: zMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+            dataTextStyle: const TextStyle(
+              color: zText,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+            ),
+            columns: const [
+              DataColumn(label: Text('Document')),
+              DataColumn(label: Text('QMS Code')),
+              DataColumn(label: Text('Rev')),
+              DataColumn(label: Text('Previous')),
+              DataColumn(label: Text('Approved By')),
+              DataColumn(label: Text('Approval Date')),
+              DataColumn(label: Text('Workflow')),
+              DataColumn(label: Text('Actions')),
+            ],
+            rows: documents.map((document) {
+              return DataRow(
+                cells: [
+                  DataCell(Text(document.title)),
+                  DataCell(Text(document.documentNo)),
+                  DataCell(Text(document.revisionNo)),
+                  DataCell(
+                    Text(
+                      document.previousRevision.isEmpty
+                          ? '-'
+                          : document.previousRevision,
+                    ),
+                  ),
+                  DataCell(
+                    Text(
+                      document.approvedBy.isEmpty ? '-' : document.approvedBy,
+                    ),
+                  ),
+                  DataCell(Text(_dateLabel(document.approvalDate))),
+                  DataCell(_QmsWorkflowPill(document: document)),
+                  DataCell(
+                    _QmsActions(
+                      document: document,
+                      canApprove: canApprove,
+                      onOpen: onOpen,
+                      onNewRevision: onNewRevision,
+                      onApprove: onApprove,
+                      onArchive: onArchive,
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QmsRevisionCard extends StatelessWidget {
+  const _QmsRevisionCard({
+    required this.document,
+    required this.canApprove,
+    required this.onOpen,
+    required this.onNewRevision,
+    required this.onApprove,
+    required this.onArchive,
+  });
+
+  final ComplianceDocumentModel document;
+  final bool canApprove;
+  final ValueChanged<ComplianceDocumentModel> onOpen;
+  final ValueChanged<ComplianceDocumentModel> onNewRevision;
+  final ValueChanged<ComplianceDocumentModel> onApprove;
+  final ValueChanged<ComplianceDocumentModel> onArchive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: zBorder),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  document.title,
+                  style: const TextStyle(
+                    color: zText,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              _QmsWorkflowPill(document: document),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '${document.documentNo} • Rev ${document.revisionNo}',
+            style: const TextStyle(color: zMuted, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Previous ${document.previousRevision.isEmpty ? '-' : document.previousRevision} • Approved ${_dateLabel(document.approvalDate)}',
+            style: const TextStyle(color: zMuted, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+          _QmsActions(
+            document: document,
+            canApprove: canApprove,
+            onOpen: onOpen,
+            onNewRevision: onNewRevision,
+            onApprove: onApprove,
+            onArchive: onArchive,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QmsActions extends StatelessWidget {
+  const _QmsActions({
+    required this.document,
+    required this.canApprove,
+    required this.onOpen,
+    required this.onNewRevision,
+    required this.onApprove,
+    required this.onArchive,
+  });
+
+  final ComplianceDocumentModel document;
+  final bool canApprove;
+  final ValueChanged<ComplianceDocumentModel> onOpen;
+  final ValueChanged<ComplianceDocumentModel> onNewRevision;
+  final ValueChanged<ComplianceDocumentModel> onApprove;
+  final ValueChanged<ComplianceDocumentModel> onArchive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        IconButton(
+          tooltip: 'Open file',
+          onPressed: () => onOpen(document),
+          icon: const Icon(Icons.open_in_new, size: 18),
+        ),
+        IconButton(
+          tooltip: 'New revision',
+          onPressed: () => onNewRevision(document),
+          icon: const Icon(Icons.add_circle_outline, size: 18),
+        ),
+        if (canApprove &&
+            document.qmsApprovalStatus != QmsApprovalStatus.approved)
+          IconButton(
+            tooltip: 'Approve revision',
+            onPressed: () => onApprove(document),
+            icon: const Icon(Icons.verified_outlined, size: 18),
+          ),
+        if (canApprove && !document.isObsolete)
+          IconButton(
+            tooltip: 'Archive / obsolete',
+            onPressed: () => onArchive(document),
+            icon: const Icon(Icons.archive_outlined, size: 18),
+          ),
+      ],
+    );
+  }
+}
+
+class _QmsWorkflowPill extends StatelessWidget {
+  const _QmsWorkflowPill({required this.document});
+
+  final ComplianceDocumentModel document;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = document.isObsolete
+        ? 'Obsolete'
+        : document.qmsApprovalStatus.label;
+    final colors = document.isObsolete
+        ? (bg: zDangerSoft, fg: zDanger)
+        : switch (document.qmsApprovalStatus) {
+            QmsApprovalStatus.approved => (bg: zSuccessSoft, fg: zSuccess),
+            QmsApprovalStatus.pendingApproval => (bg: zOrangeSoft, fg: zOrange),
+            QmsApprovalStatus.draft => (bg: zBlueSoft, fg: zBlue),
+            QmsApprovalStatus.rejected => (bg: zDangerSoft, fg: zDanger),
+          };
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: colors.bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: colors.fg,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
   }
 }
@@ -658,43 +1385,50 @@ class _DocumentList extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: SingleChildScrollView(
-        child: DataTable(
-          headingTextStyle: const TextStyle(
-            color: zMuted,
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-          ),
-          dataTextStyle: const TextStyle(
-            color: zText,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-          ),
-          columns: const [
-            DataColumn(label: Text('Document')),
-            DataColumn(label: Text('No')),
-            DataColumn(label: Text('Issue')),
-            DataColumn(label: Text('Expiry')),
-            DataColumn(label: Text('Alert')),
-            DataColumn(label: Text('File')),
-          ],
-          rows: documents.map((document) {
-            return DataRow(
-              cells: [
-                DataCell(Text(document.documentType.label)),
-                DataCell(Text(document.documentNo)),
-                DataCell(Text(_dateLabel(document.issueDate))),
-                DataCell(Text(_dateLabel(document.expiryDate))),
-                DataCell(_StatusPill(status: document.expiryStatus)),
-                DataCell(
-                  IconButton(
-                    tooltip: 'Open file',
-                    onPressed: () => onOpen(document),
-                    icon: const Icon(Icons.open_in_new, size: 18),
+        scrollDirection: Axis.horizontal,
+        child: SingleChildScrollView(
+          child: DataTable(
+            headingTextStyle: const TextStyle(
+              color: zMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+            dataTextStyle: const TextStyle(
+              color: zText,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+            ),
+            columns: const [
+              DataColumn(label: Text('Title')),
+              DataColumn(label: Text('Categories')),
+              DataColumn(label: Text('No')),
+              DataColumn(label: Text('Issue')),
+              DataColumn(label: Text('Expiry')),
+              DataColumn(label: Text('Amendment')),
+              DataColumn(label: Text('Status')),
+              DataColumn(label: Text('File')),
+            ],
+            rows: documents.map((document) {
+              return DataRow(
+                cells: [
+                  DataCell(Text(document.title.isEmpty ? '-' : document.title)),
+                  DataCell(Text(document.tagLabel)),
+                  DataCell(Text(document.documentNo)),
+                  DataCell(Text(_dateLabel(document.issueDate))),
+                  DataCell(Text(_dateLabel(document.expiryDate))),
+                  DataCell(Text(_dateLabel(document.amendmentDate))),
+                  DataCell(_StatusPill(status: document.status)),
+                  DataCell(
+                    IconButton(
+                      tooltip: 'Open file',
+                      onPressed: () => onOpen(document),
+                      icon: const Icon(Icons.open_in_new, size: 18),
+                    ),
                   ),
-                ),
-              ],
-            );
-          }).toList(),
+                ],
+              );
+            }).toList(),
+          ),
         ),
       ),
     );
@@ -723,7 +1457,7 @@ class _DocumentCard extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  document.documentType.label,
+                  document.title.isEmpty ? document.tagLabel : document.title,
                   style: const TextStyle(
                     color: zText,
                     fontSize: 15,
@@ -731,10 +1465,15 @@ class _DocumentCard extends StatelessWidget {
                   ),
                 ),
               ),
-              _StatusPill(status: document.expiryStatus),
+              _StatusPill(status: document.status),
             ],
           ),
           const SizedBox(height: 8),
+          Text(
+            document.tagLabel,
+            style: const TextStyle(color: zMuted, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
           Text(
             'No: ${document.documentNo}',
             style: const TextStyle(color: zMuted, fontWeight: FontWeight.w700),
@@ -742,6 +1481,11 @@ class _DocumentCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Issue ${_dateLabel(document.issueDate)} • Expiry ${_dateLabel(document.expiryDate)}',
+            style: const TextStyle(color: zMuted, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Amendment ${_dateLabel(document.amendmentDate)}',
             style: const TextStyle(color: zMuted, fontWeight: FontWeight.w600),
           ),
           if (document.remarks.isNotEmpty) ...[
@@ -766,14 +1510,19 @@ class _DocumentCard extends StatelessWidget {
 class _StatusPill extends StatelessWidget {
   const _StatusPill({required this.status});
 
-  final ComplianceExpiryStatus status;
+  final ComplianceDocumentStatus status;
 
   @override
   Widget build(BuildContext context) {
     final colors = switch (status) {
-      ComplianceExpiryStatus.active => (bg: zSuccessSoft, fg: zSuccess),
-      ComplianceExpiryStatus.expiringSoon => (bg: zOrangeSoft, fg: zOrange),
-      ComplianceExpiryStatus.expired => (bg: zDangerSoft, fg: zDanger),
+      ComplianceDocumentStatus.active => (bg: zSuccessSoft, fg: zSuccess),
+      ComplianceDocumentStatus.expiringSoon => (bg: zOrangeSoft, fg: zOrange),
+      ComplianceDocumentStatus.expired => (bg: zDangerSoft, fg: zDanger),
+      ComplianceDocumentStatus.amendmentRequired => (
+        bg: zPurpleSoft,
+        fg: zPurple,
+      ),
+      ComplianceDocumentStatus.updated => (bg: zInfoSoft, fg: zInfo),
     };
 
     return Container(

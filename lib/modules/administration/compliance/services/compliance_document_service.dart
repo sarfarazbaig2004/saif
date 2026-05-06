@@ -27,26 +27,48 @@ class ComplianceDocumentService {
   }
 
   Stream<List<ComplianceDocumentModel>> watchDocuments({
-    required List<ComplianceDocumentCategory> allowedCategories,
+    required List<ComplianceAccessCategory> allowedCategories,
   }) {
     final Query<Map<String, dynamic>> query =
-        allowedCategories.length == ComplianceDocumentCategory.values.length
+        allowedCategories.length == ComplianceAccessCategory.values.length
         ? _ref
+        : _ref.where(
+            'accessCategories',
+            arrayContainsAny: allowedCategories
+                .map((category) => category.key)
+                .toList(),
+          );
+
+    final fallbackQuery =
+        allowedCategories.length == ComplianceAccessCategory.values.length
+        ? null
         : _ref.where(
             'category',
             whereIn: allowedCategories.map((category) => category.key).toList(),
           );
 
-    return query.snapshots().map((snapshot) {
+    return query.snapshots().asyncMap((snapshot) async {
       final documents = snapshot.docs
           .map(ComplianceDocumentModel.fromFirestore)
-          .toList(growable: false);
+          .toList();
+
+      if (documents.isEmpty && fallbackQuery != null) {
+        final fallbackSnapshot = await fallbackQuery.get();
+        documents.addAll(
+          fallbackSnapshot.docs.map(ComplianceDocumentModel.fromFirestore),
+        );
+      }
+
       documents.sort((a, b) {
         final aDate = a.updatedAt ?? a.createdAt ?? DateTime(1900);
         final bDate = b.updatedAt ?? b.createdAt ?? DateTime(1900);
         return bDate.compareTo(aDate);
       });
-      return documents;
+
+      final byId = <String, ComplianceDocumentModel>{
+        for (final document in documents) document.id: document,
+      };
+      return byId.values.toList(growable: false);
     });
   }
 
@@ -83,6 +105,30 @@ class ComplianceDocumentService {
       'tenantId': normalizedTenantId,
       'companyId': normalizedTenantId,
     }, SetOptions(merge: true));
+  }
+
+  Future<void> approveDocument({
+    required ComplianceDocumentModel document,
+    required String approvedBy,
+    required DateTime approvalDate,
+  }) async {
+    await saveDocument(
+      document.copyWith(
+        approvedBy: approvedBy,
+        approvalDate: approvalDate,
+        isObsolete: false,
+        qmsApprovalStatus: QmsApprovalStatus.approved,
+      ),
+    );
+  }
+
+  Future<void> archiveDocument(ComplianceDocumentModel document) async {
+    await saveDocument(
+      document.copyWith(
+        isObsolete: true,
+        qmsApprovalStatus: document.qmsApprovalStatus,
+      ),
+    );
   }
 }
 
