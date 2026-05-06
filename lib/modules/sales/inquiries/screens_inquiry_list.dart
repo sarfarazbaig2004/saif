@@ -1,3 +1,5 @@
+// FILE PATH: lib/modules/sales/inquiries/screens_inquiry_list.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -857,6 +859,7 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                   ? 'No Phone'
                                   : inquiry.contactPhone;
 
+                              // UI REFACTOR: Condensed Card, No Timeline Box, Wrap Data efficiently.
                               return Container(
                                 decoration: BoxDecoration(
                                   color: Colors.white,
@@ -867,7 +870,9 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                   ),
                                 ),
                                 child: Padding(
-                                  padding: const EdgeInsets.all(12),
+                                  padding: const EdgeInsets.all(
+                                    10,
+                                  ), // Condensed padding
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
@@ -877,7 +882,8 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                             CrossAxisAlignment.start,
                                         children: [
                                           CircleAvatar(
-                                            radius: 20,
+                                            radius:
+                                                18, // Slightly more compact avatar
                                             backgroundColor:
                                                 Colors.blue.shade50,
                                             child: Text(
@@ -886,13 +892,13 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                                         .toUpperCase()
                                                   : '?',
                                               style: TextStyle(
-                                                fontSize: 15,
+                                                fontSize: 14,
                                                 fontWeight: FontWeight.w700,
                                                 color: Colors.blue.shade800,
                                               ),
                                             ),
                                           ),
-                                          const SizedBox(width: 10),
+                                          const SizedBox(width: 8),
                                           Expanded(
                                             child: Column(
                                               crossAxisAlignment:
@@ -906,11 +912,13 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                                   overflow:
                                                       TextOverflow.ellipsis,
                                                   style: const TextStyle(
-                                                    fontSize: 15,
+                                                    fontSize: 14.5,
                                                     fontWeight: FontWeight.w700,
                                                   ),
                                                 ),
-                                                const SizedBox(height: 3),
+                                                const SizedBox(
+                                                  height: 1,
+                                                ), // Tighter spacing
                                                 Text(
                                                   customerName,
                                                   maxLines: 1,
@@ -918,50 +926,62 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                                       TextOverflow.ellipsis,
                                                   style: TextStyle(
                                                     fontSize: 12.5,
-                                                    color: Colors.grey.shade700,
+                                                    color: Colors.grey.shade600,
                                                     fontWeight: FontWeight.w500,
                                                   ),
                                                 ),
                                               ],
                                             ),
                                           ),
-                                          PopupMenuButton<String>(
-                                            tooltip: 'Actions',
-                                            onSelected: (value) {
-                                              if (value == 'open') {
-                                                _openEditInquiry(
-                                                  context: context,
-                                                  doc: doc,
-                                                  inquiry: inquiry,
-                                                  currentUserUid:
-                                                      firebaseUser.uid,
-                                                  role: role,
-                                                );
-                                              } else if (value == 'quote') {
-                                                _openQuotationFromInquiry(
-                                                  context: context,
-                                                  inquiry: inquiry,
-                                                  inquiryData: doc.data(),
-                                                );
-                                              }
-                                            },
-                                            itemBuilder: (context) => [
-                                              const PopupMenuItem(
-                                                value: 'open',
-                                                child: Text('Open Inquiry'),
+                                          SizedBox(
+                                            width: 28,
+                                            height: 28,
+                                            child: PopupMenuButton<String>(
+                                              padding: EdgeInsets.zero,
+                                              tooltip: 'Actions',
+                                              icon: Icon(
+                                                Icons.more_vert,
+                                                size: 20,
+                                                color: Colors.grey.shade600,
                                               ),
-                                              const PopupMenuItem(
-                                                value: 'quote',
-                                                child: Text('Create Quotation'),
-                                              ),
-                                            ],
+                                              onSelected: (value) {
+                                                if (value == 'open') {
+                                                  _openEditInquiry(
+                                                    context: context,
+                                                    doc: doc,
+                                                    inquiry: inquiry,
+                                                    currentUserUid:
+                                                        firebaseUser.uid,
+                                                    role: role,
+                                                  );
+                                                } else if (value == 'quote') {
+                                                  _openQuotationFromInquiry(
+                                                    context: context,
+                                                    inquiry: inquiry,
+                                                    inquiryData: doc.data(),
+                                                  );
+                                                }
+                                              },
+                                              itemBuilder: (context) => [
+                                                const PopupMenuItem(
+                                                  value: 'open',
+                                                  child: Text('Open Inquiry'),
+                                                ),
+                                                const PopupMenuItem(
+                                                  value: 'quote',
+                                                  child: Text(
+                                                    'Create Quotation',
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 10),
+                                      const SizedBox(height: 8),
                                       Wrap(
-                                        spacing: 8,
-                                        runSpacing: 8,
+                                        spacing: 6,
+                                        runSpacing: 6,
                                         children: [
                                           _InfoChip(
                                             label: status,
@@ -998,10 +1018,12 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                             ),
                                         ],
                                       ),
-                                      const SizedBox(height: 10),
+                                      const SizedBox(height: 8),
                                       Wrap(
-                                        spacing: 14,
-                                        runSpacing: 8,
+                                        spacing: 12,
+                                        runSpacing: 6,
+                                        crossAxisAlignment:
+                                            WrapCrossAlignment.center,
                                         children: [
                                           _InlineInfo(
                                             icon: Icons.tag_outlined,
@@ -1032,62 +1054,19 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                             icon: Icons.assignment_ind_outlined,
                                             text: assignedToName,
                                           ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Container(
-                                        width: double.infinity,
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey.shade50,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
+                                          // TIMELINE DATA MERGED IN HERE
+                                          _InlineInfo(
+                                            icon: Icons.add_circle_outline,
+                                            text:
+                                                'Created: ${_formatCompactDate(inquiry.createdAt)}',
                                           ),
-                                          border: Border.all(
-                                            color: Colors.grey.shade200,
-                                          ),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Icon(
-                                                  Icons.timeline_outlined,
-                                                  size: 16,
-                                                  color: Colors.grey.shade800,
-                                                ),
-                                                const SizedBox(width: 6),
-                                                Text(
-                                                  'Timeline',
-                                                  style: TextStyle(
-                                                    fontSize: 12.8,
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Colors.grey.shade800,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 8),
+                                          if (inquiry.nextFollowUpDate != null)
                                             _InlineInfo(
-                                              icon: Icons.add_circle_outline,
+                                              icon: Icons.event_repeat_outlined,
                                               text:
-                                                  'Created: ${_formatCompactDate(inquiry.createdAt)}',
+                                                  'Next: ${_formatCompactDate(inquiry.nextFollowUpDate)}',
                                             ),
-                                            Padding(
-                                              padding: const EdgeInsets.only(
-                                                top: 8,
-                                              ),
-                                              child: _InlineInfo(
-                                                icon:
-                                                    Icons.event_repeat_outlined,
-                                                text:
-                                                    'Next Follow-up: ${_formatCompactDate(inquiry.nextFollowUpDate)}',
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -1138,14 +1117,18 @@ class _InlineInfo extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: Colors.grey.shade700),
-          const SizedBox(width: 5),
+          Icon(
+            icon,
+            size: 14,
+            color: Colors.grey.shade600,
+          ), // Slightly smaller, softer icon
+          const SizedBox(width: 4),
           Flexible(
             child: Text(
               text,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 12.6,
+                fontSize: 12, // Condensed size
                 color: Colors.grey.shade800,
                 fontWeight: FontWeight.w500,
               ),
@@ -1171,7 +1154,10 @@ class _InfoChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 8,
+        vertical: 4,
+      ), // Tighter padding
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
@@ -1179,7 +1165,7 @@ class _InfoChip extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 11.8,
+          fontSize: 11, // Condensed font for secondary chips
           fontWeight: FontWeight.w700,
           color: textColor,
         ),
