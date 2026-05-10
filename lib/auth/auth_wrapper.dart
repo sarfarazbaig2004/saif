@@ -3,15 +3,16 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'package:QUIK/auth/login/login_screen.dart';
 import 'package:QUIK/core/app/aman_app_config.dart';
-import 'package:QUIK/shell/zoho_shell.dart';
 import 'package:QUIK/core/inventory/providers/inventory_config_provider.dart';
 import 'package:QUIK/core/inventory/services/inventory_config_service.dart';
 import 'package:QUIK/core/modules/providers/module_access_provider.dart';
 import 'package:QUIK/core/modules/services/tenant_module_service.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
-import 'package:QUIK/auth/login/login_screen.dart';
-import 'package:provider/provider.dart';
+import 'package:QUIK/shell/zoho_shell.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -20,21 +21,20 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
-      builder: (_, authSnap) {
+      builder: (context, authSnap) {
         if (authSnap.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
 
-        if (authSnap.data == null) {
-          // 🔴 FIX: Removed the 'const' keyword here.
-          // Note: Standard Dart convention uses PascalCase for classes (LoginScreen).
-          // If your class is strictly named login_Screen, change this to: return login_Screen();
+        final user = authSnap.data;
+
+        if (user == null) {
           return LoginScreen();
         }
 
-        return _UserProfileGate(firebaseUser: authSnap.data!);
+        return _UserProfileGate(firebaseUser: user);
       },
     );
   }
@@ -72,36 +72,30 @@ class _UserProfileGateState extends State<_UserProfileGate> {
 
         if (doc.exists && doc.data() != null) {
           final userData = _amanScopedUserData(doc.data()!);
+
           if (!mounted) return;
+
           setState(() {
             _data = userData;
             _loading = false;
             _error = null;
           });
+
           return;
         }
 
         await Future.delayed(const Duration(milliseconds: 500));
       }
 
-      final fallbackData = _hiddenAdminFallbackData();
-      if (fallbackData != null) {
-        if (!mounted) return;
-        setState(() {
-          _data = fallbackData;
-          _loading = false;
-          _error = null;
-        });
-        return;
-      }
-
       if (!mounted) return;
+
       setState(() {
         _loading = false;
         _error = 'User profile not found in database.';
       });
     } catch (e) {
       if (!mounted) return;
+
       setState(() {
         _loading = false;
         _error = 'Failed to load user profile: $e';
@@ -112,41 +106,19 @@ class _UserProfileGateState extends State<_UserProfileGate> {
   Map<String, dynamic> _amanScopedUserData(Map<String, dynamic> userData) {
     final email = (widget.firebaseUser.email ?? '').trim().toLowerCase();
     final roleOverride = _adminRoleForEmail(email);
+    final companyId = (userData['companyId'] ?? '').toString();
+
     return <String, dynamic>{
       ...userData,
-      'tenantId': AmanAppConfig.tenantId,
-      'companyId': AmanAppConfig.companyId,
-      'companyName': AmanAppConfig.companyName,
+      'tenantId': companyId,
+      'companyId': companyId,
+      'companyName': userData['companyName'] ?? AmanAppConfig.companyName,
       if (roleOverride != null) 'role': roleOverride,
       if (roleOverride != null) 'isActive': true,
     };
   }
 
-  Map<String, dynamic>? _hiddenAdminFallbackData() {
-    final email = (widget.firebaseUser.email ?? '').trim().toLowerCase();
-    final role = _adminRoleForEmail(email);
-    if (role == null) return null;
-
-    return <String, dynamic>{
-      'uid': widget.firebaseUser.uid,
-      'email': email,
-      'displayName': widget.firebaseUser.displayName ?? email,
-      'tenantId': AmanAppConfig.tenantId,
-      'companyId': AmanAppConfig.companyId,
-      'companyName': AmanAppConfig.companyName,
-      'role': role,
-      'isActive': true,
-      'permissions': const <String, dynamic>{},
-    };
-  }
-
   String? _adminRoleForEmail(String email) {
-    if (email == AmanAppConfig.softwareSuperAdminEmail) {
-      return AmanAppConfig.softwareSuperAdminRole;
-    }
-    if (email == AmanAppConfig.companySuperAdminEmail) {
-      return AmanAppConfig.companySuperAdminRole;
-    }
     return null;
   }
 
@@ -157,7 +129,9 @@ class _UserProfileGateState extends State<_UserProfileGate> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (_error != null) {
@@ -179,7 +153,10 @@ class _UserProfileGateState extends State<_UserProfileGate> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 10),
-                ElevatedButton(onPressed: _logout, child: const Text('Logout')),
+                ElevatedButton(
+                  onPressed: _logout,
+                  child: const Text('Logout'),
+                ),
               ],
             ),
           ),
@@ -202,12 +179,20 @@ class _UserProfileGateState extends State<_UserProfileGate> {
       );
     }
 
-    const allowedTenantIds = [AmanAppConfig.tenantId];
-    const companyId = AmanAppConfig.companyId;
+    final companyId = (data['companyId'] ?? '').toString().trim();
 
+    if (companyId.isEmpty) {
+      return const Scaffold(
+        body: Center(
+          child: Text('Company ID missing in user profile.'),
+        ),
+      );
+    }
+
+    final allowedTenantIds = [companyId];
     final role = (data['role'] ?? 'sales').toString();
-    const companyName = AmanAppConfig.companyName;
-
+    final companyName =
+        (data['companyName'] ?? AmanAppConfig.companyName).toString();
     final permissions = Map<String, dynamic>.from(data['permissions'] ?? {});
 
     final userDisplayName =
@@ -227,26 +212,30 @@ class _UserProfileGateState extends State<_UserProfileGate> {
 
         final tenantContext = context.read<TenantContext>();
         tenantContext.replaceAllowedTenants(allowedTenantIds);
-        tenantContext.setTenantNames(const {companyId: companyName});
+        tenantContext.setTenantNames({companyId: companyName});
         tenantContext.selectTenant(companyId);
       });
     }
 
     return _TenantModuleBackfillGate(
       companyId: companyId,
-      child: InventoryConfigProvider(
+      child: ModuleAccessProvider(
         tenantId: companyId,
-        child: ModuleAccessProvider(
+        controller: context.read<ModuleAccessController>(),
+        child: InventoryConfigProvider(
           tenantId: companyId,
-          controller: context.read<ModuleAccessController>(),
-          child: ZohoShell(
-            userEmail: widget.firebaseUser.email ?? AmanAppConfig.supportEmail,
-            userUid: widget.firebaseUser.uid,
-            companyId: companyId,
-            companyName: companyName,
-            role: role,
-            permissions: permissions,
-            userDisplayName: userDisplayName,
+          child: Builder(
+            builder: (moduleContext) {
+              return ZohoShell(
+                userEmail: widget.firebaseUser.email ?? '',
+                userUid: widget.firebaseUser.uid,
+                companyId: companyId,
+                companyName: companyName,
+                role: role,
+                permissions: permissions,
+                userDisplayName: userDisplayName,
+              );
+            },
           ),
         ),
       ),
@@ -294,6 +283,7 @@ class _TenantModuleBackfillGateState extends State<_TenantModuleBackfillGate> {
 
   Future<void> _ensureBackfilled() async {
     final companyId = widget.companyId.trim();
+
     if (companyId.isEmpty || _initializedCompanyId == companyId) {
       if (mounted) {
         setState(() => _ready = true);
@@ -306,6 +296,7 @@ class _TenantModuleBackfillGateState extends State<_TenantModuleBackfillGate> {
         tenantId: companyId,
         source: 'auth_backfill',
       );
+
       await _inventoryConfigService.ensureDefaultProfileFromCompany(
         tenantId: companyId,
         source: 'auth_backfill',
@@ -317,6 +308,7 @@ class _TenantModuleBackfillGateState extends State<_TenantModuleBackfillGate> {
     }
 
     if (!mounted || widget.companyId.trim() != companyId) return;
+
     setState(() {
       _initializedCompanyId = companyId;
       _ready = true;
@@ -326,7 +318,9 @@ class _TenantModuleBackfillGateState extends State<_TenantModuleBackfillGate> {
   @override
   Widget build(BuildContext context) {
     if (!_ready) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return widget.child;

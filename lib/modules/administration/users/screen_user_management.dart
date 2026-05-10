@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/app/aman_app_config.dart';
 import 'package:QUIK/modules/administration/company/screen_create_invite.dart';
 import 'package:QUIK/modules/administration/users/dialogs/edit_user_dialog.dart';
 import 'package:QUIK/modules/administration/users/dialogs/view_user_dialog.dart';
@@ -96,25 +95,16 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
         _filterState.selectedDepartment != 'all';
   }
 
-  bool get _isSoftwareSuperAdminSession {
-    return (FirebaseAuth.instance.currentUser?.email ?? '')
-            .trim()
-            .toLowerCase() ==
-        AmanAppConfig.softwareSuperAdminEmail;
-  }
-
   bool _isSoftwareSuperAdminDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data();
     return (data['role'] ?? '').toString().trim().toLowerCase() ==
-            UserRoles.softwareSuperAdmin ||
-        (data['email'] ?? '').toString().trim().toLowerCase() ==
-            AmanAppConfig.softwareSuperAdminEmail;
+        UserRoles.softwareSuperAdmin;
   }
 
   bool _canManageUserDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
-    return _isSoftwareSuperAdminSession || !_isSoftwareSuperAdminDoc(doc);
+    return !_isSoftwareSuperAdminDoc(doc);
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> get _usersStream {
@@ -1099,7 +1089,7 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
                 onEdit: (doc) async => _handleEditUser(doc),
                 onToggle: (doc) => _handleToggleUser(doc: doc),
                 onDelete: (doc) async => _confirmDeleteUser(context, doc),
-                canManageSoftwareSuperAdmin: _isSoftwareSuperAdminSession,
+                canManageSoftwareSuperAdmin: false,
               )
             else
               Column(
@@ -1108,8 +1098,7 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
                   final bool isSelfUser = doc.id == widget.currentUid;
                   final bool isDeleted = (data['isDeleted'] ?? false) == true;
                   final bool isProtectedSoftwareAdmin =
-                      _isSoftwareSuperAdminDoc(doc) &&
-                      !_isSoftwareSuperAdminSession;
+                      _isSoftwareSuperAdminDoc(doc);
 
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
@@ -1339,8 +1328,7 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
                   (userSnapshot.data?.docs ?? []).where((doc) {
                     final data = doc.data();
                     return (data['isDeleted'] ?? false) == false &&
-                        (_isSoftwareSuperAdminSession ||
-                            !_isSoftwareSuperAdminDoc(doc));
+                        !_isSoftwareSuperAdminDoc(doc);
                   }).toList();
 
               final List<QueryDocumentSnapshot<Map<String, dynamic>>>

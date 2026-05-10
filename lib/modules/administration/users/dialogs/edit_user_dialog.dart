@@ -139,6 +139,10 @@ Future<void> showEditUserDialog({
   final List<String> activeModules = isExportImport
       ? ['dashboard', 'crm', 'finance', 'reports']
       : permissionModuleOrder;
+      debugPrint('EDIT USER activeModules = $activeModules');
+      debugPrint('EDIT USER permissionModuleOrder = $permissionModuleOrder');
+      debugPrint('EDIT USER permissions keys = ${permissions.keys.toList()}');
+  
 
   await showDialog<void>(
     context: context,
@@ -146,6 +150,8 @@ Future<void> showEditUserDialog({
     builder: (_) {
       return StatefulBuilder(
         builder: (context, setLocalState) {
+          debugPrint('VISIBLE PERMISSION SCREEN ROLE = $selectedRole');
+          debugPrint('VISIBLE PERMISSION SCREEN MODULES = $activeModules');
           Future<void> saveUser() async {
             if (isSaving) return;
 

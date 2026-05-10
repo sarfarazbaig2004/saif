@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-import 'package:QUIK/core/app/aman_app_config.dart';
 import 'package:QUIK/core/inventory/models/inventory_profile_config.dart';
 
 class InventoryConfigService {
@@ -37,6 +36,8 @@ class InventoryConfigService {
     String source = 'system',
     Map<String, dynamic>? companyData,
     InventoryProfileConfig? profile,
+    String? uid,
+    bool? isAdmin,
   }) async {
     final normalizedTenantId = tenantId.trim();
     if (normalizedTenantId.isEmpty) {
@@ -61,8 +62,10 @@ class InventoryConfigService {
         ...defaultProfile.toFirestore(),
         'companyId': normalizedTenantId,
         'tenantId': normalizedTenantId,
-        'createdBy': source,
-        'updatedBy': source,
+        'createdBy': uid ?? source,
+        'updatedBy': uid ?? source,
+        'uid': uid,
+        'isAdmin': isAdmin ?? false,
       });
 
       debugPrint(
@@ -99,6 +102,8 @@ class InventoryConfigService {
       tenantId: normalizedTenantId,
       source: source,
       companyData: companyData,
+      uid: null,
+      isAdmin: null,
     );
   }
 
@@ -106,6 +111,8 @@ class InventoryConfigService {
     required String tenantId,
     required InventoryProfileConfig profile,
     String source = 'admin',
+    String? uid,
+    bool? isAdmin,
   }) async {
     final normalizedTenantId = tenantId.trim();
     if (normalizedTenantId.isEmpty) return;
@@ -114,7 +121,9 @@ class InventoryConfigService {
       ...profile.toFirestore(),
       'companyId': normalizedTenantId,
       'tenantId': normalizedTenantId,
-      'updatedBy': source,
+      'updatedBy': uid ?? source,
+      'uid': uid,
+      'isAdmin': isAdmin ?? false,
     }, SetOptions(merge: true));
   }
 
@@ -122,8 +131,7 @@ class InventoryConfigService {
     String tenantId,
     Map<String, dynamic> companyData,
   ) {
-    return tenantId.trim() == AmanAppConfig.tenantId ||
-            _isFabricationCompany(companyData)
+    return _isFabricationCompany(companyData)
         ? InventoryProfileConfig.fabrication()
         : InventoryProfileConfig.general();
   }

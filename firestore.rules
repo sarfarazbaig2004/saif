@@ -2,160 +2,97 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Core authentication check
     function signedIn() {
       return request.auth != null;
     }
 
+    // Get current user's UID
     function uid() {
       return request.auth.uid;
     }
 
-    function amanTenantId() {
-      return 'aman_infra';
+    // Get company user profile path
+    function getCompanyUserPath(companyId, userId) {
+      return /databases/$(database)/documents/companies/$(companyId)/users/$(userId);
     }
 
-    function softwareSuperAdminEmail() {
-      return 'genzprotech@gmail.com';
+    // Get current user's profile in a company
+    function getCompanyUserProfile(companyId) {
+      return get(getCompanyUserPath(companyId, uid())).data;
     }
 
-    function companySuperAdminEmail() {
-      return 'shawej.s@amaninfradeveloper.co.in';
-    }
-
-    function isAmanTenant(tenantId) {
-      return tenantId == amanTenantId();
-    }
-
-    function authEmail() {
-      return request.auth.token.email;
-    }
-
-    function isSoftwareSuperAdminAuth() {
-      return signedIn() && authEmail() == softwareSuperAdminEmail();
-    }
-
-    function rootUserPath() {
-      return /databases/$(database)/documents/users/$(uid());
-    }
-
-    function hasRootUserProfile() {
-      return signedIn() && exists(rootUserPath());
-    }
-
-    function rootUser() {
-      return get(rootUserPath()).data;
-    }
-
-    function rootUserAllowsAman() {
-      return hasRootUserProfile() && (
-        rootUser().tenantId == amanTenantId() ||
-        rootUser().companyId == amanTenantId() ||
-        rootUser().primaryTenantId == amanTenantId() ||
-        rootUser().primaryCompanyId == amanTenantId()
-      );
-    }
-
-    function companyUserPath(tenantId, userId) {
-      return /databases/$(database)/documents/companies/$(tenantId)/users/$(userId);
-    }
-
-    function hasAmanMembership() {
+    // Check if user profile exists and is active in company
+    function isUserActiveInCompany(companyId) {
       return signedIn() &&
-        exists(companyUserPath(amanTenantId(), uid()));
+        exists(getCompanyUserPath(companyId, uid())) &&
+        getCompanyUserProfile(companyId).isActive == true;
     }
 
-    function currentCompanyRole(tenantId) {
-      return exists(companyUserPath(tenantId, uid()))
-        ? get(companyUserPath(tenantId, uid())).data.role
+    // Get user's role in company (empty string if no profile)
+    function getUserRole(companyId) {
+      return isUserActiveInCompany(companyId)
+        ? getCompanyUserProfile(companyId).role
         : '';
     }
 
-    function isCompanySuperAdmin(tenantId) {
-      return signedIn() &&
-        isAmanTenant(tenantId) &&
-        (
-          currentCompanyRole(tenantId) == 'company_super_admin' ||
-          authEmail() == companySuperAdminEmail()
-        );
+    // Check if user is admin in company
+    function isAdmin(companyId) {
+      return isUserActiveInCompany(companyId) &&
+        getUserRole(companyId) == 'admin';
     }
 
-    function isSoftwareSuperAdminMember(tenantId) {
-      return signedIn() &&
-        isAmanTenant(tenantId) &&
-        (
-          isSoftwareSuperAdminAuth() ||
-          currentCompanyRole(tenantId) == 'software_super_admin'
-        );
+    // Check if user is manager in company
+    function isManager(companyId) {
+      return isUserActiveInCompany(companyId) &&
+        getUserRole(companyId) == 'manager';
     }
 
-    function isCompanyUserAdmin(tenantId) {
-      return isSoftwareSuperAdminMember(tenantId) || isCompanySuperAdmin(tenantId);
+    // Check if user is staff in company
+    function isStaff(companyId) {
+      return isUserActiveInCompany(companyId) &&
+        getUserRole(companyId) == 'staff';
     }
 
-    function isComplianceAdmin(tenantId) {
-      return isSoftwareSuperAdminMember(tenantId) || isCompanySuperAdmin(tenantId);
+    // Check if user is viewer in company
+    function isViewer(companyId) {
+      return isUserActiveInCompany(companyId) &&
+        getUserRole(companyId) == 'viewer';
     }
 
-    function isFinanceRole(tenantId) {
-      return currentCompanyRole(tenantId) == 'finance';
+    // Can access company (for development: admin can read/write all)
+    function canAccessCompany(companyId) {
+      return isUserActiveInCompany(companyId);
     }
 
-    function isHrRole(tenantId) {
-      return currentCompanyRole(tenantId) == 'hr' ||
-        currentCompanyRole(tenantId) == 'HR';
+    // Can manage company (admin role)
+    function canManageCompany(companyId) {
+      return isAdmin(companyId);
     }
 
-    function isProductionQaRole(tenantId) {
-      return currentCompanyRole(tenantId) == 'production' ||
-        currentCompanyRole(tenantId) == 'qa' ||
-        currentCompanyRole(tenantId) == 'QA';
+    // Can edit documents (admin or manager - can be extended later)
+    function canEditDocument(companyId) {
+      return isAdmin(companyId) || isManager(companyId);
     }
 
-    function canAccessComplianceCategory(tenantId, category) {
-      return canAccessAman(tenantId) &&
-        (
-          isComplianceAdmin(tenantId) ||
-          (isFinanceRole(tenantId) && category == 'financial') ||
-          (isHrRole(tenantId) && category == 'hr') ||
-          (isProductionQaRole(tenantId) && category == 'quality')
-        );
+    // Validate tenantId/companyId fields match the path
+    function companyFieldsMatchPath(companyId) {
+      return !('companyId' in request.resource.data) ||
+        request.resource.data.companyId == companyId;
     }
 
-    function canReadComplianceAccessCategories(tenantId, categories) {
-      return canAccessAman(tenantId) &&
-        (
-          isComplianceAdmin(tenantId) ||
-          (isFinanceRole(tenantId) && categories.hasAny(['financial'])) ||
-          (isHrRole(tenantId) && categories.hasAny(['hr'])) ||
-          (isProductionQaRole(tenantId) && categories.hasAny(['quality']))
-        );
+    // Validate tenantId fields match the path
+    function tenantFieldsMatchPath(companyId) {
+      return !('tenantId' in request.resource.data) ||
+        request.resource.data.tenantId == companyId;
     }
 
-    function canWriteComplianceAccessCategories(tenantId, categories) {
-      return canAccessAman(tenantId) &&
-        (
-          isComplianceAdmin(tenantId) ||
-          (isFinanceRole(tenantId) && categories.hasOnly(['financial'])) ||
-          (isHrRole(tenantId) && categories.hasOnly(['hr'])) ||
-          (isProductionQaRole(tenantId) && categories.hasOnly(['quality']))
-        );
+    // Both companyId and tenantId fields match path
+    function fieldsMatchPath(companyId) {
+      return companyFieldsMatchPath(companyId) && tenantFieldsMatchPath(companyId);
     }
 
-    function hasComplianceAccessCategories(data) {
-      return 'accessCategories' in data && data.accessCategories is list;
-    }
-
-    function canReadComplianceDocument(tenantId, data) {
-      return hasComplianceAccessCategories(data)
-        ? canReadComplianceAccessCategories(tenantId, data.accessCategories)
-        : canAccessComplianceCategory(tenantId, data.category);
-    }
-
-    function canWriteComplianceDocument(tenantId, data) {
-      return hasComplianceAccessCategories(data) &&
-        canWriteComplianceAccessCategories(tenantId, data.accessCategories);
-    }
-
+    // Valid compliance document tags
     function validComplianceTags(data) {
       return 'documentCategories' in data &&
         data.documentCategories is list &&
@@ -181,152 +118,51 @@ service cloud.firestore {
         ]);
     }
 
+    // Valid compliance access categories
     function validComplianceAccessCategories(data) {
-      return hasComplianceAccessCategories(data) &&
+      return 'accessCategories' in data &&
+        data.accessCategories is list &&
         data.accessCategories.size() > 0 &&
         data.accessCategories.hasOnly(['financial', 'hr', 'quality', 'legal']);
     }
 
-    function canAccessAman(tenantId) {
-      return signedIn() &&
-        isAmanTenant(tenantId) &&
-        (
-          isSoftwareSuperAdminAuth() ||
-          isCompanySuperAdmin(tenantId) ||
-          rootUserAllowsAman() ||
-          hasAmanMembership()
-        );
-    }
-
-    function isSoftwareSuperAdminData(data) {
-      return data.role == 'software_super_admin' ||
-        data.email == softwareSuperAdminEmail();
-    }
-
-    function isIncomingSoftwareSuperAdmin() {
-      return isSoftwareSuperAdminData(request.resource.data);
-    }
-
-    function isExistingSoftwareSuperAdmin() {
-      return isSoftwareSuperAdminData(resource.data);
-    }
-
-    function canCreateCompanyUser(tenantId) {
-      return canAccessAman(tenantId) &&
-        isCompanyUserAdmin(tenantId) &&
-        (isSoftwareSuperAdminAuth() || !isIncomingSoftwareSuperAdmin());
-    }
-
-    function canUpdateCompanyUser(tenantId) {
-      return canAccessAman(tenantId) &&
-        isCompanyUserAdmin(tenantId) &&
-        (
-          isSoftwareSuperAdminAuth() ||
-          (!isExistingSoftwareSuperAdmin() && !isIncomingSoftwareSuperAdmin())
-        );
-    }
-
-    function tenantFieldsMatchPath(tenantId) {
-      return !('tenantId' in request.resource.data) ||
-        request.resource.data.tenantId == tenantId;
-    }
-
-    function companyFieldsMatchPath(tenantId) {
-      return !('companyId' in request.resource.data) ||
-        request.resource.data.companyId == tenantId;
-    }
-
-    function tenantWriteAllowed(tenantId) {
-      return tenantFieldsMatchPath(tenantId) && companyFieldsMatchPath(tenantId);
-    }
-
-    function noRootTenantGrantFields() {
-      return !('allowedTenantIds' in request.resource.data) &&
-        !('companyIds' in request.resource.data) &&
-        !('memberships' in request.resource.data) &&
-        tenantFieldsMatchPath(amanTenantId()) &&
-        companyFieldsMatchPath(amanTenantId());
-    }
-
-    function rootTenantGrantFieldsUnchanged() {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
-        'allowedTenantIds',
-        'companyIds',
-        'memberships',
-      ]) &&
-      tenantFieldsMatchPath(amanTenantId()) &&
-      companyFieldsMatchPath(amanTenantId());
-    }
-
-    function isIncomingRootSoftwareSuperAdmin() {
-      return isSoftwareSuperAdminData(request.resource.data);
-    }
-
-    function isExistingRootSoftwareSuperAdmin() {
-      return isSoftwareSuperAdminData(resource.data);
-    }
-
-    function canCreateRootAmanUser() {
-      return isSoftwareSuperAdminAuth() ||
-        (
-          isCompanySuperAdmin(amanTenantId()) &&
-          !isIncomingRootSoftwareSuperAdmin()
-        );
-    }
-
-    function canUpdateRootAmanUser() {
-      return isSoftwareSuperAdminAuth() ||
-        (
-          isCompanySuperAdmin(amanTenantId()) &&
-          !isExistingRootSoftwareSuperAdmin() &&
-          !isIncomingRootSoftwareSuperAdmin()
-        );
-    }
-
-    match /users/{userId} {
-      allow read: if signedIn() && (uid() == userId || isCompanyUserAdmin(amanTenantId()));
-      allow create: if (signedIn() && uid() == userId && noRootTenantGrantFields()) ||
-        canCreateRootAmanUser();
-      allow update: if (signedIn() && uid() == userId && rootTenantGrantFieldsUnchanged()) ||
-        canUpdateRootAmanUser();
-      allow delete: if false;
-    }
-
-    match /companies/{tenantId} {
-      allow read: if canAccessAman(tenantId);
-      allow create, update: if canAccessAman(tenantId) && tenantWriteAllowed(tenantId);
+    // Company document rules
+    match /companies/{companyId} {
+      allow read: if canAccessCompany(companyId);
+      allow create, update: if canManageCompany(companyId) && fieldsMatchPath(companyId);
       allow delete: if false;
 
+      // Company users
       match /users/{userId} {
-        allow read: if canAccessAman(tenantId);
-        allow create: if canCreateCompanyUser(tenantId) && tenantWriteAllowed(tenantId);
-        allow update: if canUpdateCompanyUser(tenantId) && tenantWriteAllowed(tenantId);
+        allow read: if canAccessCompany(companyId);
+        allow create: if canManageCompany(companyId) && fieldsMatchPath(companyId);
+        allow update: if canManageCompany(companyId) && fieldsMatchPath(companyId);
         allow delete: if false;
       }
 
+      // Compliance documents
       match /compliance_documents/{documentId} {
-        allow read: if canReadComplianceDocument(tenantId, resource.data);
-        allow create: if canWriteComplianceDocument(tenantId, request.resource.data) &&
-          tenantWriteAllowed(tenantId) &&
+        allow read: if canAccessCompany(companyId);
+        allow create: if canEditDocument(companyId) &&
+          fieldsMatchPath(companyId) &&
           validComplianceTags(request.resource.data) &&
           validComplianceAccessCategories(request.resource.data);
-        allow update: if canReadComplianceDocument(tenantId, resource.data) &&
-          canWriteComplianceDocument(tenantId, request.resource.data) &&
-          tenantWriteAllowed(tenantId) &&
+        allow update: if canEditDocument(companyId) &&
+          fieldsMatchPath(companyId) &&
           validComplianceTags(request.resource.data) &&
           validComplianceAccessCategories(request.resource.data);
-        allow delete: if canAccessAman(tenantId) &&
-          isComplianceAdmin(tenantId) &&
-          resource.data.isQmsDocument != true;
+        allow delete: if canManageCompany(companyId);
       }
 
+      // All other company subcollections
       match /{document=**} {
-        allow read: if canAccessAman(tenantId);
-        allow create, update: if canAccessAman(tenantId) && tenantWriteAllowed(tenantId);
-        allow delete: if canAccessAman(tenantId) && isSoftwareSuperAdminAuth();
+        allow read: if canAccessCompany(companyId);
+        allow create, update: if canEditDocument(companyId) && fieldsMatchPath(companyId);
+        allow delete: if canManageCompany(companyId);
       }
     }
 
+    // Deny all other access
     match /{document=**} {
       allow read, write: if false;
     }

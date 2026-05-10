@@ -1094,11 +1094,21 @@ class _ZohoShellState extends State<ZohoShell> {
   }
 
   bool _isModuleEnabled(String moduleId) {
-    if (moduleId == ModuleIds.inventory && isAdminOrManager) {
-      return true;
-    }
-    return ModuleAccessProvider.of(context).isModuleEnabled(moduleId);
+  if (moduleId == ModuleIds.inventory && isAdminOrManager) {
+    return true;
   }
+
+  final moduleAccess = ModuleAccessProvider.maybeOf(
+    context,
+    listen: false,
+  );
+
+  if (moduleAccess == null) {
+    return true;
+  }
+
+  return moduleAccess.isModuleEnabled(moduleId);
+}
 
   bool _isSidebarGroupModuleEnabled(String groupKey) {
     final moduleId = _moduleIdForSidebarGroup(groupKey);

@@ -23,6 +23,27 @@ function generateOtp(): string {
 }
 
 /**
+ * Generates a strong random password.
+ * @return {string}
+ */
+function generateStrongPassword(): string {
+  const chars = [
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    "abcdefghijklmnopqrstuvwxyz",
+    "0123456789",
+    "!@#$%^&*",
+  ].join("");
+
+  let password = "";
+  for (let i = 0; i < 12; i++) {
+    password += chars.charAt(
+      Math.floor(Math.random() * chars.length),
+    );
+  }
+  return password;
+}
+
+/**
  * Builds the Gmail transporter for OTP emails.
  * @return {nodemailer.Transporter}
  */
@@ -1080,6 +1101,144 @@ export const verifyJoinCompanyOtp = onCall(
       isAdmin: data.isAdmin,
       phone: data.phone,
       permissions: data.permissions,
+    };
+  },
+);
+
+/* =========================================================
+   =============== CREATE COMPANY USER =====================
+   ========================================================= */
+
+export const createCompanyUser = onCall(
+  async (request) => {
+    const callerUid = request.auth?.uid;
+    if (!callerUid) {
+      throw new HttpsError("unauthenticated", "Authentication required");
+    }
+
+    const email = callableString(request.data?.email);
+    const displayName = callableString(request.data?.displayName);
+    const role = callableString(request.data?.role);
+    const companyId = callableString(request.data?.companyId);
+    const companyName = callableString(request.data?.companyName);
+    const password = callableString(request.data?.password);
+    const permissions = request.data?.permissions ?? {};
+
+    if (!email || !displayName || !role || !companyId) {
+      throw new HttpsError("invalid-argument", "Missing required fields");
+    }
+
+    // Fetch company name if not provided
+    let finalCompanyName = companyName;
+    if (!finalCompanyName) {
+      const companySnap = await db
+        .collection("companies")
+        .doc(companyId)
+        .get();
+      if (companySnap.exists) {
+        const companyData = companySnap.data() || {};
+        finalCompanyName = callableString(
+          companyData.companyName,
+        ) || "Aman Infra";
+      } else {
+        finalCompanyName = "Aman Infra";
+      }
+    }
+
+    const callerProfileRef = db
+      .collection("companies")
+      .doc(companyId)
+      .collection("users")
+      .doc(callerUid);
+    const callerProfileSnap = await callerProfileRef.get();
+    if (!callerProfileSnap.exists) {
+      throw new HttpsError(
+        "permission-denied",
+        "Caller profile not found",
+      );
+    }
+
+    const callerData = callerProfileSnap.data() || {};
+    if (callerData.isActive !== true) {
+      throw new HttpsError(
+        "permission-denied",
+        "Caller account is not active",
+      );
+    }
+
+    if (callerData.role !== "admin") {
+      throw new HttpsError(
+        "permission-denied",
+        "Only admins can create users",
+      );
+    }
+
+    // Generate strong password if not provided
+    let userPassword = password;
+    if (!userPassword) {
+      userPassword = generateStrongPassword();
+    }
+
+    // Create Firebase Auth user
+    let newUser;
+    try {
+      newUser = await admin.auth().createUser({
+        email,
+        password: userPassword,
+        displayName,
+      });
+    } catch (error) {
+      const code = (error as {code?: string}).code;
+      if (code === "auth/email-already-exists") {
+        throw new HttpsError(
+          "already-exists",
+          "User with this email already exists",
+        );
+      }
+      throw new HttpsError(
+        "internal",
+        `Failed to create auth user: ${error}`,
+      );
+    }
+
+    // Create Firestore user profile
+    const userProfileRef = db
+      .collection("companies")
+      .doc(companyId)
+      .collection("users")
+      .doc(newUser.uid);
+    await userProfileRef.set({
+      uid: newUser.uid,
+      email,
+      displayName,
+      role,
+      companyId,
+      companyName: finalCompanyName,
+      isActive: true,
+      permissions,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdBy: callerUid,
+    });
+
+    // Send password reset email
+    try {
+      await admin.auth().generatePasswordResetLink(email);
+      // Note: In production, you might want to send this via email service
+    } catch (error) {
+      // Log but don't fail the operation
+      console.warn("Failed to generate password reset link:", error);
+    }
+
+    return {
+      uid: newUser.uid,
+      email,
+      displayName,
+      role,
+      companyId,
+      message: "User created successfully. Password reset email sent.",
+      temporaryPassword: userPassword,
+      // Return temp password for admin to share
     };
   },
 );

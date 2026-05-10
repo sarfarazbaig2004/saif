@@ -55,7 +55,13 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   Set<String>? _lastLoadedEnabledModuleIds;
 
   Set<String> get _currentEnabledModuleIds {
-    return ModuleAccessProvider.of(context).enabledModuleIds;
+    final moduleAccess = ModuleAccessProvider.maybeOf(context);
+
+if (moduleAccess == null) {
+  return <String>{};
+}
+
+return moduleAccess.enabledModuleIds;
   }
 
   @override

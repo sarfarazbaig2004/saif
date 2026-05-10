@@ -47,7 +47,8 @@ class ModuleAccessController extends ChangeNotifier {
 
     if (!forceRefresh &&
         _tenantId == normalizedTenantId &&
-        _error == null) {
+        _error == null &&
+        _enabledModuleIds.isNotEmpty) {
       return;
     }
 
@@ -81,6 +82,7 @@ class ModuleAccessController extends ChangeNotifier {
       );
     } catch (e, stackTrace) {
       _error = e.toString();
+
       debugPrint(
         'ModuleAccessProvider: failed to load modules for $normalizedTenantId: $e',
       );
@@ -97,7 +99,7 @@ class ModuleAccessController extends ChangeNotifier {
 
   Future<void> refresh() async {
     final currentTenantId = _tenantId;
-    if (currentTenantId == null || currentTenantId.isEmpty) return;
+    if (currentTenantId == null || currentTenantId.trim().isEmpty) return;
     await loadForTenant(currentTenantId, forceRefresh: true);
   }
 }
@@ -114,17 +116,40 @@ class ModuleAccessProvider extends StatefulWidget {
     this.controller,
   });
 
-  static ModuleAccessController of(BuildContext context, {bool listen = true}) {
+  static ModuleAccessController? maybeOf(
+    BuildContext context, {
+    bool listen = true,
+  }) {
     final provider = listen
         ? context.dependOnInheritedWidgetOfExactType<_ModuleAccessScope>()
         : context.getInheritedWidgetOfExactType<_ModuleAccessScope>();
 
+    return provider?.notifier;
+  }
+
+  static ModuleAccessController of(
+    BuildContext context, {
+    bool listen = true,
+  }) {
+    final controller = maybeOf(context, listen: listen);
+
     assert(
-      provider != null,
+      controller != null,
       'ModuleAccessProvider.of() called with no ModuleAccessProvider in context.',
     );
 
-    return provider!.notifier!;
+    if (controller == null) {
+      throw FlutterError.fromParts([
+        ErrorSummary(
+          'ModuleAccessProvider.of() called with no ModuleAccessProvider in context.',
+        ),
+        ErrorDescription(
+          'Wrap the page, shell, route, or dialog with ModuleAccessProvider before calling ModuleAccessProvider.of(context).',
+        ),
+      ]);
+    }
+
+    return controller;
   }
 
   @override
@@ -132,30 +157,48 @@ class ModuleAccessProvider extends StatefulWidget {
 }
 
 class _ModuleAccessProviderState extends State<ModuleAccessProvider> {
-  late final ModuleAccessController _controller;
-  late final bool _ownsController;
+  late ModuleAccessController _controller;
+  late bool _ownsController;
 
   @override
   void initState() {
     super.initState();
-    _ownsController = widget.controller == null;
-    _controller = widget.controller ?? ModuleAccessController();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _controller.loadForTenant(widget.tenantId, forceRefresh: true);
-    });
+    _setController(widget.controller);
+    _loadTenantAfterBuild(forceRefresh: true);
   }
 
   @override
   void didUpdateWidget(covariant ModuleAccessProvider oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    if (oldWidget.tenantId != widget.tenantId) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _controller.loadForTenant(widget.tenantId, forceRefresh: true);
-      });
+    if (oldWidget.controller != widget.controller) {
+      if (_ownsController) {
+        _controller.dispose();
+      }
+
+      _setController(widget.controller);
+      _loadTenantAfterBuild(forceRefresh: true);
+      return;
     }
+
+    if (oldWidget.tenantId != widget.tenantId) {
+      _loadTenantAfterBuild(forceRefresh: true);
+    }
+  }
+
+  void _setController(ModuleAccessController? controller) {
+    _ownsController = controller == null;
+    _controller = controller ?? ModuleAccessController();
+  }
+
+  void _loadTenantAfterBuild({required bool forceRefresh}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _controller.loadForTenant(
+        widget.tenantId,
+        forceRefresh: forceRefresh,
+      );
+    });
   }
 
   @override
@@ -168,10 +211,16 @@ class _ModuleAccessProviderState extends State<ModuleAccessProvider> {
 
   @override
   Widget build(BuildContext context) {
-    return _ModuleAccessScope(notifier: _controller, child: widget.child);
+    return _ModuleAccessScope(
+      notifier: _controller,
+      child: widget.child,
+    );
   }
 }
 
 class _ModuleAccessScope extends InheritedNotifier<ModuleAccessController> {
-  const _ModuleAccessScope({required super.notifier, required super.child});
+  const _ModuleAccessScope({
+    required super.notifier,
+    required super.child,
+  });
 }

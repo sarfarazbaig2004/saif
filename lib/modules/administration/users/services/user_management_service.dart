@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:QUIK/core/app/aman_app_config.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 
 import '../helpers/user_management_constants.dart';
 
@@ -203,9 +203,7 @@ class UserManagementService {
 
   bool _isSoftwareSuperAdminData(Map<String, dynamic> data) {
     return _normalizeRole(data['role']?.toString()) ==
-            UserRoles.softwareSuperAdmin ||
-        _normalizeEmail(data['email']?.toString()) ==
-            AmanAppConfig.softwareSuperAdminEmail;
+            UserRoles.softwareSuperAdmin;
   }
 
   void _assertNotSoftwareSuperAdminTarget(Map<String, dynamic> data) {
@@ -218,8 +216,7 @@ class UserManagementService {
     required String role,
     String? email,
   }) {
-    if (_normalizeRole(role) == UserRoles.softwareSuperAdmin ||
-        _normalizeEmail(email) == AmanAppConfig.softwareSuperAdminEmail) {
+    if (_normalizeRole(role) == UserRoles.softwareSuperAdmin) {
       throw StateError(
         'Software super admin is managed outside company users.',
       );
@@ -270,15 +267,18 @@ class UserManagementService {
     }
   }
 
+  void _assertRequiredText(String fieldName, String value) {
+    if (value.trim().isEmpty) {
+      throw ArgumentError('$fieldName is required');
+    }
+  }
+
   void _assertCompanyScoped({
     required String companyId,
     required String userUid,
     required String updatedByUid,
   }) {
     _assertRequiredId('companyId', companyId);
-    if (_normalizeText(companyId) != AmanAppConfig.companyId) {
-      throw ArgumentError('AMAN Infra ERP only supports the AMAN company.');
-    }
     _assertRequiredId('userUid', userUid);
     _assertRequiredId('updatedByUid', updatedByUid);
   }
@@ -618,6 +618,45 @@ class UserManagementService {
       throw StateError(
         'Failed to save user and permissions: ${e.message ?? e.code}',
       );
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> createCompanyUser({
+    required String companyId,
+    required String email,
+    required String displayName,
+    required String role,
+    String? password,
+    Map<String, dynamic>? permissions,
+  }) async {
+    _assertRequiredId('companyId', companyId);
+    _assertRequiredText('email', email);
+    _assertRequiredText('displayName', displayName);
+    _assertRequiredText('role', role);
+
+    final normalizedRole = _normalizeRole(role);
+    final canonicalPermissions = _normalizePermissionsForRole(
+      role: normalizedRole,
+      permissions: permissions ?? {},
+    );
+
+    try {
+      final callable = FirebaseFunctions.instance.httpsCallable('createCompanyUser');
+      final result = await callable.call({
+        'email': email,
+        'displayName': displayName,
+        'role': normalizedRole,
+        'companyId': companyId,
+        'companyName': '', // Function will fetch it
+        'permissions': canonicalPermissions,
+        if (password != null && password.isNotEmpty) 'password': password,
+      });
+
+      return result.data as Map<String, dynamic>;
+    } on FirebaseFunctionsException catch (e) {
+      throw StateError('Failed to create user: ${e.message ?? e.code}');
     } catch (e) {
       rethrow;
     }

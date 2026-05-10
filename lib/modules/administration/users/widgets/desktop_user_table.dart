@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/core/app/aman_app_config.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_constants.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
 import 'package:QUIK/modules/administration/users/widgets/mini_badge.dart';
@@ -138,9 +137,7 @@ class DesktopUserTable extends StatelessWidget {
     final isActive = (data['isActive'] ?? true) == true;
     final isDeleted = (data['isDeleted'] ?? false) == true;
     final storedStatus = _normalizeText(data['status']);
-    final isSoftwareSuperAdmin =
-        role == UserRoles.softwareSuperAdmin ||
-        email.toLowerCase() == AmanAppConfig.softwareSuperAdminEmail;
+    final isSoftwareSuperAdmin = role == UserRoles.softwareSuperAdmin;
 
     final isSelfUser = doc.id == currentUid;
 

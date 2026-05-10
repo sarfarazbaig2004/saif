@@ -41,47 +41,51 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCaxta_H6fvn3VCfM8Ad3RRDQhH8ZLUziM',
-    appId: '1:538647707022:web:a10fb8613ce42ba443f8df',
-    messagingSenderId: '538647707022',
-    projectId: 'salman-1ce8f',
-    authDomain: 'salman-1ce8f.firebaseapp.com',
-    storageBucket: 'salman-1ce8f.firebasestorage.app',
+    apiKey: 'AIzaSyARI0p1Z71lyvAnLZfQATs7WeAWPvrHJx0',
+    appId: '1:466125619602:web:57c405363cecdce86f414b',
+    messagingSenderId: '466125619602',
+    projectId: 'quik-aman-erp',
+    authDomain: 'quik-aman-erp.firebaseapp.com',
+    storageBucket: 'quik-aman-erp.firebasestorage.app',
+    measurementId: 'G-MLC3G47H2L',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCEPJmirllrI0rNjQ8UzLmQGxdHT2N7Z2Q',
-    appId: '1:538647707022:android:44159bf4d817937543f8df',
-    messagingSenderId: '538647707022',
-    projectId: 'salman-1ce8f',
-    storageBucket: 'salman-1ce8f.firebasestorage.app',
+    apiKey: 'AIzaSyDmvpABsVcV0K3dEXIxC6u1-mekUmJnnas',
+    appId: '1:466125619602:android:508c3329e140b11d6f414b',
+    messagingSenderId: '466125619602',
+    projectId: 'quik-aman-erp',
+    storageBucket: 'quik-aman-erp.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyB700jElw33hh6-wp_rxCx_gxgPcObqRtU',
-    appId: '1:538647707022:ios:7666a27060de7c8843f8df',
-    messagingSenderId: '538647707022',
-    projectId: 'salman-1ce8f',
-    storageBucket: 'salman-1ce8f.firebasestorage.app',
+    apiKey: 'AIzaSyC_4HsLCfHB_jGHXcB3y_6inIFp0RPJwr8',
+    appId: '1:466125619602:ios:3222a203e61735026f414b',
+    messagingSenderId: '466125619602',
+    projectId: 'quik-aman-erp',
+    storageBucket: 'quik-aman-erp.firebasestorage.app',
+    iosClientId: '466125619602-ddk4jrvi4q6l68hthrcf8atj1aklu0te.apps.googleusercontent.com',
     iosBundleId: 'com.example.genzProtech',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyB700jElw33hh6-wp_rxCx_gxgPcObqRtU',
-    appId: '1:538647707022:ios:7666a27060de7c8843f8df',
-    messagingSenderId: '538647707022',
-    projectId: 'salman-1ce8f',
-    storageBucket: 'salman-1ce8f.firebasestorage.app',
+    apiKey: 'AIzaSyC_4HsLCfHB_jGHXcB3y_6inIFp0RPJwr8',
+    appId: '1:466125619602:ios:3222a203e61735026f414b',
+    messagingSenderId: '466125619602',
+    projectId: 'quik-aman-erp',
+    storageBucket: 'quik-aman-erp.firebasestorage.app',
+    iosClientId: '466125619602-ddk4jrvi4q6l68hthrcf8atj1aklu0te.apps.googleusercontent.com',
     iosBundleId: 'com.example.genzProtech',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyCaxta_H6fvn3VCfM8Ad3RRDQhH8ZLUziM',
-    appId: '1:538647707022:web:a9881877fbee1c1443f8df',
-    messagingSenderId: '538647707022',
-    projectId: 'salman-1ce8f',
-    authDomain: 'salman-1ce8f.firebaseapp.com',
-    storageBucket: 'salman-1ce8f.firebasestorage.app',
+    apiKey: 'AIzaSyARI0p1Z71lyvAnLZfQATs7WeAWPvrHJx0',
+    appId: '1:466125619602:web:bb18f8eb2d32be9c6f414b',
+    messagingSenderId: '466125619602',
+    projectId: 'quik-aman-erp',
+    authDomain: 'quik-aman-erp.firebaseapp.com',
+    storageBucket: 'quik-aman-erp.firebasestorage.app',
+    measurementId: 'G-Z7TEQBVD24',
   );
 
 }

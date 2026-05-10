@@ -1,48 +1,89 @@
-# Miscellaneous
-*.class
+# =========================
+# OS / Editor / Temporary
+# =========================
+.DS_Store
 *.log
+*.class
 *.pyc
 *.swp
-.DS_Store
 .atom/
-.build/
-.buildlog/
 .history
 .svn/
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# =========================
+# IntelliJ / Android Studio
+# =========================
 *.iml
 *.ipr
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
+# VS Code
+# Keep commented if you want to commit launch/tasks config
 #.vscode/
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# =========================
+# Flutter / Dart / Pub
+# =========================
 .dart_tool/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+coverage/
+
+# =========================
+# Build Outputs
+# =========================
+build/
 /build/
-!/build/web/
-!/build/web/**
-/coverage/
+android/app/debug
+android/app/profile
+android/app/release
 
-# Symbolication related
+# If you intentionally want build/web committed, uncomment:
+# !/build/web/
+# !/build/web/**
+
+# =========================
+# Obfuscation / Symbols
+# =========================
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
 
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-build/
+# =========================
+# Firebase / Secret Keys
+# NEVER COMMIT THESE
+# =========================
+serviceAccountKey.json
+*-firebase-adminsdk-*.json
+quik-aman-erp-firebase-adminsdk-*.json
+
+# =========================
+# Environment Files
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Node / Functions
+# =========================
+node_modules/
+functions/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# Local credentials / backups
+# =========================
+*.pem
+*.key
+*.p12
+*.bak
+*.backup
+*.tmp

@@ -1,21 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'package:QUIK/core/app/aman_app_config.dart';
-
 class TenantContext extends ChangeNotifier {
-  String _selectedTenantId = AmanAppConfig.tenantId;
-  List<String> _allowedTenantIds = const [AmanAppConfig.tenantId];
-  Map<String, String> _tenantNames = const {
-    AmanAppConfig.tenantId: AmanAppConfig.companyName,
-  };
+  String _selectedTenantId = '';
+  List<String> _allowedTenantIds = [];
+  Map<String, String> _tenantNames = {};
 
   String get selectedTenantId => _selectedTenantId;
   List<String> get allowedTenantIds => _allowedTenantIds;
   Map<String, String> get tenantNames => _tenantNames;
 
   void setSelectedTenant(String id) {
-    _selectedTenantId = AmanAppConfig.tenantId;
+    _selectedTenantId = id;
     notifyListeners();
   }
 
@@ -24,12 +20,12 @@ class TenantContext extends ChangeNotifier {
   }
 
   void replaceAllowedTenants(List<String> ids) {
-    _allowedTenantIds = const [AmanAppConfig.tenantId];
+    _allowedTenantIds = ids;
     notifyListeners();
   }
 
   void setTenantNames(Map<String, String> names) {
-    _tenantNames = const {AmanAppConfig.tenantId: AmanAppConfig.companyName};
+    _tenantNames = Map<String, String>.from(names);
     notifyListeners();
   }
 }
