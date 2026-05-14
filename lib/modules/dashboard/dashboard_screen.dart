@@ -2,10 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:QUIK/modules/dashboard/dashboard_widgets.dart';
-import 'package:QUIK/modules/dashboard/dashboard_service.dart';
-import 'package:QUIK/modules/dashboard/dashboard_charts.dart';
+
 import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/modules/dashboard/dashboard_charts.dart';
+import 'package:QUIK/modules/dashboard/dashboard_service.dart';
+import 'package:QUIK/modules/dashboard/dashboard_widgets.dart';
 
 class DashboardScreen extends StatefulWidget {
   final String companyId;
@@ -34,42 +35,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _activeTenantId = widget.companyId.trim();
-    _service = DashboardService(companyId: _activeTenantId);
+    _setTenant(widget.companyId);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
     final tenantId = context.watchTenant.selectedTenantId.trim();
     if (tenantId.isNotEmpty && tenantId != _activeTenantId) {
-      _activeTenantId = tenantId;
-      _service = DashboardService(companyId: _activeTenantId);
+      _setTenant(tenantId);
     }
   }
 
   @override
   void didUpdateWidget(covariant DashboardScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final fallbackTenantId = widget.companyId.trim();
-    if (_activeTenantId.isEmpty && fallbackTenantId.isNotEmpty) {
-      _activeTenantId = fallbackTenantId;
-      _service = DashboardService(companyId: _activeTenantId);
+
+    if (widget.companyId != oldWidget.companyId) {
+      _setTenant(widget.companyId);
     }
   }
 
+  void _setTenant(String tenantId) {
+    final cleanTenantId = tenantId.trim();
+    if (cleanTenantId.isEmpty) return;
+
+    _activeTenantId = cleanTenantId;
+    _service = DashboardService(companyId: _activeTenantId);
+  }
+
+  bool get _isAdminRole {
+    final role = widget.role.trim().toLowerCase();
+
+    return {
+      'admin',
+      'owner',
+      'ceo',
+      'manager',
+      'superadmin',
+      'company_super_admin',
+      'software_super_admin',
+      'founder',
+    }.contains(role);
+  }
+
   bool hasPermission(String module, String submodule) {
-    final r = widget.role.toLowerCase();
-    if (['admin', 'owner', 'ceo', 'manager', 'superadmin'].contains(r)) {
-      return true;
-    }
+    if (_isAdminRole) return true;
 
     final moduleData = widget.permissions[module];
+
     if (moduleData is Map && moduleData.containsKey(submodule)) {
-      return moduleData[submodule] == true;
+      final value = moduleData[submodule];
+
+      if (value is Map) {
+        return value['view'] == true;
+      }
+
+      return value == true;
     }
 
     return false;
+  }
+
+  String get _workspaceDisplayName {
+    final tenantId = _activeTenantId.toLowerCase();
+
+    if (tenantId == 'aman-infra' || tenantId.contains('aman')) {
+      return 'AMAN Infra Developer ERP Workspace';
+    }
+
+    final cleanName = widget.userName.trim();
+    return cleanName.isNotEmpty ? cleanName : 'ERP Workspace';
   }
 
   @override
@@ -85,63 +122,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: _buildDashboardElements(context),
-          ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: _withSpacing(_dashboardSections(context)),
         ),
       ),
     );
   }
 
-  List<Widget> _buildDashboardElements(BuildContext context) {
-    List<Widget> elements = [];
+  List<Widget> _dashboardSections(BuildContext context) {
+    final sections = <Widget>[
+      _buildHeader(),
+      if (_buildKpiSection() != null) _buildKpiSection()!,
+      if (_buildChartSection() != null) _buildChartSection()!,
+      if (_buildCrmSection() != null) _buildCrmSection()!,
+      if (_buildTasksActivitiesSection() != null)
+        _buildTasksActivitiesSection()!,
+      if (_buildTransactionsSection() != null) _buildTransactionsSection()!,
+      if (_buildQuickActionsSection(context) != null)
+        _buildQuickActionsSection(context)!,
+      if (_buildAlertsSection() != null) _buildAlertsSection()!,
+      const SizedBox(height: 20),
+    ];
 
-    elements.add(_buildHeader());
+    return sections;
+  }
 
-    final kpiSection = _buildKpiSection();
-    if (kpiSection != null) elements.add(kpiSection);
+  List<Widget> _withSpacing(List<Widget> widgets) {
+    final spaced = <Widget>[];
 
-    final chartSection = _buildChartSection();
-    if (chartSection != null) elements.add(chartSection);
-
-    final crmSection = _buildCrmSection();
-    if (crmSection != null) elements.add(crmSection);
-
-    final tasksSection = _buildTasksActivitiesSection();
-    if (tasksSection != null) elements.add(tasksSection);
-
-    final transactionsSection = _buildTransactionsSection();
-    if (transactionsSection != null) elements.add(transactionsSection);
-
-    final actionsSection = _buildQuickActionsSection(context);
-    if (actionsSection != null) elements.add(actionsSection);
-
-    final alertsSection = _buildAlertsSection();
-    if (alertsSection != null) elements.add(alertsSection);
-
-    elements.add(const SizedBox(height: 20));
-
-    List<Widget> spacedElements = [];
-    for (int i = 0; i < elements.length; i++) {
-      spacedElements.add(elements[i]);
-      if (i < elements.length - 1) {
-        spacedElements.add(const SizedBox(height: 20));
+    for (var i = 0; i < widgets.length; i++) {
+      spaced.add(widgets[i]);
+      if (i < widgets.length - 1) {
+        spaced.add(const SizedBox(height: 20));
       }
     }
 
-    return spacedElements;
+    return spaced;
   }
 
   Widget _buildHeader() {
-    final displayName = widget.userName.isNotEmpty ? widget.userName : 'Admin';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Welcome $displayName',
+          'Welcome $_workspaceDisplayName',
           style: const TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w800,
@@ -190,10 +216,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }
 
             final data = snapshot.data!;
-            List<Widget> visibleKpis = [];
-
-            if (showRevenue) {
-              visibleKpis.add(
+            final kpis = <Widget>[
+              if (showRevenue)
                 KpiCard(
                   title: 'Total Revenue',
                   value: formatter.format(data.totalRevenue),
@@ -202,11 +226,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   trendText: 'Live Data',
                   isPositive: true,
                 ),
-              );
-            }
-
-            if (showOutstanding) {
-              visibleKpis.add(
+              if (showOutstanding)
                 KpiCard(
                   title: 'Outstanding',
                   value: formatter.format(data.totalOutstanding),
@@ -215,11 +235,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   trendText: 'Pending Collections',
                   isPositive: false,
                 ),
-              );
-            }
-
-            if (showQuotes) {
-              visibleKpis.add(
+              if (showQuotes)
                 KpiCard(
                   title: 'Active Quotes',
                   value: data.activeQuotes.toString(),
@@ -228,11 +244,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   trendText: 'In Pipeline',
                   isPositive: true,
                 ),
-              );
-            }
-
-            if (showConversion) {
-              visibleKpis.add(
+              if (showConversion)
                 KpiCard(
                   title: 'Conversion Rate',
                   value: '${data.conversionRate.toStringAsFixed(1)}%',
@@ -241,29 +253,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   trendText: 'Avg Performance',
                   isPositive: true,
                 ),
-              );
-            }
+            ];
 
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                double width = constraints.maxWidth;
-                int crossAxisCount = width > 1000 ? 4 : (width > 650 ? 2 : 1);
-                if (visibleKpis.length < crossAxisCount) {
-                  crossAxisCount = visibleKpis.length;
-                }
-                double spacing = 16;
-                double cardWidth =
-                    (width - (spacing * (crossAxisCount - 1))) / crossAxisCount;
-
-                return Wrap(
-                  spacing: spacing,
-                  runSpacing: spacing,
-                  children: visibleKpis
-                      .map((kpi) => SizedBox(width: cardWidth, child: kpi))
-                      .toList(),
-                );
-              },
-            );
+            return _responsiveWrap(kpis);
           },
         ),
       ],
@@ -275,6 +267,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         hasPermission('sales', 'quotations') ||
         hasPermission('sales', 'inquiries') ||
         hasPermission('finance', 'taxInvoice');
+
     final showPaymentChart = hasPermission('finance', 'paymentReceived');
 
     if (!showSalesChart && !showPaymentChart) return null;
@@ -296,7 +289,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             final data = snapshot.data!;
 
-            Widget salesChart = DashboardCard(
+            final salesChart = DashboardCard(
               title: 'Sales Overview',
               child: SizedBox(
                 height: 280,
@@ -304,7 +297,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             );
 
-            Widget paymentChart = DashboardCard(
+            final paymentChart = DashboardCard(
               title: 'Payment Analytics',
               child: SizedBox(
                 height: 280,
@@ -317,7 +310,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             return LayoutBuilder(
               builder: (context, constraints) {
-                bool isWide = constraints.maxWidth > 800;
+                final isWide = constraints.maxWidth > 800;
 
                 if (showSalesChart && showPaymentChart) {
                   return isWide
@@ -335,11 +328,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             paymentChart,
                           ],
                         );
-                } else if (showSalesChart) {
-                  return salesChart;
-                } else {
-                  return paymentChart;
                 }
+
+                return showSalesChart ? salesChart : paymentChart;
               },
             );
           },
@@ -374,49 +365,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
             }
 
             final data = snapshot.data!;
-
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                double width = constraints.maxWidth;
-                double cardWidth = width > 800
-                    ? (width - 32) / 3
-                    : (width > 500 ? (width - 16) / 2 : width);
-
-                return Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
-                  children: [
-                    SizedBox(
-                      width: cardWidth,
-                      child: DashboardCard(
-                        title: 'Open Deals',
-                        child: Text(data.openDeals.toString(), style: kpiStyle),
-                      ),
-                    ),
-                    SizedBox(
-                      width: cardWidth,
-                      child: DashboardCard(
-                        title: 'Follow-ups Today',
-                        child: Text(
-                          data.followUpsToday.toString(),
-                          style: kpiStyle,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: cardWidth,
-                      child: DashboardCard(
-                        title: 'New Inquiries',
-                        child: Text(
-                          data.newInquiries.toString(),
-                          style: kpiStyle,
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            );
+            return _responsiveWrap([
+              DashboardCard(
+                title: 'Open Deals',
+                child: Text(data.openDeals.toString(), style: kpiStyle),
+              ),
+              DashboardCard(
+                title: 'Follow-ups Today',
+                child: Text(data.followUpsToday.toString(), style: kpiStyle),
+              ),
+              DashboardCard(
+                title: 'New Inquiries',
+                child: Text(data.newInquiries.toString(), style: kpiStyle),
+              ),
+            ]);
           },
         ),
       ],
@@ -429,28 +391,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     if (!showTasks && !showActivities) return null;
 
-    Widget activities = DashboardCard(
+    final activities = DashboardCard(
       title: 'Recent Activities',
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
+      child: _staticList(
         itemCount: 3,
-        separatorBuilder: (context, index) =>
-            const Divider(height: 24, color: Color(0xFFF1F5F9)),
-        itemBuilder: (context, index) =>
+        itemBuilder: (_) =>
             const ActivityItem(text: 'System synchronization successful.'),
       ),
     );
 
-    Widget tasks = DashboardCard(
+    final tasks = DashboardCard(
       title: 'Pending Tasks',
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
+      child: _staticList(
         itemCount: 3,
-        separatorBuilder: (context, index) =>
-            const Divider(height: 24, color: Color(0xFFF1F5F9)),
-        itemBuilder: (context, index) =>
+        itemBuilder: (_) =>
             const TaskItem(text: 'Check pending invoices and follow-ups.'),
       ),
     );
@@ -462,7 +416,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(height: 16),
         LayoutBuilder(
           builder: (context, constraints) {
-            bool isWide = constraints.maxWidth > 800;
+            final isWide = constraints.maxWidth > 800;
 
             if (showTasks && showActivities) {
               return isWide
@@ -477,11 +431,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   : Column(
                       children: [activities, const SizedBox(height: 16), tasks],
                     );
-            } else if (showActivities) {
-              return activities;
-            } else {
-              return tasks;
             }
+
+            return showActivities ? activities : tasks;
           },
         ),
       ],
@@ -513,7 +465,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           return const DashboardCard(
             title: 'Recent Transactions',
             child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 24.0),
+              padding: EdgeInsets.symmetric(vertical: 24),
               child: Center(
                 child: Text(
                   'No recent transactions found.',
@@ -526,26 +478,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
         return DashboardCard(
           title: 'Recent Transactions',
-          trailing: TextButton(
-            onPressed: () {},
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFF3B82F6),
-              padding: EdgeInsets.zero,
-              minimumSize: const Size(0, 0),
-            ),
-            child: const Text(
-              'View All',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-          ),
+          trailing: TextButton(onPressed: () {}, child: const Text('View All')),
           child: ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: transactions.length,
-            separatorBuilder: (context, index) =>
+            separatorBuilder: (_, __) =>
                 const Divider(height: 16, color: Color(0xFFF1F5F9)),
             itemBuilder: (context, index) {
               final txn = transactions[index];
+
               return TransactionItem(
                 title: txn.title,
                 subtitle: txn.subtitle,
@@ -561,65 +503,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget? _buildQuickActionsSection(BuildContext context) {
-    List<Widget> actions = [];
-
-    void navigateTo(String title) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => Scaffold(
-            appBar: AppBar(title: Text(title)),
-            body: const Center(child: Text('Module Screen Placeholder')),
-          ),
-        ),
-      );
-    }
-
-    if (hasPermission('sales', 'inquiries')) {
-      actions.add(
+    final actions = <Widget>[
+      if (hasPermission('sales', 'inquiries'))
         ActionCard(
           icon: Icons.campaign_rounded,
           label: 'Add Inquiry',
-          onTap: () => navigateTo('Add Inquiry'),
+          onTap: () => _openPlaceholder(context, 'Add Inquiry'),
         ),
-      );
-    }
-    if (hasPermission('sales', 'quotations')) {
-      actions.add(
+      if (hasPermission('sales', 'quotations'))
         ActionCard(
           icon: Icons.receipt_long_outlined,
           label: 'Create Quotation',
-          onTap: () => navigateTo('Create Quotation'),
+          onTap: () => _openPlaceholder(context, 'Create Quotation'),
         ),
-      );
-    }
-    if (hasPermission('finance', 'taxInvoice')) {
-      actions.add(
+      if (hasPermission('finance', 'taxInvoice'))
         ActionCard(
           icon: Icons.add_card_rounded,
           label: 'New Invoice',
-          onTap: () => navigateTo('New Invoice'),
+          onTap: () => _openPlaceholder(context, 'New Invoice'),
         ),
-      );
-    }
-    if (hasPermission('finance', 'paymentReceived')) {
-      actions.add(
+      if (hasPermission('finance', 'paymentReceived'))
         ActionCard(
           icon: Icons.receipt_long_rounded,
           label: 'Record Payment',
-          onTap: () => navigateTo('Record Payment'),
+          onTap: () => _openPlaceholder(context, 'Record Payment'),
         ),
-      );
-    }
-    if (hasPermission('crm', 'customers')) {
-      actions.add(
+      if (hasPermission('crm', 'customers'))
         ActionCard(
           icon: Icons.person_add_alt_1_rounded,
           label: 'Add Customer',
-          onTap: () => navigateTo('Add Customer'),
+          onTap: () => _openPlaceholder(context, 'Add Customer'),
         ),
-      );
-    }
+    ];
 
     if (actions.isEmpty) return null;
 
@@ -628,27 +543,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         const SectionHeader(title: 'Quick Actions'),
         const SizedBox(height: 16),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            double width = constraints.maxWidth;
-            double cardWidth = width > 800
-                ? (width - 32) / 3
-                : (width > 500 ? (width - 16) / 2 : width);
-
-            return Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              children: actions
-                  .map((a) => SizedBox(width: cardWidth, child: a))
-                  .toList(),
-            );
-          },
-        ),
+        _responsiveWrap(actions),
       ],
     );
   }
 
-    Widget? _buildAlertsSection() {
+  Widget? _buildAlertsSection() {
     if (!hasPermission('inventory', 'lowStockAlerts')) return null;
 
     return Container(
@@ -676,19 +576,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-          TextButton(
-            onPressed: () {},
-            style: TextButton.styleFrom(
-              minimumSize: Size.zero,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              foregroundColor: const Color(0xFFC2410C),
-            ),
-            child: const Text(
-              'Review',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-          ),
+          TextButton(onPressed: () {}, child: const Text('Review')),
         ],
+      ),
+    );
+  }
+
+  Widget _responsiveWrap(List<Widget> children) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        var columns = width > 1000 ? 4 : (width > 650 ? 2 : 1);
+
+        if (children.length < columns) columns = children.length;
+        if (columns == 0) return const SizedBox.shrink();
+
+        const spacing = 16.0;
+        final cardWidth = (width - (spacing * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children: children
+              .map((child) => SizedBox(width: cardWidth, child: child))
+              .toList(),
+        );
+      },
+    );
+  }
+
+  Widget _staticList({
+    required int itemCount,
+    required Widget Function(int index) itemBuilder,
+  }) {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: itemCount,
+      separatorBuilder: (_, __) =>
+          const Divider(height: 24, color: Color(0xFFF1F5F9)),
+      itemBuilder: (_, index) => itemBuilder(index),
+    );
+  }
+
+  void _openPlaceholder(BuildContext context, String title) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: Text(title)),
+          body: const Center(child: Text('Module Screen Placeholder')),
+        ),
       ),
     );
   }

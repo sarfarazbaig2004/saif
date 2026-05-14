@@ -8,24 +8,38 @@ class TenantModuleService {
   TenantModuleService({
     FirebaseFirestore? firestore,
     Duration cacheTtl = const Duration(minutes: 5),
-  }) : _firestore = firestore ?? FirebaseFirestore.instance,
-       _cacheTtl = cacheTtl;
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _cacheTtl = cacheTtl;
 
   final FirebaseFirestore _firestore;
   final Duration _cacheTtl;
   final Map<String, _TenantModuleCacheEntry> _cache = {};
 
   static const Set<String> _defaultEnabledModuleIds = {
-    ModuleIds.administration,
+    ModuleIds.dashboard,
     ModuleIds.crm,
-    ModuleIds.dispatch,
-    ModuleIds.finance,
-    ModuleIds.hr,
-    ModuleIds.inventory,
-    ModuleIds.production,
-    ModuleIds.purchase,
-    ModuleIds.reports,
     ModuleIds.sales,
+    ModuleIds.customerPo,
+    ModuleIds.projectsJobCards,
+    ModuleIds.planningScheduling,
+    ModuleIds.engineering,
+    ModuleIds.inventoryStore,
+    ModuleIds.purchase,
+    ModuleIds.production,
+    ModuleIds.contractorJobWork,
+    ModuleIds.galvanizing,
+    ModuleIds.inspectionQa,
+    ModuleIds.dispatch,
+    ModuleIds.hrAdmin,
+    ModuleIds.finance,
+    ModuleIds.reports,
+    ModuleIds.administration,
+    ModuleIds.settings,
+  };
+
+  static const Set<String> _requiredModuleIds = {
+    ModuleIds.dashboard,
+    ModuleIds.administration,
     ModuleIds.settings,
   };
 
@@ -45,14 +59,9 @@ class TenantModuleService {
     required String source,
   }) async {
     final normalizedTenantId = tenantId.trim();
-    if (normalizedTenantId.isEmpty) {
-      return const TenantModuleSeedResult();
-    }
+    if (normalizedTenantId.isEmpty) return const TenantModuleSeedResult();
 
-    final companySnap = await _firestore
-        .collection('companies')
-        .doc(normalizedTenantId)
-        .get();
+    final companySnap = await _tenantRef(normalizedTenantId).get();
 
     if (!companySnap.exists) {
       debugPrint(
@@ -61,28 +70,34 @@ class TenantModuleService {
       return const TenantModuleSeedResult(companyMissing: true);
     }
 
-    final tenantRef = _tenantRef(normalizedTenantId);
     final modulesRef = _modulesRef(normalizedTenantId);
+
     final moduleIds = ModuleRegistry.activeModules
         .map((module) => module.id)
         .toList(growable: false);
 
     final result = await _firestore.runTransaction((transaction) async {
-      final tenantSnap = await transaction.get(tenantRef);
       final existingModuleIds = <String>{};
       final metadataRepairModuleIds = <String>{};
 
       for (final moduleId in moduleIds) {
         final moduleSnap = await transaction.get(modulesRef.doc(moduleId));
-        if (moduleSnap.exists) {
-          existingModuleIds.add(moduleId);
-          final data = moduleSnap.data() ?? const <String, dynamic>{};
-          if (data['name'] != moduleId ||
-              (data['label'] ?? '').toString().trim().isEmpty ||
-              (_defaultEnabledModuleIds.contains(moduleId) &&
-                  data['enabled'] != true)) {
-            metadataRepairModuleIds.add(moduleId);
-          }
+
+        if (!moduleSnap.exists) continue;
+
+        existingModuleIds.add(moduleId);
+
+        final data = moduleSnap.data() ?? const <String, dynamic>{};
+        final module = ModuleRegistry.findById(moduleId);
+
+        final nameWrong = data['name'] != moduleId;
+        final labelMissing = (data['label'] ?? '').toString().trim().isEmpty;
+        final labelWrong = module != null && data['label'] != module.displayName;
+        final requiredDisabled =
+            _requiredModuleIds.contains(moduleId) && data['enabled'] != true;
+
+        if (nameWrong || labelMissing || labelWrong || requiredDisabled) {
+          metadataRepairModuleIds.add(moduleId);
         }
       }
 
@@ -90,18 +105,9 @@ class TenantModuleService {
           .where((moduleId) => !existingModuleIds.contains(moduleId))
           .toList(growable: false);
 
-      if (!tenantSnap.exists) {
-        transaction.set(tenantRef, {
-          'tenantId': normalizedTenantId,
-          'companyId': normalizedTenantId,
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-          'moduleSeedSource': source,
-        });
-      }
-
       for (final moduleId in missingModuleIds) {
         final module = ModuleRegistry.findById(moduleId);
+
         transaction.set(modulesRef.doc(moduleId), {
           'name': moduleId,
           'label': module?.displayName ?? moduleId,
@@ -114,16 +120,20 @@ class TenantModuleService {
 
       for (final moduleId in metadataRepairModuleIds) {
         final module = ModuleRegistry.findById(moduleId);
-        transaction.set(modulesRef.doc(moduleId), {
-          'name': moduleId,
-          'label': module?.displayName ?? moduleId,
-          if (_defaultEnabledModuleIds.contains(moduleId)) 'enabled': true,
-          'updatedAt': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+
+        transaction.set(
+          modulesRef.doc(moduleId),
+          {
+            'name': moduleId,
+            'label': module?.displayName ?? moduleId,
+            if (_requiredModuleIds.contains(moduleId)) 'enabled': true,
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
       }
 
       return TenantModuleSeedResult(
-        tenantCreated: !tenantSnap.exists,
         modulesCreated: missingModuleIds.length,
         modulesSkipped: existingModuleIds.length,
         modulesRepaired: metadataRepairModuleIds.length,
@@ -131,23 +141,14 @@ class TenantModuleService {
     });
 
     invalidateTenant(normalizedTenantId);
-    if (result.tenantCreated) {
-      debugPrint(
-        'TenantModuleService: seeded tenant $normalizedTenantId from $source with ${result.modulesCreated} module docs',
-      );
-    } else if (result.modulesCreated > 0) {
-      debugPrint(
-        'TenantModuleService: backfilled tenant $normalizedTenantId from $source with ${result.modulesCreated} missing module docs',
-      );
-    } else if (result.modulesRepaired > 0) {
-      debugPrint(
-        'TenantModuleService: repaired tenant $normalizedTenantId from $source with ${result.modulesRepaired} module metadata updates',
-      );
-    } else {
-      debugPrint(
-        'TenantModuleService: skipped existing module docs for tenant $normalizedTenantId',
-      );
-    }
+
+    debugPrint(
+      'TenantModuleService: tenant=$normalizedTenantId source=$source '
+      'created=${result.modulesCreated}, '
+      'skipped=${result.modulesSkipped}, '
+      'repaired=${result.modulesRepaired}',
+    );
+
     return result;
   }
 
@@ -163,20 +164,20 @@ class TenantModuleService {
     final safeEnabledModuleIds = _withRequiredModuleIds(enabledModuleIds);
 
     for (final module in ModuleRegistry.activeModules) {
-      batch.set(modulesRef.doc(module.id), {
-        'name': module.id,
-        'label': module.displayName,
-        'enabled': safeEnabledModuleIds.contains(module.id),
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+      batch.set(
+        modulesRef.doc(module.id),
+        {
+          'name': module.id,
+          'label': module.displayName,
+          'enabled': safeEnabledModuleIds.contains(module.id),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
     }
 
     await batch.commit();
     invalidateTenant(normalizedTenantId);
-    debugPrint(
-      'TenantModuleService: saved ${ModuleRegistry.activeModules.length} module access docs for tenant $normalizedTenantId',
-    );
   }
 
   Future<void> configureNewWorkspaceModules({
@@ -195,10 +196,6 @@ class TenantModuleService {
       tenantId: tenantId,
       enabledModuleIds: enabledModuleIds,
     );
-
-    debugPrint(
-      'TenantModuleService: configured new workspace $tenantId module selection from $source',
-    );
   }
 
   Future<List<TenantModuleAccess>> fetchTenantModuleAccess(
@@ -214,6 +211,7 @@ class TenantModuleService {
     }
 
     final snapshot = await _modulesRef(normalizedTenantId).get();
+
     final modules = snapshot.docs
         .map(
           (doc) => TenantModuleAccess.fromFirestore(
@@ -224,10 +222,6 @@ class TenantModuleService {
         .toList(growable: false);
 
     _cache[normalizedTenantId] = _TenantModuleCacheEntry(modules);
-    debugPrint(
-      'TenantModuleService: loaded ${modules.length} module access docs for tenant $normalizedTenantId',
-    );
-
     return modules;
   }
 
@@ -242,9 +236,7 @@ class TenantModuleService {
     );
 
     if (access.isEmpty && fallbackToActiveRegistryWhenUnconfigured) {
-      return _withRequiredModuleIds(
-        ModuleRegistry.activeModules.map((module) => module.id).toSet(),
-      );
+      return _withRequiredModuleIds(_defaultEnabledModuleIds);
     }
 
     final enabledModuleIds = access
@@ -259,14 +251,15 @@ class TenantModuleService {
   }
 
   Set<String> _withRequiredModuleIds(Set<String> moduleIds) {
-    return {...moduleIds, ModuleIds.administration, ModuleIds.settings};
+    return {
+      ...moduleIds,
+      ..._requiredModuleIds,
+    };
   }
 
   Stream<List<TenantModuleAccess>> watchTenantModuleAccess(String tenantId) {
     final normalizedTenantId = tenantId.trim();
-    if (normalizedTenantId.isEmpty) {
-      return Stream.value(const []);
-    }
+    if (normalizedTenantId.isEmpty) return Stream.value(const []);
 
     return _modulesRef(normalizedTenantId).snapshots().map((snapshot) {
       final modules = snapshot.docs
@@ -293,14 +286,12 @@ class TenantModuleService {
 }
 
 class TenantModuleSeedResult {
-  final bool tenantCreated;
   final int modulesCreated;
   final int modulesSkipped;
   final int modulesRepaired;
   final bool companyMissing;
 
   const TenantModuleSeedResult({
-    this.tenantCreated = false,
     this.modulesCreated = 0,
     this.modulesSkipped = 0,
     this.modulesRepaired = 0,
@@ -314,5 +305,7 @@ class _TenantModuleCacheEntry {
 
   _TenantModuleCacheEntry(this.modules) : cachedAt = DateTime.now();
 
-  bool isExpired(Duration ttl) => DateTime.now().difference(cachedAt) > ttl;
+  bool isExpired(Duration ttl) {
+    return DateTime.now().difference(cachedAt) > ttl;
+  }
 }

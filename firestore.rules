@@ -2,167 +2,129 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Core authentication check
+
     function signedIn() {
       return request.auth != null;
     }
 
-    // Get current user's UID
     function uid() {
       return request.auth.uid;
     }
 
-    // Get company user profile path
-    function getCompanyUserPath(companyId, userId) {
+    function rootUserDoc(userId) {
+      return /databases/$(database)/documents/users/$(userId);
+    }
+
+    function userDoc(companyId, userId) {
       return /databases/$(database)/documents/companies/$(companyId)/users/$(userId);
     }
 
-    // Get current user's profile in a company
-    function getCompanyUserProfile(companyId) {
-      return get(getCompanyUserPath(companyId, uid())).data;
+    function hasRootUserProfile() {
+      return signedIn() && exists(rootUserDoc(uid()));
     }
 
-    // Check if user profile exists and is active in company
-    function isUserActiveInCompany(companyId) {
-      return signedIn() &&
-        exists(getCompanyUserPath(companyId, uid())) &&
-        getCompanyUserProfile(companyId).isActive == true;
+    function rootUserProfile() {
+      return get(rootUserDoc(uid())).data;
     }
 
-    // Get user's role in company (empty string if no profile)
-    function getUserRole(companyId) {
-      return isUserActiveInCompany(companyId)
-        ? getCompanyUserProfile(companyId).role
-        : '';
+    function belongsToCompany(companyId) {
+      return hasRootUserProfile() &&
+        rootUserProfile().isActive == true &&
+        rootUserProfile().companyId == companyId;
     }
 
-    // Check if user is admin in company
+    function hasUserProfile(companyId) {
+      return signedIn() && exists(userDoc(companyId, uid()));
+    }
+
+    function userProfile(companyId) {
+      return get(userDoc(companyId, uid())).data;
+    }
+
+    function isActive(companyId) {
+      return belongsToCompany(companyId) ||
+        (
+          hasUserProfile(companyId) &&
+          userProfile(companyId).isActive == true
+        );
+    }
+
+    function role(companyId) {
+      return belongsToCompany(companyId)
+        ? rootUserProfile().role
+        : (
+            hasUserProfile(companyId) && userProfile(companyId).isActive == true
+              ? userProfile(companyId).role
+              : ''
+          );
+    }
+
     function isAdmin(companyId) {
-      return isUserActiveInCompany(companyId) &&
-        getUserRole(companyId) == 'admin';
+      return role(companyId) in [
+        'admin',
+        'SOFTWARE_SUPER_ADMIN',
+        'COMPANY_SUPER_ADMIN'
+      ];
     }
 
-    // Check if user is manager in company
     function isManager(companyId) {
-      return isUserActiveInCompany(companyId) &&
-        getUserRole(companyId) == 'manager';
+      return role(companyId) in [
+        'manager',
+        'MANAGER'
+      ];
     }
 
-    // Check if user is staff in company
-    function isStaff(companyId) {
-      return isUserActiveInCompany(companyId) &&
-        getUserRole(companyId) == 'staff';
+    function canReadCompany(companyId) {
+      return isActive(companyId);
     }
 
-    // Check if user is viewer in company
-    function isViewer(companyId) {
-      return isUserActiveInCompany(companyId) &&
-        getUserRole(companyId) == 'viewer';
-    }
-
-    // Can access company (for development: admin can read/write all)
-    function canAccessCompany(companyId) {
-      return isUserActiveInCompany(companyId);
-    }
-
-    // Can manage company (admin role)
-    function canManageCompany(companyId) {
-      return isAdmin(companyId);
-    }
-
-    // Can edit documents (admin or manager - can be extended later)
-    function canEditDocument(companyId) {
+    function canWriteCompany(companyId) {
       return isAdmin(companyId) || isManager(companyId);
     }
 
-    // Validate tenantId/companyId fields match the path
+    function canDeleteCompany(companyId) {
+      return isAdmin(companyId);
+    }
+
     function companyFieldsMatchPath(companyId) {
       return !('companyId' in request.resource.data) ||
         request.resource.data.companyId == companyId;
     }
 
-    // Validate tenantId fields match the path
     function tenantFieldsMatchPath(companyId) {
       return !('tenantId' in request.resource.data) ||
         request.resource.data.tenantId == companyId;
     }
 
-    // Both companyId and tenantId fields match path
     function fieldsMatchPath(companyId) {
-      return companyFieldsMatchPath(companyId) && tenantFieldsMatchPath(companyId);
+      return companyFieldsMatchPath(companyId) &&
+        tenantFieldsMatchPath(companyId);
     }
 
-    // Valid compliance document tags
-    function validComplianceTags(data) {
-      return 'documentCategories' in data &&
-        data.documentCategories is list &&
-        data.documentCategories.size() > 0 &&
-        data.documentCategories.hasOnly([
-          'gst',
-          'pan',
-          'aadhaar',
-          'pf',
-          'esic',
-          'msme',
-          'factory_license',
-          'iso',
-          'first_aid',
-          'audit_report',
-          'balance_sheet',
-          'incoming_material_inspection',
-          'in_process_inspection',
-          'final_inspection',
-          'galvanizing_inspection',
-          'dispatch_clearance',
-          'client_inspection_report',
-        ]);
+    match /users/{userId} {
+      allow read: if signedIn() && uid() == userId;
+      allow create, update: if signedIn() && uid() == userId;
+      allow delete: if false;
     }
 
-    // Valid compliance access categories
-    function validComplianceAccessCategories(data) {
-      return 'accessCategories' in data &&
-        data.accessCategories is list &&
-        data.accessCategories.size() > 0 &&
-        data.accessCategories.hasOnly(['financial', 'hr', 'quality', 'legal']);
-    }
-
-    // Company document rules
     match /companies/{companyId} {
-      allow read: if canAccessCompany(companyId);
-      allow create, update: if canManageCompany(companyId) && fieldsMatchPath(companyId);
+      allow read: if canReadCompany(companyId);
+      allow create, update: if canWriteCompany(companyId) && fieldsMatchPath(companyId);
       allow delete: if false;
 
-      // Company users
       match /users/{userId} {
-        allow read: if canAccessCompany(companyId);
-        allow create: if canManageCompany(companyId) && fieldsMatchPath(companyId);
-        allow update: if canManageCompany(companyId) && fieldsMatchPath(companyId);
-        allow delete: if false;
+        allow read: if canReadCompany(companyId);
+        allow create, update: if canWriteCompany(companyId) && fieldsMatchPath(companyId);
+        allow delete: if canDeleteCompany(companyId);
       }
 
-      // Compliance documents
-      match /compliance_documents/{documentId} {
-        allow read: if canAccessCompany(companyId);
-        allow create: if canEditDocument(companyId) &&
-          fieldsMatchPath(companyId) &&
-          validComplianceTags(request.resource.data) &&
-          validComplianceAccessCategories(request.resource.data);
-        allow update: if canEditDocument(companyId) &&
-          fieldsMatchPath(companyId) &&
-          validComplianceTags(request.resource.data) &&
-          validComplianceAccessCategories(request.resource.data);
-        allow delete: if canManageCompany(companyId);
-      }
-
-      // All other company subcollections
       match /{document=**} {
-        allow read: if canAccessCompany(companyId);
-        allow create, update: if canEditDocument(companyId) && fieldsMatchPath(companyId);
-        allow delete: if canManageCompany(companyId);
+        allow read: if canReadCompany(companyId);
+        allow create, update: if canWriteCompany(companyId) && fieldsMatchPath(companyId);
+        allow delete: if canDeleteCompany(companyId);
       }
     }
 
-    // Deny all other access
     match /{document=**} {
       allow read, write: if false;
     }

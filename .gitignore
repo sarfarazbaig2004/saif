@@ -87,3 +87,26 @@ yarn-error.log*
 *.bak
 *.backup
 *.tmp
+# =========================
+# Flutter Generated / Ephemeral
+# =========================
+**/.gradle/
+**/build/
+**/ios/Flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+**/android/local.properties
+**/GeneratedPluginRegistrant.*
+
+# =========================
+# Firebase mobile config files
+# Keep these only if intentionally required in repo
+# =========================
+**/GoogleService-Info.plist
+**/google-services.json
+
+# =========================
+# Local data / scripts
+# =========================
+users.json

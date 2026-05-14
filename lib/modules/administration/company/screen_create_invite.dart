@@ -397,25 +397,34 @@ return moduleAccess.enabledModuleIds;
       );
     }
 
-    if (_tenantRoles.isEmpty || _tenantDepartments.isEmpty) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFEEF2FF),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFCDD7F4)),
-        ),
-        child: const Text(
-          'Tenant roles or departments are not configured for this company. '
-          'Please configure active roles, departments, and module access in tenant settings before inviting employees.',
-          style: TextStyle(color: Color(0xFF1E3A8A)),
-        ),
-      );
-    }
+    final bool hasTenantSetup =
+    _tenantRoles.isNotEmpty &&
+    _tenantDepartments.isNotEmpty;
 
-    return const SizedBox.shrink();
+if (!hasTenantSetup) {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    margin: const EdgeInsets.only(bottom: 16),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(
+        color: const Color(0xFFE2E8F0),
+      ),
+    ),
+    child: const Text(
+      'Using default QUIK ERP roles and departments because tenant settings are not configured yet.',
+      style: TextStyle(
+        color: Color(0xFF475569),
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+  );
+}
+
+return const SizedBox.shrink();
   }
 
   String _normalizeEmail(String email) {

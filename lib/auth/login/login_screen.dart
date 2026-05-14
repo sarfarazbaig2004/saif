@@ -1,3 +1,5 @@
+// FILE: lib/auth/login/login_screen.dart
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -19,10 +21,18 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   bool _rememberMe = true;
 
+  void _clearSnackBars() {
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.clearSnackBars();
+  }
+
   void _toast(String msg, {bool err = false, SnackBarAction? action}) {
     if (!mounted) return;
 
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    _clearSnackBars();
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(msg),
@@ -38,9 +48,8 @@ class _LoginScreenState extends State<LoginScreen> {
     if (email.isEmpty) return 'Work email is required';
 
     final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    if (!emailRegex.hasMatch(email)) {
-      return 'Enter a valid work email';
-    }
+    if (!emailRegex.hasMatch(email)) return 'Enter a valid work email';
+
     return null;
   }
 
@@ -62,9 +71,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final email = _email.text.trim().toLowerCase();
     final pass = _pass.text;
 
-    debugPrint('Login attempt email: $email');
-    debugPrint('Login attempt password length: ${pass.length}');
-
     setState(() => _loading = true);
 
     try {
@@ -73,30 +79,18 @@ class _LoginScreenState extends State<LoginScreen> {
         password: pass,
       );
 
-      // Company isolation must be enforced after login in:
-      // 1) auth_wrapper.dart
-      // 2) user/company profile fetch
-      // 3) Firestore security rules
-      // 4) all company-scoped queries
+      _clearSnackBars();
     } on FirebaseAuthException catch (e) {
-      debugPrint('Firebase login error code: ${e.code}');
-      debugPrint('Firebase login error message: ${e.message}');
-
       final msg = switch (e.code) {
-        'user-not-found' =>
-          'Firebase Auth: user-not-found - No account found for this email.',
-        'wrong-password' =>
-          'Firebase Auth: wrong-password - Incorrect password.',
-        'invalid-email' =>
-          'Firebase Auth: invalid-email - Invalid email format.',
-        'invalid-credential' =>
-          'Firebase Auth: invalid-credential - Invalid email or password.',
-        'user-disabled' =>
-          'Firebase Auth: user-disabled - This account has been disabled.',
-        'too-many-requests' =>
-          'Firebase Auth: too-many-requests - Too many attempts. Please wait and try again.',
-        _ => 'Firebase Auth: ${e.code} - ${e.message ?? 'Sign in failed.'}',
+        'user-not-found' => 'No account found for this email.',
+        'wrong-password' => 'Incorrect password.',
+        'invalid-email' => 'Invalid email format.',
+        'invalid-credential' => 'Invalid email or password.',
+        'user-disabled' => 'This account has been disabled.',
+        'too-many-requests' => 'Too many attempts. Please wait and try again.',
+        _ => e.message ?? 'Sign in failed.',
       };
+
       _toast(
         msg,
         err: true,
@@ -107,12 +101,9 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
     } catch (e) {
-      debugPrint('Login non-Firebase error: $e');
       _toast('Sign in failed: $e', err: true);
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -142,20 +133,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      debugPrint('Password reset requested for: $normalizedEmail');
       await FirebaseAuth.instance.sendPasswordResetEmail(
         email: normalizedEmail,
       );
+
       _toast('Password reset link sent to $normalizedEmail');
     } on FirebaseAuthException catch (e) {
-      debugPrint('Firebase reset error code: ${e.code}');
-      debugPrint('Firebase reset error message: ${e.message}');
-      _toast(
-        'Firebase Auth: ${e.code} - ${e.message ?? 'Unable to send password reset email.'}',
-        err: true,
-      );
+      _toast(e.message ?? 'Unable to send password reset email.', err: true);
     } catch (e) {
-      debugPrint('Password reset non-Firebase error: $e');
       _toast('Failed: $e', err: true);
     }
   }
@@ -330,7 +315,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                                       fontWeight:
                                                           FontWeight.w800,
                                                       color: zText,
-                                                      letterSpacing: 0.2,
                                                     ),
                                                   ),
                                                   SizedBox(height: 4),
@@ -346,43 +330,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                               ),
                                             ),
                                           ],
-                                        ),
-                                        SizedBox(
-                                          height: compactHeight ? 14 : 20,
-                                        ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 14,
-                                            vertical: 12,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFFF8FBFF),
-                                            borderRadius: BorderRadius.circular(
-                                              14,
-                                            ),
-                                            border: Border.all(color: zBorder),
-                                          ),
-                                          child: const Row(
-                                            children: [
-                                              Icon(
-                                                Icons.verified_user_outlined,
-                                                color: zSuccess,
-                                                size: 17,
-                                              ),
-                                              SizedBox(width: 8),
-                                              Expanded(
-                                                child: Text(
-                                                  'Secure access with company-level data protection and role-based control',
-                                                  style: TextStyle(
-                                                    color: zMuted,
-                                                    fontSize: 12.5,
-                                                    fontWeight: FontWeight.w600,
-                                                    height: 1.4,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
                                         ),
                                         SizedBox(
                                           height: compactHeight ? 14 : 20,
@@ -419,10 +366,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                               ).copyWith(
                                                 suffixIcon: IconButton(
                                                   onPressed: () {
-                                                    setState(
-                                                      () =>
-                                                          _obscure = !_obscure,
-                                                    );
+                                                    setState(() {
+                                                      _obscure = !_obscure;
+                                                    });
                                                   },
                                                   icon: Icon(
                                                     _obscure
@@ -581,63 +527,6 @@ class _BgGlow extends StatelessWidget {
 class _LoginSideBranding extends StatelessWidget {
   const _LoginSideBranding();
 
-  Widget _miniMetricCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color chipColor,
-    required Color chipTextColor,
-  }) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: chipColor,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: chipTextColor, size: 18),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.90),
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -649,70 +538,13 @@ class _LoginSideBranding extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(color: zBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
-          ),
-        ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 38, vertical: 34),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 38, vertical: 34),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: zBlueSoft,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: zBorder),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(18),
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.business_center_outlined,
-                        size: 30,
-                        color: zBlue,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 14),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      kAppName,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: zText,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Unified business ERP platform',
-                      style: TextStyle(
-                        color: zMuted,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-            const Text(
+            Text(
               'Run AMAN Infra operations in one secure ERP workspace.',
               style: TextStyle(
                 fontSize: 34,
@@ -721,9 +553,9 @@ class _LoginSideBranding extends StatelessWidget {
                 color: zText,
               ),
             ),
-            const SizedBox(height: 14),
-            const Text(
-              'Manage production, inventory, purchase, dispatch, finance, users and daily AMAN Infra operations from one dedicated workspace.',
+            SizedBox(height: 14),
+            Text(
+              'Manage production, inventory, purchase, dispatch, finance, users and daily operations from one dedicated workspace.',
               style: TextStyle(
                 fontSize: 15,
                 height: 1.65,
@@ -731,487 +563,7 @@ class _LoginSideBranding extends StatelessWidget {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            const SizedBox(height: 24),
-            const Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _StatPill(icon: Icons.groups_outlined, text: 'Customers'),
-                _StatPill(icon: Icons.inventory_2_outlined, text: 'Inventory'),
-                _StatPill(
-                  icon: Icons.request_quote_outlined,
-                  text: 'Quotations',
-                ),
-                _StatPill(
-                  icon: Icons.admin_panel_settings_outlined,
-                  text: 'Permissions',
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 6,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(26),
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFF3B82F6),
-                                Color(0xFF1D4ED8),
-                                Color(0xFF1E40AF),
-                              ],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: zBlue.withValues(alpha: 0.28),
-                                blurRadius: 28,
-                                offset: const Offset(0, 16),
-                              ),
-                            ],
-                          ),
-                          child: Stack(
-                            children: [
-                              Positioned(
-                                top: -18,
-                                right: -10,
-                                child: Container(
-                                  width: 120,
-                                  height: 120,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.12),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                              Positioned(
-                                bottom: -26,
-                                left: -18,
-                                child: Container(
-                                  width: 145,
-                                  height: 145,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.08),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(22),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        _miniMetricCard(
-                                          title: 'Orders',
-                                          value: '128',
-                                          icon: Icons.shopping_bag_outlined,
-                                          chipColor: Colors.white,
-                                          chipTextColor: zBlue,
-                                        ),
-                                        const SizedBox(width: 12),
-                                        _miniMetricCard(
-                                          title: 'Approved',
-                                          value: '24',
-                                          icon: Icons.check_circle_outline,
-                                          chipColor: zSuccessSoft,
-                                          chipTextColor: zSuccess,
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 14),
-                                    Expanded(
-                                      child: Container(
-                                        padding: const EdgeInsets.all(18),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            22,
-                                          ),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const Row(
-                                              children: [
-                                                Expanded(
-                                                  child: Text(
-                                                    'Business activity',
-                                                    style: TextStyle(
-                                                      color: zText,
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                      fontSize: 15,
-                                                    ),
-                                                  ),
-                                                ),
-                                                _TagBadge(
-                                                  text: '+18%',
-                                                  bg: zSuccessSoft,
-                                                  fg: zSuccess,
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 16),
-                                            Expanded(
-                                              child: Row(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.end,
-                                                children: const [
-                                                  _Bar(h: 42, color: zPurple),
-                                                  SizedBox(width: 10),
-                                                  _Bar(h: 74, color: zBlue),
-                                                  SizedBox(width: 10),
-                                                  _Bar(h: 58, color: zOrange),
-                                                  SizedBox(width: 10),
-                                                  _Bar(h: 98, color: zSuccess),
-                                                  SizedBox(width: 10),
-                                                  _Bar(h: 70, color: zBlueDeep),
-                                                  SizedBox(width: 10),
-                                                  _Bar(h: 114, color: zBlue),
-                                                ],
-                                              ),
-                                            ),
-                                            const SizedBox(height: 14),
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 10,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: zBlueSoft,
-                                                borderRadius:
-                                                    BorderRadius.circular(14),
-                                              ),
-                                              child: const Row(
-                                                children: [
-                                                  Icon(
-                                                    Icons.auto_graph,
-                                                    color: zBlue,
-                                                    size: 18,
-                                                  ),
-                                                  SizedBox(width: 8),
-                                                  Expanded(
-                                                    child: Text(
-                                                      'Track operations, approvals, quotations and team activity in one place.',
-                                                      style: TextStyle(
-                                                        color: zText,
-                                                        fontSize: 12.5,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        height: 1.4,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Positioned(
-                          top: 86,
-                          right: -20,
-                          child: _FloatingInfoCard(
-                            icon: Icons.domain_verification_outlined,
-                            title: '42 New Requests',
-                            subtitle: 'This week',
-                            bg: Colors.white,
-                            accent: zOrange,
-                          ),
-                        ),
-                        const Positioned(
-                          bottom: 26,
-                          left: -18,
-                          child: _FloatingInfoCard(
-                            icon: Icons.request_quote_outlined,
-                            title: '7 Pending Quotes',
-                            subtitle: 'Need action',
-                            bg: Colors.white,
-                            accent: zSuccess,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 18),
-                  const Expanded(
-                    flex: 4,
-                    child: Column(
-                      children: [
-                        _BrandFeatureCard(
-                          icon: Icons.shield_outlined,
-                          title: 'Company isolation',
-                          subtitle:
-                              'AMAN Infra data stays inside its own protected company boundary.',
-                          tint: zBlueSoft,
-                          iconColor: zBlue,
-                        ),
-                        SizedBox(height: 14),
-                        _BrandFeatureCard(
-                          icon: Icons.manage_accounts_outlined,
-                          title: 'Role permissions',
-                          subtitle:
-                              'Control admin, manager and user access with clear visibility rules.',
-                          tint: zSuccessSoft,
-                          iconColor: zSuccess,
-                        ),
-                        SizedBox(height: 14),
-                        _BrandFeatureCard(
-                          icon: Icons.approval_outlined,
-                          title: 'Connected workflows',
-                          subtitle:
-                              'Run sales, operations and approvals with one unified ERP experience.',
-                          tint: zOrangeSoft,
-                          iconColor: zOrange,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FloatingInfoCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color bg;
-  final Color accent;
-
-  const _FloatingInfoCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.bg,
-    required this.accent,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 170,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: zBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: accent, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: zText,
-                    fontSize: 12.8,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: zMuted,
-                    fontSize: 11.8,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TagBadge extends StatelessWidget {
-  final String text;
-  final Color bg;
-  final Color fg;
-
-  const _TagBadge({required this.text, required this.bg, required this.fg});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w800),
-      ),
-    );
-  }
-}
-
-class _StatPill extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _StatPill({required this.icon, required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: zBorder),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 17, color: zBlue),
-          const SizedBox(width: 8),
-          Text(
-            text,
-            style: const TextStyle(
-              color: zText,
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BrandFeatureCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color tint;
-  final Color iconColor;
-
-  const _BrandFeatureCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.tint,
-    required this.iconColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: zBorder),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: tint,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                color: zText,
-                fontWeight: FontWeight.w800,
-                fontSize: 14.5,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              style: const TextStyle(
-                color: zMuted,
-                height: 1.45,
-                fontSize: 12.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Bar extends StatelessWidget {
-  final double h;
-  final Color color;
-
-  const _Bar({required this.h, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        height: h,
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(10),
         ),
       ),
     );

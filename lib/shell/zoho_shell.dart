@@ -1094,21 +1094,18 @@ class _ZohoShellState extends State<ZohoShell> {
   }
 
   bool _isModuleEnabled(String moduleId) {
-  if (moduleId == ModuleIds.inventory && isAdminOrManager) {
-    return true;
+    if (isAdminOrManager) {
+      return true;
+    }
+
+    final moduleAccess = ModuleAccessProvider.maybeOf(context, listen: false);
+
+    if (moduleAccess == null) {
+      return true;
+    }
+
+    return moduleAccess.isModuleEnabled(moduleId);
   }
-
-  final moduleAccess = ModuleAccessProvider.maybeOf(
-    context,
-    listen: false,
-  );
-
-  if (moduleAccess == null) {
-    return true;
-  }
-
-  return moduleAccess.isModuleEnabled(moduleId);
-}
 
   bool _isSidebarGroupModuleEnabled(String groupKey) {
     final moduleId = _moduleIdForSidebarGroup(groupKey);
@@ -1764,7 +1761,7 @@ class _ZohoShellState extends State<ZohoShell> {
         padding: const EdgeInsets.all(10),
         child: DashboardScreen(
           companyId: widget.companyId,
-          userName: _resolvedEmployeeName(),
+          userName: widget.companyName,
           currentUserId: widget.userUid,
           permissions: _currentPermissions,
           role: _currentRole,
@@ -1776,7 +1773,7 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.dashboard:
         return DashboardScreen(
           companyId: widget.companyId,
-          userName: _resolvedEmployeeName(),
+          userName: widget.companyName,
           currentUserId: widget.userUid,
           permissions: _currentPermissions,
           role: _currentRole,
@@ -1785,7 +1782,7 @@ class _ZohoShellState extends State<ZohoShell> {
       case ShellPage.platformTenantModules:
         return DashboardScreen(
           companyId: widget.companyId,
-          userName: _resolvedEmployeeName(),
+          userName: widget.companyName,
           currentUserId: widget.userUid,
           permissions: _currentPermissions,
           role: _currentRole,
