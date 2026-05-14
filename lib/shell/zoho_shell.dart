@@ -1,3 +1,4 @@
+import 'package:QUIK/shell/sidebar_group.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -409,20 +410,6 @@ extension ShellPageX on ShellPage {
   }
 }
 
-class SidebarGroup {
-  final String key;
-  final String title;
-  final IconData icon;
-  final List<ShellPage> children;
-
-  const SidebarGroup({
-    required this.key,
-    required this.title,
-    required this.icon,
-    required this.children,
-  });
-}
-
 class ZohoShell extends StatefulWidget {
   final String userEmail;
   final String userUid;
@@ -460,7 +447,7 @@ class _ZohoShellState extends State<ZohoShell> {
   // Live State tracked securely via Firestore streams
   String _currentRole = 'viewer';
   Map<String, dynamic> _currentPermissions = {};
-  List<SidebarGroup> _currentSidebarGroups = [];
+  List<SidebarGroup<ShellPage>> _currentSidebarGroups = [];
 
   @override
   void initState() {
@@ -852,7 +839,7 @@ class _ZohoShellState extends State<ZohoShell> {
     ];
   }
 
-  List<SidebarGroup> get _allSidebarGroups {
+  List<SidebarGroup<ShellPage>> get _allSidebarGroups {
     if (_resolvedIndustry == 'export_import') {
       return [
         SidebarGroup(
@@ -1034,9 +1021,9 @@ class _ZohoShellState extends State<ZohoShell> {
     ];
   }
 
-  List<SidebarGroup> _computeSidebarGroups() {
+  List<SidebarGroup<ShellPage>>_computeSidebarGroups() {
     final allGroups = _allSidebarGroups;
-    final filtered = <SidebarGroup>[];
+    final filtered = <SidebarGroup<ShellPage>>[];
 
     for (var group in allGroups) {
       if (!_isSidebarGroupModuleEnabled(group.key)) {

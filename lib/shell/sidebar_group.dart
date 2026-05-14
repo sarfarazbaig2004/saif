@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-class SidebarGroup {
+class SidebarGroup<T> {
   final String key;
   final String title;
   final IconData icon;
-  final List<dynamic> children;
+  final List<T> children;
 
   const SidebarGroup({
     required this.key,
