@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:QUIK/modules/customer_po/screens/customer_po_detail_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
 
 class CustomerPoListScreen extends StatelessWidget {
@@ -79,6 +80,15 @@ class CustomerPoListScreen extends StatelessWidget {
 
               return Card(
                 child: ListTile(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => CustomerPoDetailScreen(
+                        companyId: companyId,
+                        docId: docs[index].id,
+                      ),
+                    ),
+                  ),
                   title: Text(
                     poNumber.isEmpty ? 'PO Number Missing' : poNumber,
                     style: const TextStyle(fontWeight: FontWeight.w700),
