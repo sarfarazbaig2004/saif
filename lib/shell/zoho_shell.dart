@@ -558,9 +558,9 @@ class _ZohoShellState extends State<ZohoShell> {
         icon: Icons.people_alt_outlined,
         children: [
           ShellPage.crmCustomers,
-          ShellPage.crmContacts,
-          ShellPage.crmVisits,
-          ShellPage.crmCommunication,
+          // ShellPage.crmContacts,      // moved into customer detail
+          // ShellPage.crmVisits,        // moved into customer detail
+          // ShellPage.crmCommunication, // moved into customer detail
         ],
       ),
       const SidebarGroup<ShellPage>(
