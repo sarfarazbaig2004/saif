@@ -24,6 +24,9 @@ migrate_working_dir/
 # Keep commented if you want to commit launch/tasks config
 #.vscode/
 
+# Claude Code (local overrides — not for team sharing)
+.claude/settings.local.json
+
 # =========================
 # Flutter / Dart / Pub
 # =========================

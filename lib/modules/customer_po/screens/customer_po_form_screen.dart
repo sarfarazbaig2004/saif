@@ -88,8 +88,18 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       }).toList();
       list.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
       setState(() => _customers = list);
-    } catch (_) {
-      // silent — empty list shown to user
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not load customers: $e'),
+            action: SnackBarAction(
+              label: 'Retry',
+              onPressed: _loadCustomers,
+            ),
+          ),
+        );
+      }
     } finally {
       setState(() => _isLoadingCustomers = false);
     }

@@ -118,6 +118,15 @@ service cloud.firestore {
         allow delete: if canDeleteCompany(companyId);
       }
 
+      // Any authenticated active company user may read the CRM customer list.
+      // This is intentionally broader than write (admin/manager only) so that
+      // modules like Customer PO can populate selectors without requiring admin role.
+      match /customers/{customerId} {
+        allow read: if isActive(companyId);
+        allow create, update: if canWriteCompany(companyId) && fieldsMatchPath(companyId);
+        allow delete: if canDeleteCompany(companyId);
+      }
+
       match /{document=**} {
         allow read: if canReadCompany(companyId);
         allow create, update: if canWriteCompany(companyId) && fieldsMatchPath(companyId);
