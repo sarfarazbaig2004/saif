@@ -155,8 +155,9 @@ class RecordPaymentController extends ChangeNotifier {
         final status = (data['paymentStatus'] ?? '').toString().toUpperCase();
         if (!(status == 'UNPAID' ||
             status == 'PARTIAL' ||
-            status == 'PARTIALLY PAID'))
+            status == 'PARTIALLY PAID')) {
           return false;
+        }
 
         double out = data.containsKey('amountOutstanding')
             ? _parseDouble(data['amountOutstanding'])
@@ -302,8 +303,9 @@ class RecordPaymentController extends ChangeNotifier {
   }
 
   bool get isValidToSave {
-    if (selectedCustomerId.isEmpty && selectedCustomerName.isEmpty)
+    if (selectedCustomerId.isEmpty && selectedCustomerName.isEmpty) {
       return false;
+    }
     if (totalReceived <= 0) return false;
     if (totalAllocated > totalReceived + 0.01) return false;
 

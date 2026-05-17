@@ -33,8 +33,9 @@ class PaymentDetailScreen extends StatelessWidget {
   }
 
   String _getPaymentStatus() {
-    if (payment.advanceAmount > 0 && payment.allocatedAmount == 0)
+    if (payment.advanceAmount > 0 && payment.allocatedAmount == 0) {
       return 'ADVANCE';
+    }
     if (payment.allocatedAmount >= payment.totalAmount) return 'ALLOCATED';
     if (payment.allocatedAmount > 0) return 'PARTIAL';
     return 'UNALLOCATED';

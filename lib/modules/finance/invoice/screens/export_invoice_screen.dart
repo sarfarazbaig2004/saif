@@ -24,12 +24,14 @@ const Color surfaceColor = Colors.white;
 String safe(String? v) => (v ?? '').trim();
 
 IconData _getPaymentModeIcon(String mode) {
-  if (mode.contains('Bank') || mode.contains('Wire'))
+  if (mode.contains('Bank') || mode.contains('Wire')) {
     return Icons.account_balance;
+  }
   if (mode.contains('Credit') || mode.contains('LC')) return Icons.description;
   if (mode.contains('Cheque')) return Icons.money;
-  if (mode.contains('Online') || mode.contains('Gateway'))
+  if (mode.contains('Online') || mode.contains('Gateway')) {
     return Icons.language;
+  }
   if (mode.contains('Cash')) return Icons.payments;
   return Icons.payment;
 }
@@ -165,8 +167,9 @@ class _ExportInvoiceScreenState extends State<ExportInvoiceScreen> {
       body: ValueListenableBuilder<bool>(
         valueListenable: _state.isLoading,
         builder: (context, isLoading, _) {
-          if (isLoading)
+          if (isLoading) {
             return const Center(child: CircularProgressIndicator());
+          }
 
           return LayoutBuilder(
             builder: (context, constraints) {
@@ -281,8 +284,9 @@ class _ExportInvoiceScreenState extends State<ExportInvoiceScreen> {
                                     controller: _state.customPlaceOfSupplyCtrl,
                                     required: true,
                                     validator: (v) {
-                                      if (v == null || safe(v).isEmpty)
+                                      if (v == null || safe(v).isEmpty) {
                                         return 'Required for Custom POS';
+                                      }
                                       return null;
                                     },
                                   ),
@@ -314,8 +318,9 @@ class _ExportInvoiceScreenState extends State<ExportInvoiceScreen> {
                                   firstDate: DateTime(2000),
                                   lastDate: DateTime(2100),
                                 );
-                                if (d != null)
+                                if (d != null) {
                                   _state.buyerOrderDateNotifier.value = d;
+                                }
                               },
                               child: InputDecorator(
                                 decoration: _inputDecoration(
@@ -481,8 +486,9 @@ class _ExportInvoiceScreenState extends State<ExportInvoiceScreen> {
                             required: true,
                             validator: (v) {
                               if (v == null || v.isEmpty) return 'Required';
-                              if ((double.tryParse(safe(v)) ?? 0.0) <= 0)
+                              if ((double.tryParse(safe(v)) ?? 0.0) <= 0) {
                                 return 'Must be > 0';
+                              }
                               return null;
                             },
                           ),
@@ -737,8 +743,9 @@ class _ExportInvoiceScreenState extends State<ExportInvoiceScreen> {
                               validator: (v) {
                                 if (v != null &&
                                     v.isNotEmpty &&
-                                    !RegExp(r'^[a-zA-Z0-9]{6}$').hasMatch(v))
+                                    !RegExp(r'^[a-zA-Z0-9]{6}$').hasMatch(v)) {
                                   return 'Invalid Port Code (6 chars)';
+                                }
                                 return null;
                               },
                             ),
@@ -782,8 +789,9 @@ class _ExportInvoiceScreenState extends State<ExportInvoiceScreen> {
                                     firstDate: DateTime(2000),
                                     lastDate: DateTime(2100),
                                   );
-                                  if (d != null)
+                                  if (d != null) {
                                     _state.shippingBillDateNotifier.value = d;
+                                  }
                                 },
                                 child: InputDecorator(
                                   decoration: _inputDecoration(
@@ -909,7 +917,7 @@ class _ExportInvoiceScreenState extends State<ExportInvoiceScreen> {
                 child: ValueListenableBuilder<List<ExportInvoiceItem>>(
                   valueListenable: _state.items,
                   builder: (context, itemsList, _) {
-                    if (itemsList.isEmpty)
+                    if (itemsList.isEmpty) {
                       return Container(
                         padding: const EdgeInsets.all(32),
                         alignment: Alignment.center,
@@ -923,6 +931,7 @@ class _ExportInvoiceScreenState extends State<ExportInvoiceScreen> {
                           style: TextStyle(color: Colors.grey, fontSize: 16),
                         ),
                       );
+                    }
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: DataTable(
@@ -1200,8 +1209,9 @@ class _ExportInvoiceScreenState extends State<ExportInvoiceScreen> {
                                   v.isNotEmpty &&
                                   !RegExp(
                                     r'^[A-Z]{4}0[A-Z0-9]{6}$',
-                                  ).hasMatch(v))
+                                  ).hasMatch(v)) {
                                 return 'Invalid IFSC (e.g. SBIN0123456)';
+                              }
                               return null;
                             },
                           ),
@@ -1216,8 +1226,9 @@ class _ExportInvoiceScreenState extends State<ExportInvoiceScreen> {
                                   v.isNotEmpty &&
                                   !RegExp(
                                     r'^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$',
-                                  ).hasMatch(v))
+                                  ).hasMatch(v)) {
                                 return 'Invalid SWIFT';
+                              }
                               return null;
                             },
                           ),
@@ -2363,14 +2374,17 @@ class ExportInvoiceState {
         supPAN.text = data['pan'] ?? '';
         supIEC.text = data['iec'] ?? data['iecCode'] ?? '';
         supState.text = data['state'] ?? '';
-        if (bankNameCtrl.text.isEmpty)
+        if (bankNameCtrl.text.isEmpty) {
           bankNameCtrl.text = data['bankName'] ?? '';
-        if (accNoCtrl.text.isEmpty)
+        }
+        if (accNoCtrl.text.isEmpty) {
           accNoCtrl.text = data['accountNumber'] ?? '';
+        }
         if (ifscCtrl.text.isEmpty) ifscCtrl.text = data['ifsc'] ?? '';
         if (swiftCtrl.text.isEmpty) swiftCtrl.text = data['swiftCode'] ?? '';
-        if (lutNumberCtrl.text.isEmpty)
+        if (lutNumberCtrl.text.isEmpty) {
           lutNumberCtrl.text = data['lutNumber'] ?? '';
+        }
         if (adCodeCtrl.text.isEmpty) adCodeCtrl.text = data['adCode'] ?? '';
       }
     } catch (e) {
@@ -2575,37 +2589,45 @@ class ExportInvoiceState {
   // ✅ STRICT FIX: removeNulls() function was deleted to prevent breaking Firebases' Timestamp schema.
   Future<String> saveToFirestore(String status) async {
     // 1. Validation Gate
-    if ((selectedCustomerId ?? '').trim().isEmpty)
+    if ((selectedCustomerId ?? '').trim().isEmpty) {
       throw Exception(
         "Validation failed: You must select a customer before saving.",
       );
+    }
     if (items.value.isEmpty ||
-        items.value.where((e) => safe(e.name).isNotEmpty).isEmpty)
+        items.value.where((e) => safe(e.name).isNotEmpty).isEmpty) {
       throw Exception("Validation failed: At least one item is required.");
+    }
 
     for (var i = 0; i < items.value.length; i++) {
       final item = items.value[i];
-      if (safe(item.name).isEmpty)
+      if (safe(item.name).isEmpty) {
         throw Exception("Validation failed: Item ${i + 1} is missing a name.");
-      if (item.quantity <= 0)
+      }
+      if (item.quantity <= 0) {
         throw Exception(
           "Validation failed: Item ${i + 1} quantity must be greater than 0.",
         );
-      if (item.rate <= 0)
+      }
+      if (item.rate <= 0) {
         throw Exception(
           "Validation failed: Item ${i + 1} rate must be greater than 0.",
         );
+      }
     }
 
-    if (summaryState.value.grandTotalForeign <= 0)
+    if (summaryState.value.grandTotalForeign <= 0) {
       throw Exception("Validation failed: Grand Total must be greater than 0.");
+    }
     final er = double.tryParse(safe(exchangeRateCtrl.text)) ?? 0.0;
-    if (er <= 0)
+    if (er <= 0) {
       throw Exception(
         "Validation failed: Exchange Rate must be greater than 0.",
       );
-    if (safe(selectedPaymentMode.value).isEmpty)
+    }
+    if (safe(selectedPaymentMode.value).isEmpty) {
       throw Exception("Validation failed: Payment Mode is required.");
+    }
 
     isSaving.value = true;
     try {

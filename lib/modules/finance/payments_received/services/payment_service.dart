@@ -23,8 +23,9 @@ class PaymentService {
             .collection('export_invoices')
             .doc(alloc.invoiceId);
         final snapshot = await transaction.get(invRef);
-        if (!snapshot.exists)
+        if (!snapshot.exists) {
           throw Exception("Invoice ${alloc.invoiceNumber} not found.");
+        }
         invoiceSnapshots[alloc.invoiceId] = snapshot;
       }
 

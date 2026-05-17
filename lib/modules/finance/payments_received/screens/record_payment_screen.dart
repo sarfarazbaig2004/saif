@@ -428,8 +428,9 @@ class _RecordPaymentScreenState extends State<RecordPaymentScreen> {
                                             0;
                                         if (val <= 0) return 'Required';
                                         if (_ctrl.selectedCurrency != 'INR' &&
-                                            val == 1.0)
+                                            val == 1.0) {
                                           return 'Verify Rate';
+                                        }
                                         return null;
                                       },
                                     ),

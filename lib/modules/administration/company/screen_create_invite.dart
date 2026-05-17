@@ -952,10 +952,12 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                     .where((submoduleKey) {
                       // 🔥 CHANGED: Deep strict filtering for export_import
                       if (isExportImport) {
-                        if (moduleKey == 'sales')
+                        if (moduleKey == 'sales') {
                           return false; // Strictly blocked
-                        if (moduleKey == 'crm')
+                        }
+                        if (moduleKey == 'crm') {
                           return submoduleKey == 'customers';
+                        }
                         if (moduleKey == 'finance') {
                           return [
                             'taxInvoice',

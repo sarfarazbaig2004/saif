@@ -64,8 +64,9 @@ class ExportTotalsCard extends StatelessWidget {
         : 0.0;
 
     if (advancePctRatio > 1.0) advancePctRatio = 1.0;
-    if ((advancePctRatio + receivedPctRatio) > 1.0)
+    if ((advancePctRatio + receivedPctRatio) > 1.0) {
       receivedPctRatio = 1.0 - advancePctRatio;
+    }
     final totalPct = ((advancePctRatio + receivedPctRatio) * 100)
         .toStringAsFixed(1);
 

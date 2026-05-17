@@ -484,10 +484,12 @@ class _PaymentsListScreenState extends State<PaymentsListScreen> {
               .limit(100)
               .snapshots(),
           builder: (context, snapshot) {
-            if (snapshot.hasError)
+            if (snapshot.hasError) {
               return Center(child: Text('Error: ${snapshot.error}'));
-            if (snapshot.connectionState == ConnectionState.waiting)
+            }
+            if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
+            }
 
             final docs = snapshot.data?.docs ?? [];
             final payments = docs
@@ -499,8 +501,9 @@ class _PaymentsListScreenState extends State<PaymentsListScreen> {
                 )
                 .toList();
 
-            if (payments.isEmpty && _searchQuery.isEmpty)
+            if (payments.isEmpty && _searchQuery.isEmpty) {
               return _buildEmptyState(context);
+            }
 
             final filteredPayments = payments.where((p) {
               final sq = _searchQuery.toLowerCase();
@@ -1216,8 +1219,9 @@ class _UserNameWidgetState extends State<UserNameWidget> {
     }
 
     if (UserNameWidget._cache.containsKey(widget.uid)) {
-      if (mounted)
+      if (mounted) {
         setState(() => _displayName = UserNameWidget._cache[widget.uid]!);
+      }
       return;
     }
 

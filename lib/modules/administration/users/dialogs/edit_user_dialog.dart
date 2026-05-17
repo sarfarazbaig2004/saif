@@ -1070,21 +1070,24 @@ Widget _buildPermissionModuleCard({
                   .where((submoduleKey) {
                     if (isExportImport) {
                       if (moduleKey == 'sales') return false;
-                      if (moduleKey == 'crm')
+                      if (moduleKey == 'crm') {
                         return submoduleKey == 'customers';
-                      if (moduleKey == 'finance')
+                      }
+                      if (moduleKey == 'finance') {
                         return [
                           'taxInvoice',
                           'paymentReceived',
                           'outstanding',
                           'expenseEntries',
                         ].contains(submoduleKey);
-                      if (moduleKey == 'reports')
+                      }
+                      if (moduleKey == 'reports') {
                         return [
                           'salesReport',
                           'customerReport',
                           'paymentReport',
                         ].contains(submoduleKey);
+                      }
                       return false;
                     }
                     return true;

@@ -238,8 +238,9 @@ class _OutstandingScreenState extends State<OutstandingScreen> {
               .collection('outstanding')
               .snapshots(),
           builder: (context, snapshot) {
-            if (snapshot.hasError)
+            if (snapshot.hasError) {
               return const Center(child: Text("Error loading data."));
+            }
             if (snapshot.connectionState == ConnectionState.waiting) {
               return Center(
                 child: Column(
@@ -273,8 +274,9 @@ class _OutstandingScreenState extends State<OutstandingScreen> {
               if (pendingFC <= 0 || status == 'PAID') return false;
 
               // Base Rule B: Apply UI Type filter
-              if (_invoiceTypeFilter != 'ALL' && type != _invoiceTypeFilter)
+              if (_invoiceTypeFilter != 'ALL' && type != _invoiceTypeFilter) {
                 return false;
+              }
 
               // Base Rule C: Strict Draft Check via `isFinalized` gatekeeper
               final isFinalized = data['isFinalized'] ?? (status != 'DRAFT');
@@ -289,8 +291,9 @@ class _OutstandingScreenState extends State<OutstandingScreen> {
                 final invoiceNumber = (data['invoiceNumber'] ?? '')
                     .toString()
                     .toLowerCase();
-                if (!customerName.contains(sq) && !invoiceNumber.contains(sq))
+                if (!customerName.contains(sq) && !invoiceNumber.contains(sq)) {
                   return false;
+                }
               }
 
               // Base Rule E: Date Filter
@@ -355,14 +358,16 @@ class _OutstandingScreenState extends State<OutstandingScreen> {
               customerInvoiceCount[customerName] =
                   (customerInvoiceCount[customerName] ?? 0) + 1;
 
-              if (customerFcBalances[customerName] == null)
+              if (customerFcBalances[customerName] == null) {
                 customerFcBalances[customerName] = {};
+              }
               customerFcBalances[customerName]![currency] =
                   (customerFcBalances[customerName]![currency] ?? 0.0) +
                   pendingFC;
 
-              if (customerInvoices[customerName] == null)
+              if (customerInvoices[customerName] == null) {
                 customerInvoices[customerName] = [];
+              }
 
               data['id'] = doc.id;
               customerInvoices[customerName]!.add(data);
