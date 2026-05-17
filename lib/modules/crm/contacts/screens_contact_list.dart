@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/modules/crm/contacts/screens_add_contact.dart';
+import 'package:QUIK/modules/crm/contacts/customer_contact_form_dialog.dart';
 
 class ScreensContactList extends StatefulWidget {
   final DocumentReference<Map<String, dynamic>> companyRef;
@@ -232,7 +232,7 @@ class _ScreensContactListState extends State<ScreensContactList> {
                           doc: d,
                           name: (m['name'] ?? '').toString(),
                           email: (m['email'] ?? '').toString(),
-                          phone: (m['phone'] ?? '').toString(),
+                          phone: (m['mobile'] ?? m['phone'] ?? '').toString(),
                           designation: (m['designation'] ?? '').toString(),
                           department: (m['department'] ?? '').toString(),
                           isPrimary: m['isPrimary'] == true,
@@ -574,7 +574,9 @@ class _ScreensContactListState extends State<ScreensContactList> {
             ),
             const SizedBox(height: 14),
             Text(
-              hasFilters ? 'No matching contacts found' : 'No contacts found',
+              hasFilters
+                  ? 'No matching contacts found'
+                  : 'No contacts added for this customer',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 6),
@@ -935,21 +937,14 @@ class _ScreensContactListState extends State<ScreensContactList> {
   }
 
   void _goAddContact() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ScreensAddContact(companyRef: widget.companyRef),
-      ),
-    );
+    CustomerContactFormDialog.show(context, customerRef: widget.companyRef);
   }
 
   void _editContact(_ContactRow r) {
-    Navigator.push(
+    CustomerContactFormDialog.show(
       context,
-      MaterialPageRoute(
-        builder: (_) =>
-            ScreensAddContact(companyRef: widget.companyRef, contactDoc: r.doc),
-      ),
+      customerRef: widget.companyRef,
+      contactDoc: r.doc,
     );
   }
 

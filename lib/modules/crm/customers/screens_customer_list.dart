@@ -7,6 +7,7 @@ import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/crm/customers/screens_add_customer.dart';
 import 'package:QUIK/modules/crm/customers/screens_customer_followup_list.dart';
+import 'package:QUIK/modules/crm/addresses/screens_address_list.dart';
 import 'package:QUIK/modules/crm/contacts/screens_add_contact.dart';
 import 'package:QUIK/modules/crm/contacts/screens_contact_list.dart';
 
@@ -338,6 +339,10 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
           .collection('contacts')
           .get();
 
+      final addressesSnap = await customerDoc.reference
+          .collection('addresses')
+          .get();
+
       final followUpsSnap = await customerDoc.reference
           .collection('followUps')
           .get();
@@ -346,6 +351,10 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
 
       for (final contactDoc in contactsSnap.docs) {
         batch.delete(contactDoc.reference);
+      }
+
+      for (final addressDoc in addressesSnap.docs) {
+        batch.delete(addressDoc.reference);
       }
 
       for (final followUpDoc in followUpsSnap.docs) {
@@ -1290,6 +1299,20 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                                                         ),
                                                       );
                                                     } else if (value ==
+                                                        'addresses') {
+                                                      Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute(
+                                                          builder: (_) =>
+                                                              ScreensAddressList(
+                                                                customerRef: doc
+                                                                    .reference,
+                                                                companyName:
+                                                                    displayName,
+                                                              ),
+                                                        ),
+                                                      );
+                                                    } else if (value ==
                                                         'add_contact') {
                                                       Navigator.push(
                                                         context,
@@ -1329,6 +1352,12 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                                                       value: 'follow_ups',
                                                       child: Text(
                                                         'View Follow-ups',
+                                                      ),
+                                                    ),
+                                                    const PopupMenuItem(
+                                                      value: 'addresses',
+                                                      child: Text(
+                                                        'View Addresses',
                                                       ),
                                                     ),
                                                     if (userCanEdit)
@@ -1441,6 +1470,9 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                                                     text: contactName,
                                                   ),
                                                 _CustomerContactsCount(
+                                                  customerRef: doc.reference,
+                                                ),
+                                                _CustomerAddressesCount(
                                                   customerRef: doc.reference,
                                                 ),
                                                 if (assignedDisplay.isNotEmpty)
@@ -1728,6 +1760,26 @@ class _CustomerContactsCount extends StatelessWidget {
         return _InlineInfo(
           icon: Icons.groups_outlined,
           text: 'Contacts: $count',
+        );
+      },
+    );
+  }
+}
+
+class _CustomerAddressesCount extends StatelessWidget {
+  final DocumentReference<Map<String, dynamic>> customerRef;
+
+  const _CustomerAddressesCount({required this.customerRef});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: customerRef.collection('addresses').snapshots(),
+      builder: (context, snapshot) {
+        final count = snapshot.data?.docs.length ?? 0;
+        return _InlineInfo(
+          icon: Icons.location_on_outlined,
+          text: 'Addresses: $count',
         );
       },
     );
