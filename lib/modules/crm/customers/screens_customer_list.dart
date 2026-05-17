@@ -7,6 +7,7 @@ import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/crm/customers/screens_add_customer.dart';
 import 'package:QUIK/modules/crm/customers/screens_customer_followup_list.dart';
+import 'package:QUIK/modules/crm/customers/screens_customer_detail_workspace.dart';
 import 'package:QUIK/modules/crm/addresses/screens_address_list.dart';
 import 'package:QUIK/modules/crm/contacts/screens_add_contact.dart';
 import 'package:QUIK/modules/crm/contacts/screens_contact_list.dart';
@@ -1142,28 +1143,21 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
                                   return InkWell(
                                     borderRadius: BorderRadius.circular(14),
                                     onTap: () {
-                                      if (!userCanEdit) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'You do not have permission to edit this customer.',
-                                            ),
-                                          ),
-                                        );
-                                        return;
-                                      }
-
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) => ScreensAddCustomer(
-                                            existingDoc: doc.reference,
-                                            companyId: companyId,
-                                            currentUserUid: firebaseUser.uid,
-                                            currentUserRole: role,
-                                          ),
+                                          builder: (_) =>
+                                              CustomerDetailWorkspace(
+                                                customerRef: doc.reference,
+                                                companyId: companyId,
+                                                currentUserUid:
+                                                    firebaseUser.uid,
+                                                currentUserRole: role,
+                                                currentUserName:
+                                                    currentUserName,
+                                                canEdit: userCanEdit,
+                                                canDelete: userCanDelete,
+                                              ),
                                         ),
                                       );
                                     },
