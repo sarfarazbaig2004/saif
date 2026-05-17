@@ -230,6 +230,185 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     }
   }
 
+  Future<void> _save() async {
+    if (_customerId.isEmpty) {
+      setState(() => _customerErrorVisible = true);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a customer')));
+      return;
+    }
+
+    if (!_formKey.currentState!.validate()) return;
+
+    final id = _isEditMode
+        ? _existingId
+        : DateTime.now().millisecondsSinceEpoch.toString();
+
+    final po = CustomerPoModel(
+      id: id,
+      companyId: widget.companyId,
+      poNumber: _poNumber.text.trim(),
+      poDate: _poDate,
+      customerId: _customerId,
+      customerName: _customerName,
+      customerEmail: _customerEmail,
+      customerMobile: _customerMobile,
+      customerAddress: _customerAddress,
+      customerGstNumber: _customerGstNumber,
+      projectName: _projectName.text.trim(),
+      siteLocation: _siteLocation.text.trim(),
+      subject: _subject.text.trim(),
+      basicValue: _basicValue,
+      gstPercent: double.tryParse(_gstPercent.text.trim()) ?? 0,
+      gstAmount: _gstAmount,
+      totalValue: _totalValue,
+      paymentTerms: _paymentTerms.text.trim(),
+      deliveryTerms: _deliveryTerms.text.trim(),
+      inspectionRequirement: _inspectionRequirement.text.trim(),
+      warranty: _warranty.text.trim(),
+      ldClause: _ldClause.text.trim(),
+      status: _isEditMode ? _existingStatus : 'Draft',
+      items: _items,
+      poDocumentUrl: _poDocumentUrl,
+      poFileName: _poFileName,
+      uploadedAt: _uploadedAt,
+    );
+
+    try {
+      if (_isEditMode) {
+        await _provider.updateCustomerPo(po);
+      } else {
+        await _provider.createCustomerPo(po);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Customer PO ${_isEditMode ? 'updated' : 'saved'} successfully',
+          ),
+        ),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to ${_isEditMode ? 'update' : 'save'} Customer PO: $e',
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _poNumber.dispose();
+    _gstPercent.dispose();
+    _projectName.dispose();
+    _siteLocation.dispose();
+    _subject.dispose();
+    _paymentTerms.dispose();
+    _deliveryTerms.dispose();
+    _inspectionRequirement.dispose();
+    _warranty.dispose();
+    _ldClause.dispose();
+    super.dispose();
+  }
+
+  // ── Field helpers ─────────────────────────────────────────────────────────────
+
+  Widget _field(
+    String label,
+    TextEditingController controller, {
+    bool required = false,
+    bool readOnly = false,
+    TextInputType keyboardType = TextInputType.text,
+    int maxLines = 1,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      readOnly: readOnly,
+      maxLines: maxLines,
+      validator: required
+          ? (value) {
+              if (value == null || value.trim().isEmpty) {
+                return '$label is required';
+              }
+              return null;
+            }
+          : null,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        filled: readOnly,
+        fillColor: readOnly ? Colors.grey.shade100 : null,
+      ),
+    );
+  }
+
+  Widget _summaryRow(String label, String value, {bool bold = false}) {
+    final style = TextStyle(
+      fontWeight: bold ? FontWeight.w800 : FontWeight.normal,
+      fontSize: bold ? 16 : 14,
+    );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: style),
+        Text(value, style: style),
+      ],
+    );
+  }
+
+  Widget _customerSelector() {
+    final hasError = _customerErrorVisible && _customerId.isEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: (_isLoadingCustomers || _isEditMode)
+              ? null
+              : _showCustomerPicker,
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Customer *',
+              border: const OutlineInputBorder(),
+              errorText: hasError ? 'Please select a customer' : null,
+              filled: _isEditMode,
+              fillColor: _isEditMode ? Colors.grey.shade100 : null,
+              suffixIcon: _isEditMode
+                  ? null
+                  : _isLoadingCustomers
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : const Icon(Icons.arrow_drop_down),
+            ),
+            child: Text(
+              _customerName.isEmpty ? 'Select Customer' : _customerName,
+              style: TextStyle(
+                color: _customerName.isEmpty ? Colors.grey.shade600 : null,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Customer details are managed in CRM',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ),
+      ],
+    );
+  }
+
   Widget _pdfUploadWidget() {
     return Card(
       child: Padding(
@@ -355,166 +534,124 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     );
   }
 
-  Future<void> _save() async {
-    if (_customerId.isEmpty) {
-      setState(() => _customerErrorVisible = true);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a customer')));
-      return;
-    }
+  // ── Tab content builders ──────────────────────────────────────────────────────
 
-    if (!_formKey.currentState!.validate()) return;
-
-    final id = _isEditMode
-        ? _existingId
-        : DateTime.now().millisecondsSinceEpoch.toString();
-
-    final po = CustomerPoModel(
-      id: id,
-      companyId: widget.companyId,
-      poNumber: _poNumber.text.trim(),
-      poDate: _poDate,
-      customerId: _customerId,
-      customerName: _customerName,
-      customerEmail: _customerEmail,
-      customerMobile: _customerMobile,
-      customerAddress: _customerAddress,
-      customerGstNumber: _customerGstNumber,
-      projectName: _projectName.text.trim(),
-      siteLocation: _siteLocation.text.trim(),
-      subject: _subject.text.trim(),
-      basicValue: _basicValue,
-      gstPercent: double.tryParse(_gstPercent.text.trim()) ?? 0,
-      gstAmount: _gstAmount,
-      totalValue: _totalValue,
-      paymentTerms: _paymentTerms.text.trim(),
-      deliveryTerms: _deliveryTerms.text.trim(),
-      inspectionRequirement: _inspectionRequirement.text.trim(),
-      warranty: _warranty.text.trim(),
-      ldClause: _ldClause.text.trim(),
-      status: _isEditMode ? _existingStatus : 'Draft',
-      items: _items,
-      poDocumentUrl: _poDocumentUrl,
-      poFileName: _poFileName,
-      uploadedAt: _uploadedAt,
-    );
-
-    try {
-      if (_isEditMode) {
-        await _provider.updateCustomerPo(po);
-      } else {
-        await _provider.createCustomerPo(po);
-      }
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Customer PO ${_isEditMode ? 'updated' : 'saved'} successfully',
-          ),
-        ),
-      );
-      Navigator.pop(context);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed to ${_isEditMode ? 'update' : 'save'} Customer PO: $e',
-          ),
-        ),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _poNumber.dispose();
-    _gstPercent.dispose();
-    _projectName.dispose();
-    _siteLocation.dispose();
-    _subject.dispose();
-    _paymentTerms.dispose();
-    _deliveryTerms.dispose();
-    _inspectionRequirement.dispose();
-    _warranty.dispose();
-    _ldClause.dispose();
-    super.dispose();
-  }
-
-  Widget _field(
-    String label,
-    TextEditingController controller, {
-    bool required = false,
-    bool readOnly = false,
-    TextInputType keyboardType = TextInputType.text,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: keyboardType,
-      readOnly: readOnly,
-      validator: required
-          ? (value) {
-              if (value == null || value.trim().isEmpty) {
-                return '$label is required';
-              }
-              return null;
-            }
-          : null,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        filled: readOnly,
-        fillColor: readOnly ? Colors.grey.shade100 : null,
-      ),
-    );
-  }
-
-  Widget _customerSelector() {
-    final hasError = _customerErrorVisible && _customerId.isEmpty;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildOverviewTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
       children: [
-        GestureDetector(
-          onTap: (_isLoadingCustomers || _isEditMode)
-              ? null
-              : _showCustomerPicker,
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: 'Customer *',
-              border: const OutlineInputBorder(),
-              errorText: hasError ? 'Please select a customer' : null,
-              filled: _isEditMode,
-              fillColor: _isEditMode ? Colors.grey.shade100 : null,
-              suffixIcon: _isEditMode
-                  ? null
-                  : _isLoadingCustomers
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : const Icon(Icons.arrow_drop_down),
-            ),
-            child: Text(
-              _customerName.isEmpty ? 'Select Customer' : _customerName,
-              style: TextStyle(
-                color: _customerName.isEmpty ? Colors.grey.shade600 : null,
-              ),
+        _field(
+          'Customer PO Number',
+          _poNumber,
+          required: true,
+          readOnly: _isEditMode,
+        ),
+        const SizedBox(height: 12),
+        _customerSelector(),
+        const SizedBox(height: 12),
+        // Customer detail preview (read-only, shown when customer is selected)
+        if (_customerName.isNotEmpty) ...[
+          _SectionCard(
+            title: 'Selected Customer',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (_customerEmail.isNotEmpty)
+                  _DetailRow(label: 'Email', value: _customerEmail),
+                if (_customerMobile.isNotEmpty)
+                  _DetailRow(label: 'Mobile', value: _customerMobile),
+                if (_customerGstNumber.isNotEmpty)
+                  _DetailRow(label: 'GST', value: _customerGstNumber),
+                if (_customerAddress.isNotEmpty)
+                  _DetailRow(label: 'Address', value: _customerAddress),
+              ],
             ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Customer details are managed in CRM',
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCommercialTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _field('GST %', _gstPercent, keyboardType: TextInputType.number),
+        const SizedBox(height: 16),
+        _SectionCard(
+          title: 'Financial Summary',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _summaryRow('Basic Value', '₹${_basicValue.toStringAsFixed(2)}'),
+              const SizedBox(height: 8),
+              _summaryRow(
+                'GST (${_gstPercent.text.trim()}%)',
+                '₹${_gstAmount.toStringAsFixed(2)}',
+              ),
+              const Divider(height: 20),
+              _summaryRow(
+                'Total Value',
+                '₹${_totalValue.toStringAsFixed(2)}',
+                bold: true,
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
+
+  Widget _buildProjectSplitTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _field('Project Name', _projectName),
+        const SizedBox(height: 12),
+        _field('Site Location', _siteLocation),
+        const SizedBox(height: 12),
+        _field('Subject / Scope', _subject, maxLines: 3),
+      ],
+    );
+  }
+
+  Widget _buildEngineeringTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        CustomerPoItemsTable(
+          initialItems: _items,
+          onChanged: (items) => setState(() => _items = items),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTermsTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        _field('Payment Terms', _paymentTerms, maxLines: 3),
+        const SizedBox(height: 12),
+        _field('Delivery Terms', _deliveryTerms, maxLines: 3),
+        const SizedBox(height: 12),
+        _field('Inspection Requirement', _inspectionRequirement, maxLines: 3),
+        const SizedBox(height: 12),
+        _field('Warranty', _warranty, maxLines: 2),
+        const SizedBox(height: 12),
+        _field('LD Clause', _ldClause, maxLines: 3),
+      ],
+    );
+  }
+
+  Widget _buildAttachmentsTab() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [_pdfUploadWidget()],
+    );
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -525,98 +662,141 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditMode ? 'Edit Customer PO' : 'Create Customer PO'),
+    return DefaultTabController(
+      length: 6,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_isEditMode ? 'Edit Customer PO' : 'Create Customer PO'),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: FilledButton(
+                onPressed: _provider.loading ? null : _save,
+                child: Text(_isEditMode ? 'Update' : 'Save'),
+              ),
+            ),
+          ],
+          bottom: const TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
+            tabs: [
+              Tab(text: 'Overview'),
+              Tab(text: 'Commercial'),
+              Tab(text: 'Project Split'),
+              Tab(text: 'Engineering'),
+              Tab(text: 'Terms'),
+              Tab(text: 'Attachments'),
+            ],
+          ),
+        ),
+        body: Form(
+          key: _formKey,
+          child: TabBarView(
+            children: [
+              _KeepAlivePage(child: _buildOverviewTab()),
+              _KeepAlivePage(child: _buildCommercialTab()),
+              _KeepAlivePage(child: _buildProjectSplitTab()),
+              _KeepAlivePage(child: _buildEngineeringTab()),
+              _KeepAlivePage(child: _buildTermsTab()),
+              _KeepAlivePage(child: _buildAttachmentsTab()),
+            ],
+          ),
+        ),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+    );
+  }
+}
+
+// ── Keep-alive tab wrapper ────────────────────────────────────────────────────
+
+class _KeepAlivePage extends StatefulWidget {
+  final Widget child;
+
+  const _KeepAlivePage({required this.child});
+
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+}
+
+// ── Local display helpers ─────────────────────────────────────────────────────
+
+class _SectionCard extends StatelessWidget {
+  final String title;
+  final Widget child;
+
+  const _SectionCard({required this.title, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _field(
-              'Customer PO Number',
-              _poNumber,
-              required: true,
-              readOnly: _isEditMode,
-            ),
-            const SizedBox(height: 12),
-            _customerSelector(),
-            const SizedBox(height: 12),
-            _field('Project Name', _projectName),
-            const SizedBox(height: 12),
-            _field('Site Location', _siteLocation),
-            const SizedBox(height: 12),
-            _field('Subject / Scope', _subject),
-            const SizedBox(height: 16),
-            CustomerPoItemsTable(
-              initialItems: _items,
-              onChanged: (items) => setState(() => _items = items),
-            ),
-            const SizedBox(height: 12),
-            _field('GST %', _gstPercent, keyboardType: TextInputType.number),
-            const SizedBox(height: 12),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _summaryRow(
-                      'Basic Value',
-                      '₹${_basicValue.toStringAsFixed(2)}',
-                    ),
-                    const SizedBox(height: 8),
-                    _summaryRow(
-                      'GST (${_gstPercent.text.trim()}%)',
-                      '₹${_gstAmount.toStringAsFixed(2)}',
-                    ),
-                    const Divider(height: 20),
-                    _summaryRow(
-                      'Total Value',
-                      '₹${_totalValue.toStringAsFixed(2)}',
-                      bold: true,
-                    ),
-                  ],
-                ),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF64748B),
+                letterSpacing: 0.3,
               ),
             ),
             const SizedBox(height: 12),
-            _pdfUploadWidget(),
-            const SizedBox(height: 12),
-            _field('Payment Terms', _paymentTerms),
-            const SizedBox(height: 12),
-            _field('Delivery Terms', _deliveryTerms),
-            const SizedBox(height: 12),
-            _field('Inspection Requirement', _inspectionRequirement),
-            const SizedBox(height: 12),
-            _field('Warranty', _warranty),
-            const SizedBox(height: 12),
-            _field('LD Clause', _ldClause),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _provider.loading ? null : _save,
-              child: Text(
-                _isEditMode ? 'Update Customer PO' : 'Save Customer PO',
-              ),
-            ),
+            child,
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _summaryRow(String label, String value, {bool bold = false}) {
-    final style = TextStyle(
-      fontWeight: bold ? FontWeight.w800 : FontWeight.normal,
-      fontSize: bold ? 16 : 14,
-    );
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: style),
-        Text(value, style: style),
-      ],
+class _DetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _DetailRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 70,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF94A3B8),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
