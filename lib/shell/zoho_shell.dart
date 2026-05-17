@@ -570,7 +570,7 @@ class _ZohoShellState extends State<ZohoShell> {
         children: [
           ShellPage.salesInquiries,
           ShellPage.salesQuotations,
-          ShellPage.salesOrders,
+          // ShellPage.salesOrders, // temporarily hidden
           ShellPage.salesFollowUps,
           ShellPage.salesTasks,
           ShellPage.salesMeetings,
