@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 
 import 'package:QUIK/modules/crm/customers/screens_add_customer.dart';
 import 'package:QUIK/modules/crm/customers/screens_customer_followup_list.dart';
+import 'package:QUIK/modules/crm/customers/customer_followup_model.dart';
+import 'package:QUIK/modules/crm/customers/customer_followup_form_dialog.dart';
 import 'package:QUIK/modules/crm/contacts/customer_contact_form_dialog.dart';
 import 'package:QUIK/modules/crm/contacts/customer_contact_model.dart';
 import 'package:QUIK/modules/crm/addresses/customer_address_form_dialog.dart';
@@ -1178,6 +1180,34 @@ class _FollowUpsTab extends StatelessWidget {
     required this.customerName,
   });
 
+  static Color _priorityColor(String p) {
+    switch (p.toLowerCase()) {
+      case 'critical':
+        return Colors.red;
+      case 'high':
+        return Colors.orange;
+      case 'medium':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  static Color _statusColor(String s) {
+    switch (s.toLowerCase()) {
+      case 'open':
+        return Colors.blue;
+      case 'in progress':
+        return Colors.orange;
+      case 'closed':
+        return Colors.green;
+      case 'missed':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -1187,65 +1217,98 @@ class _FollowUpsTab extends StatelessWidget {
           .snapshots(),
       builder: (context, snap) {
         final docs = snap.data?.docs ?? [];
-        return Column(
+        return Stack(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Row(
-                children: [
-                  Text(
-                    '${docs.length} Follow-up${docs.length == 1 ? '' : 's'}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black54,
-                    ),
-                  ),
-                  const Spacer(),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFF2563EB),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    icon: const Icon(Icons.open_in_new, size: 15),
-                    label: const Text(
-                      'Open Full View',
-                      style: TextStyle(fontSize: 13),
-                    ),
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ScreensCustomerFollowUpList(
-                          customerRef: customerRef,
-                          companyId: companyId,
-                          currentUserUid: currentUserUid,
-                          currentUserName: currentUserName,
-                          customerName: customerName,
+            Column(
+              children: [
+                // Toolbar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        '${docs.length} Follow-up${docs.length == 1 ? '' : 's'}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
                         ),
                       ),
-                    ),
+                      const Spacer(),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          textStyle: const TextStyle(fontSize: 12),
+                        ),
+                        icon: const Icon(Icons.open_in_new, size: 14),
+                        label: const Text('Full View'),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ScreensCustomerFollowUpList(
+                              customerRef: customerRef,
+                              companyId: companyId,
+                              currentUserUid: currentUserUid,
+                              currentUserName: currentUserName,
+                              customerName: customerName,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                // List
+                Expanded(
+                  child: docs.isEmpty
+                      ? const _EmptyTabState(
+                          icon: Icons.phone_in_talk_outlined,
+                          message: 'No follow-ups recorded',
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 80),
+                          itemCount: docs.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 4),
+                          itemBuilder: (context, i) {
+                            final doc = docs[i];
+                            final d = doc.data();
+                            final followup = CustomerFollowupModel.fromMap(
+                              doc.id,
+                              d,
+                            );
+                            return _FollowUpCard(
+                              followup: followup,
+                              doc: doc,
+                              customerRef: customerRef,
+                              currentUserName: currentUserName,
+                              priorityColor: _priorityColor(followup.priority),
+                              statusColor: _statusColor(followup.status),
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
-            Expanded(
-              child: docs.isEmpty
-                  ? _EmptyTabState(
-                      icon: Icons.phone_in_talk_outlined,
-                      message: 'No follow-ups recorded',
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      itemCount: docs.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (context, i) {
-                        final d = docs[i].data();
-                        return _FollowUpCard(data: d);
-                      },
-                    ),
+            // FAB
+            Positioned(
+              bottom: 16,
+              right: 16,
+              child: FloatingActionButton.extended(
+                heroTag: 'add_followup_fab',
+                onPressed: () => CustomerFollowupFormDialog.show(
+                  context,
+                  customerRef: customerRef,
+                  currentUserName: currentUserName,
+                ),
+                icon: const Icon(Icons.add),
+                label: const Text('Add Follow-up'),
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+              ),
             ),
           ],
         );
@@ -1255,92 +1318,362 @@ class _FollowUpsTab extends StatelessWidget {
 }
 
 class _FollowUpCard extends StatelessWidget {
-  final Map<String, dynamic> data;
+  final CustomerFollowupModel followup;
+  final QueryDocumentSnapshot<Map<String, dynamic>> doc;
+  final DocumentReference<Map<String, dynamic>> customerRef;
+  final String currentUserName;
+  final Color priorityColor;
+  final Color statusColor;
 
-  const _FollowUpCard({required this.data});
+  const _FollowUpCard({
+    required this.followup,
+    required this.doc,
+    required this.customerRef,
+    required this.currentUserName,
+    required this.priorityColor,
+    required this.statusColor,
+  });
 
-  String _formatDate(dynamic v) {
-    if (v == null) return '—';
-    if (v is Timestamp) {
-      return DateFormat('dd MMM yyyy, hh:mm a').format(v.toDate());
-    }
-    return '—';
+  Future<void> _delete(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete Follow-up'),
+        content: Text(
+          'Delete "${followup.title}"? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await doc.reference.delete();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Follow-up deleted'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final mode = (data['followUpMode'] ?? '').toString();
-    final outcome = (data['outcome'] ?? '').toString();
-    final notes = (data['notes'] ?? '').toString();
-    final date = _formatDate(data['followUpDate']);
-    final nextDate = _formatDate(data['nextFollowUpDate']);
-    final contactName = (data['contactName'] ?? '').toString();
+    final dateStr = DateFormat('dd MMM yyyy, hh:mm a').format(followup.followUpDate);
+    final isOverdue = followup.status != 'Closed' &&
+        followup.status != 'Missed' &&
+        followup.followUpDate.isBefore(DateTime.now());
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: isOverdue ? Colors.red.shade200 : Colors.grey.shade200,
+          width: isOverdue ? 1.2 : 0.8,
+        ),
       ),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              if (mode.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    mode,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.blue.shade700,
-                    ),
-                  ),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Priority bar
+            Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: priorityColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  bottomLeft: Radius.circular(12),
                 ),
-              const SizedBox(width: 8),
-              Text(
-                date,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
-            ],
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title row
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                followup.title.isNotEmpty
+                                    ? followup.title
+                                    : '(No title)',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.access_time,
+                                    size: 12,
+                                    color: isOverdue
+                                        ? Colors.red.shade400
+                                        : Colors.grey.shade500,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    dateStr,
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: isOverdue
+                                          ? Colors.red.shade500
+                                          : Colors.grey.shade600,
+                                      fontWeight: isOverdue
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                    ),
+                                  ),
+                                  if (isOverdue) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 5,
+                                        vertical: 1,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.shade50,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'Overdue',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: Colors.red.shade600,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Actions
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 17),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 32,
+                                minHeight: 32,
+                              ),
+                              onPressed: () =>
+                                  CustomerFollowupFormDialog.show(
+                                context,
+                                customerRef: customerRef,
+                                currentUserName: currentUserName,
+                                existingDoc: doc,
+                              ),
+                              tooltip: 'Edit',
+                            ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.delete_outline,
+                                size: 17,
+                                color: Colors.red.shade400,
+                              ),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 32,
+                                minHeight: 32,
+                              ),
+                              onPressed: () => _delete(context),
+                              tooltip: 'Delete',
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    // Badges
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (followup.followUpType.isNotEmpty)
+                          _TypeChip(
+                            label: followup.followUpType,
+                            icon: _typeIcon(followup.followUpType),
+                          ),
+                        _StatusChip(
+                          label: followup.status,
+                          color: statusColor,
+                        ),
+                        _StatusChip(
+                          label: followup.priority,
+                          color: priorityColor,
+                          outlined: true,
+                        ),
+                        if (followup.assignedTo.isNotEmpty)
+                          _ContactBadge(
+                            icon: Icons.person_outline,
+                            label: followup.assignedTo,
+                          ),
+                      ],
+                    ),
+                    // Description
+                    if (followup.description.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        followup.description,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Colors.grey.shade700,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    // Next action
+                    if (followup.nextAction.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.arrow_forward_outlined,
+                            size: 13,
+                            color: Colors.blue.shade400,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              followup.nextAction,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.blue.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    // Reminder date
+                    if (followup.reminderDate != null) ...[
+                      const SizedBox(height: 4),
+                      _ContactBadge(
+                        icon: Icons.notifications_outlined,
+                        label:
+                            'Reminder: ${DateFormat('dd MMM yyyy').format(followup.reminderDate!)}',
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _typeIcon(String type) {
+    switch (type) {
+      case 'Call':
+        return Icons.phone_outlined;
+      case 'Meeting':
+        return Icons.people_outlined;
+      case 'Site Visit':
+        return Icons.location_on_outlined;
+      case 'Email':
+        return Icons.email_outlined;
+      case 'WhatsApp':
+        return Icons.chat_outlined;
+      case 'Proposal':
+        return Icons.description_outlined;
+      case 'Payment':
+        return Icons.payment_outlined;
+      default:
+        return Icons.more_horiz;
+    }
+  }
+}
+
+class _TypeChip extends StatelessWidget {
+  final String label;
+  final IconData icon;
+
+  const _TypeChip({required this.label, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: Colors.blue.shade700),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: Colors.blue.shade700,
+            ),
           ),
-          if (notes.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text(notes, style: const TextStyle(fontSize: 13)),
-          ],
-          if (outcome.isNotEmpty || contactName.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 8,
-              children: [
-                if (outcome.isNotEmpty)
-                  _ContactBadge(
-                    icon: Icons.check_circle_outline,
-                    label: outcome,
-                  ),
-                if (contactName.isNotEmpty)
-                  _ContactBadge(icon: Icons.person_outline, label: contactName),
-              ],
-            ),
-          ],
-          if (nextDate != '—') ...[
-            const SizedBox(height: 6),
-            _ContactBadge(
-              icon: Icons.calendar_today_outlined,
-              label: 'Next: $nextDate',
-            ),
-          ],
         ],
+      ),
+    );
+  }
+}
+
+class _StatusChip extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool outlined;
+
+  const _StatusChip({
+    required this.label,
+    required this.color,
+    this.outlined = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: outlined ? Colors.transparent : color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(6),
+        border: outlined ? Border.all(color: color.withValues(alpha: 0.5)) : null,
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }
