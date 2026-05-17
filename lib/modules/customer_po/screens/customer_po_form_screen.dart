@@ -93,10 +93,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Could not load customers: $e'),
-            action: SnackBarAction(
-              label: 'Retry',
-              onPressed: _loadCustomers,
-            ),
+            action: SnackBarAction(label: 'Retry', onPressed: _loadCustomers),
           ),
         );
       }
