@@ -28,6 +28,8 @@ import 'package:QUIK/modules/sales/inquiries/screens_inquiry_list.dart';
 import 'package:QUIK/modules/sales/quotations/screens_quotation_list.dart';
 import 'package:QUIK/modules/settings/screen_settings_home.dart';
 import 'package:QUIK/modules/sales/sales_orders/screens_sales_order_list.dart';
+import 'package:QUIK/modules/customer_po/screens/customer_po_list_screen.dart';
+import 'package:QUIK/modules/projects/screens/projects_list_screen.dart';
 import 'package:QUIK/modules/service/screens_service_home.dart';
 
 // Finance Sub-Modules
@@ -54,9 +56,15 @@ import 'package:QUIK/modules/reports/sales_report/sales_report_screen.dart';
 
 enum ShellPage {
   dashboard,
-
   platformTenantModules,
 
+  // CRM
+  crmCustomers,
+  crmContacts,
+  crmVisits,
+  crmCommunication,
+
+  // Sales
   salesInquiries,
   salesQuotations,
   salesOrders,
@@ -65,11 +73,21 @@ enum ShellPage {
   salesTasks,
   salesMeetings,
 
-  crmCustomers,
-  crmContacts,
-  crmVisits,
-  crmCommunication,
+  // NEW: Customer PO
+  customerPoList,
 
+  // NEW: Projects & Job Cards
+  projectsList,
+
+  // NEW: Planning & Scheduling
+  planningDashboard,
+  schedulingCalendar,
+
+  // NEW: Engineering
+  engineeringDrawings,
+  engineeringBomBoq,
+
+  // Purchase
   purchaseVendors,
   purchaseVendorOffers,
   purchasePurchaseOrders,
@@ -77,6 +95,7 @@ enum ShellPage {
   purchaseGrn,
   purchaseLedger,
 
+  // Inventory
   inventoryProducts,
   inventoryStockSummary,
   inventoryStockIn,
@@ -87,11 +106,13 @@ enum ShellPage {
   inventoryMaterialInward,
   inventoryMaterialIssue,
 
+  // Dispatch
   dispatchReady,
   dispatchChallans,
   dispatchShipmentTracking,
   dispatchDelivered,
 
+  // Production
   productionItems,
   productionProcesses,
   productionWorkCenters,
@@ -103,8 +124,10 @@ enum ShellPage {
   productionInspections,
   productionEntries,
 
+  // HR
   hrHome,
 
+  // Finance
   financeProforma,
   financeTaxInvoice,
   financeTaxInvoiceCreate,
@@ -113,12 +136,14 @@ enum ShellPage {
   financeOutstanding,
   financeExpenses,
 
+  // Reports
   reportsSales,
   reportsInquiry,
   reportsCustomer,
   reportsProduct,
   reportsPayment,
 
+  // Admin
   adminUsers,
   adminRoles,
   adminModules,
@@ -128,6 +153,7 @@ enum ShellPage {
   adminBranches,
   adminAuditLogs,
 
+  // Settings
   settingsGeneral,
 }
 
@@ -162,6 +188,20 @@ extension ShellPageX on ShellPage {
         return 'Customer Visits';
       case ShellPage.crmCommunication:
         return 'Communication History';
+
+      // NEW LABELS
+      case ShellPage.customerPoList:
+        return 'Customer POs';
+      case ShellPage.projectsList:
+        return 'Projects';
+      case ShellPage.planningDashboard:
+        return 'Planning Board';
+      case ShellPage.schedulingCalendar:
+        return 'Master Schedule';
+      case ShellPage.engineeringDrawings:
+        return 'Drawings & Specs';
+      case ShellPage.engineeringBomBoq:
+        return 'BOM & BOQ';
 
       case ShellPage.purchaseVendors:
         return 'Vendors';
@@ -304,6 +344,21 @@ extension ShellPageX on ShellPage {
         return Icons.location_on_outlined;
       case ShellPage.crmCommunication:
         return Icons.chat_bubble_outline;
+
+      // NEW ICONS
+      case ShellPage.customerPoList:
+        return Icons.request_quote_outlined;
+      case ShellPage.projectsList:
+        return Icons.account_tree_outlined;
+      case ShellPage.planningDashboard:
+        return Icons.schema_outlined;
+      case ShellPage.schedulingCalendar:
+        return Icons.calendar_month_outlined;
+      case ShellPage.engineeringDrawings:
+        return Icons.architecture_outlined;
+      case ShellPage.engineeringBomBoq:
+        return Icons.calculate_outlined;
+
       case ShellPage.purchaseVendors:
         return Icons.business_outlined;
       case ShellPage.purchaseVendorOffers:
@@ -582,7 +637,7 @@ class _ZohoShellState extends State<ZohoShell> {
       return false;
     }
 
-    if (page == ShellPage.hrHome && !_isModuleEnabled(ModuleIds.hr)) {
+    if (page == ShellPage.hrHome && !_isModuleEnabled(ModuleIds.hrAdmin)) {
       return false;
     }
 
@@ -614,6 +669,16 @@ class _ZohoShellState extends State<ZohoShell> {
         return false;
       case ShellPage.settingsGeneral:
         return true;
+
+      // New Modules
+      case ShellPage.customerPoList:
+      case ShellPage.projectsList:
+      case ShellPage.planningDashboard:
+      case ShellPage.schedulingCalendar:
+      case ShellPage.engineeringDrawings:
+      case ShellPage.engineeringBomBoq:
+        return true; // Let them see the placeholder landing page if module is on
+
       // Sales
       case ShellPage.salesInquiries:
         return _hasPermission('sales', 'inquiries');
@@ -843,28 +908,25 @@ class _ZohoShellState extends State<ZohoShell> {
     if (_resolvedIndustry == 'export_import') {
       return [
         SidebarGroup(
-          key: 'crm',
+          key: ModuleIds.crm,
           title: 'CRM',
           icon: Icons.people_alt_outlined,
           children: [ShellPage.crmCustomers],
         ),
-
         SidebarGroup(
-          key: 'inventory',
+          key: ModuleIds.inventoryStore,
           title: 'Inventory',
           icon: Icons.inventory_2_outlined,
           children: _inventorySidebarPages,
         ),
-
         SidebarGroup(
-          key: 'hr',
+          key: ModuleIds.hrAdmin,
           title: 'HR',
           icon: Icons.badge_outlined,
           children: [ShellPage.hrHome],
         ),
-
         SidebarGroup(
-          key: 'finance',
+          key: ModuleIds.finance,
           title: 'Finance',
           icon: Icons.account_balance_wallet_outlined,
           children: [
@@ -875,9 +937,8 @@ class _ZohoShellState extends State<ZohoShell> {
             ShellPage.financeExpenses,
           ],
         ),
-
         SidebarGroup(
-          key: 'reports',
+          key: ModuleIds.reports,
           title: 'Reports',
           icon: Icons.assessment_outlined,
           children: [
@@ -886,9 +947,8 @@ class _ZohoShellState extends State<ZohoShell> {
             ShellPage.reportsPayment,
           ],
         ),
-
         SidebarGroup(
-          key: 'admin',
+          key: ModuleIds.administration,
           title: 'Administration',
           icon: Icons.admin_panel_settings_outlined,
           children: [
@@ -901,9 +961,21 @@ class _ZohoShellState extends State<ZohoShell> {
       ];
     }
 
+    // NEW 19-MODULE LAYOUT DEFAULT
     return [
-      const SidebarGroup(
-        key: 'sales',
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.crm,
+        title: 'CRM',
+        icon: Icons.people_alt_outlined,
+        children: [
+          ShellPage.crmCustomers,
+          ShellPage.crmContacts,
+          ShellPage.crmVisits,
+          ShellPage.crmCommunication,
+        ],
+      ),
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.sales,
         title: 'Sales',
         icon: Icons.trending_up_outlined,
         children: [
@@ -915,19 +987,38 @@ class _ZohoShellState extends State<ZohoShell> {
           ShellPage.salesMeetings,
         ],
       ),
-      const SidebarGroup(
-        key: 'crm',
-        title: 'CRM',
-        icon: Icons.people_alt_outlined,
-        children: [
-          ShellPage.crmCustomers,
-          ShellPage.crmContacts,
-          ShellPage.crmVisits,
-          ShellPage.crmCommunication,
-        ],
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.customerPo,
+        title: 'Customer PO',
+        icon: Icons.request_quote_outlined,
+        children: [ShellPage.customerPoList],
       ),
-      const SidebarGroup(
-        key: 'purchase',
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.projectsJobCards,
+        title: 'Projects & Job Cards',
+        icon: Icons.assignment_outlined,
+        children: [ShellPage.projectsList, ShellPage.productionJobCards],
+      ),
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.planningScheduling,
+        title: 'Planning & Scheduling',
+        icon: Icons.calendar_month_outlined,
+        children: [ShellPage.planningDashboard, ShellPage.schedulingCalendar],
+      ),
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.engineering,
+        title: 'Engineering',
+        icon: Icons.architecture_outlined,
+        children: [ShellPage.engineeringDrawings, ShellPage.engineeringBomBoq],
+      ),
+      SidebarGroup<ShellPage>(
+        key: ModuleIds.inventoryStore,
+        title: 'Inventory & Store',
+        icon: Icons.inventory_2_outlined,
+        children: _inventorySidebarPages,
+      ),
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.purchase,
         title: 'Purchase',
         icon: Icons.shopping_cart_outlined,
         children: [
@@ -939,14 +1030,39 @@ class _ZohoShellState extends State<ZohoShell> {
           ShellPage.purchaseLedger,
         ],
       ),
-      SidebarGroup(
-        key: 'inventory',
-        title: 'Inventory',
-        icon: Icons.inventory_2_outlined,
-        children: _inventorySidebarPages,
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.production,
+        title: 'Production',
+        icon: Icons.precision_manufacturing_outlined,
+        children: [
+          ShellPage.productionItems,
+          ShellPage.productionProcesses,
+          ShellPage.productionWorkCenters,
+          ShellPage.productionBom,
+          ShellPage.productionBoq,
+          ShellPage.productionEntries,
+        ],
       ),
-      const SidebarGroup(
-        key: 'dispatch',
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.contractorJobWork,
+        title: 'Contractor Job Work',
+        icon: Icons.engineering_outlined,
+        children: [ShellPage.productionContractorJobs],
+      ),
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.galvanizing,
+        title: 'Galvanizing',
+        icon: Icons.factory_outlined,
+        children: [ShellPage.productionGalvanizing],
+      ),
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.inspectionQa,
+        title: 'Inspection / QA',
+        icon: Icons.fact_check_outlined,
+        children: [ShellPage.productionInspections],
+      ),
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.dispatch,
         title: 'Dispatch',
         icon: Icons.local_shipping_outlined,
         children: [
@@ -956,31 +1072,14 @@ class _ZohoShellState extends State<ZohoShell> {
           ShellPage.dispatchDelivered,
         ],
       ),
-      const SidebarGroup(
-        key: 'production',
-        title: 'Production',
-        icon: Icons.precision_manufacturing_outlined,
-        children: [
-          ShellPage.productionItems,
-          ShellPage.productionProcesses,
-          ShellPage.productionWorkCenters,
-          ShellPage.productionBom,
-          ShellPage.productionBoq,
-          ShellPage.productionJobCards,
-          ShellPage.productionContractorJobs,
-          ShellPage.productionGalvanizing,
-          ShellPage.productionInspections,
-          ShellPage.productionEntries,
-        ],
-      ),
-      const SidebarGroup(
-        key: 'hr',
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.hrAdmin,
         title: 'HR',
         icon: Icons.badge_outlined,
         children: [ShellPage.hrHome],
       ),
-      const SidebarGroup(
-        key: 'finance',
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.finance,
         title: 'Finance',
         icon: Icons.account_balance_wallet_outlined,
         children: [
@@ -991,8 +1090,8 @@ class _ZohoShellState extends State<ZohoShell> {
           ShellPage.financeExpenses,
         ],
       ),
-      const SidebarGroup(
-        key: 'reports',
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.reports,
         title: 'Reports',
         icon: Icons.assessment_outlined,
         children: [
@@ -1003,15 +1102,13 @@ class _ZohoShellState extends State<ZohoShell> {
           ShellPage.reportsPayment,
         ],
       ),
-      const SidebarGroup(
-        key: 'admin',
+      const SidebarGroup<ShellPage>(
+        key: ModuleIds.administration,
         title: 'Administration',
         icon: Icons.admin_panel_settings_outlined,
         children: [
           ShellPage.adminUsers,
           ShellPage.adminRoles,
-          ShellPage.adminModules,
-          ShellPage.adminInventoryProfile,
           ShellPage.adminComplianceLegal,
           ShellPage.adminCompanyProfile,
           ShellPage.adminBranches,
@@ -1021,7 +1118,7 @@ class _ZohoShellState extends State<ZohoShell> {
     ];
   }
 
-  List<SidebarGroup<ShellPage>>_computeSidebarGroups() {
+  List<SidebarGroup<ShellPage>> _computeSidebarGroups() {
     final allGroups = _allSidebarGroups;
     final filtered = <SidebarGroup<ShellPage>>[];
 
@@ -1050,34 +1147,8 @@ class _ZohoShellState extends State<ZohoShell> {
   }
 
   String? _moduleIdForSidebarGroup(String groupKey) {
-    switch (groupKey) {
-      case 'admin':
-        return ModuleIds.administration;
-      case ModuleIds.crm:
-        return ModuleIds.crm;
-      case ModuleIds.sales:
-        return ModuleIds.sales;
-      case ModuleIds.purchase:
-        return ModuleIds.purchase;
-      case ModuleIds.inventory:
-        return ModuleIds.inventory;
-      case ModuleIds.dispatch:
-        return ModuleIds.dispatch;
-      case ModuleIds.finance:
-        return ModuleIds.finance;
-      case ModuleIds.production:
-        return ModuleIds.production;
-      case ModuleIds.hr:
-        return ModuleIds.hr;
-      case ModuleIds.reports:
-        return ModuleIds.reports;
-      case ModuleIds.iot:
-        return ModuleIds.iot;
-      case ModuleIds.settings:
-        return ModuleIds.settings;
-      default:
-        return null;
-    }
+    // New setup uses ModuleIds.xxx exactly for keys
+    return groupKey;
   }
 
   bool _isModuleEnabled(String moduleId) {
@@ -1119,11 +1190,15 @@ class _ZohoShellState extends State<ZohoShell> {
   }
 
   bool _isImplementedPage(ShellPage page) {
+    // Note: The new placeholder pages are INTENTIONALLY excluded here
+    // so they trigger your beautiful "Module Overview" fallback UI.
     switch (page) {
       case ShellPage.dashboard:
       case ShellPage.platformTenantModules:
       case ShellPage.salesInquiries:
       case ShellPage.crmCustomers:
+      case ShellPage.customerPoList:
+      case ShellPage.projectsList:
       case ShellPage.purchaseVendors:
       case ShellPage.purchaseVendorOffers:
       case ShellPage.purchasePurchaseOrders:
@@ -1644,7 +1719,7 @@ class _ZohoShellState extends State<ZohoShell> {
                 padding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
                 child: Column(
                   children: group.children
-                      .map((page) => _subNavItem(page))
+                      .map((page) => _subNavItem(page as ShellPage))
                       .toList(),
                 ),
               ),
@@ -1758,14 +1833,6 @@ class _ZohoShellState extends State<ZohoShell> {
 
     switch (activePage) {
       case ShellPage.dashboard:
-        return DashboardScreen(
-          companyId: widget.companyId,
-          userName: widget.companyName,
-          currentUserId: widget.userUid,
-          permissions: _currentPermissions,
-          role: _currentRole,
-        );
-
       case ShellPage.platformTenantModules:
         return DashboardScreen(
           companyId: widget.companyId,
@@ -1801,18 +1868,21 @@ class _ZohoShellState extends State<ZohoShell> {
 
       case ShellPage.inventoryStockSummary:
       case ShellPage.inventoryWarehouse:
+      case ShellPage.inventoryRawMaterialStock:
         return Padding(
           padding: const EdgeInsets.all(10),
           child: FabricationRawMaterialStockScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.inventoryStockIn:
+      case ShellPage.inventoryMaterialInward:
         return Padding(
           padding: const EdgeInsets.all(10),
           child: FabricationMaterialInwardScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.inventoryStockOut:
+      case ShellPage.inventoryMaterialIssue:
         return Padding(
           padding: const EdgeInsets.all(10),
           child: FabricationMaterialIssueScreen(tenantId: widget.companyId),
@@ -1867,24 +1937,6 @@ class _ZohoShellState extends State<ZohoShell> {
             tenantId: widget.companyId,
             purchaseView: true,
           ),
-        );
-
-      case ShellPage.inventoryRawMaterialStock:
-        return Padding(
-          padding: const EdgeInsets.all(10),
-          child: FabricationRawMaterialStockScreen(tenantId: widget.companyId),
-        );
-
-      case ShellPage.inventoryMaterialInward:
-        return Padding(
-          padding: const EdgeInsets.all(10),
-          child: FabricationMaterialInwardScreen(tenantId: widget.companyId),
-        );
-
-      case ShellPage.inventoryMaterialIssue:
-        return Padding(
-          padding: const EdgeInsets.all(10),
-          child: FabricationMaterialIssueScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.dispatchReady:
@@ -2121,7 +2173,20 @@ class _ZohoShellState extends State<ZohoShell> {
           ),
         );
 
+      case ShellPage.customerPoList:
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: CustomerPoListScreen(companyId: widget.companyId),
+        );
+
+      case ShellPage.projectsList:
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: ProjectsListScreen(companyId: widget.companyId),
+        );
+
       default:
+        // This acts as the fallback landing page for Customer PO, Projects, etc.
         return Padding(
           padding: const EdgeInsets.all(10),
           child: _moduleLandingPage(activePage),
