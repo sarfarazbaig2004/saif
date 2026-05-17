@@ -298,7 +298,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       inspectionRequirement: _inspectionRequirement.text.trim(),
       warranty: _warranty.text.trim(),
       ldClause: _ldClause.text.trim(),
-      status: 'draft',
+      status: 'Draft',
       items: _items,
       poDocumentUrl: _poDocumentUrl,
       poFileName: _poFileName,

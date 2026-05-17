@@ -1,6 +1,16 @@
 import '../widgets/customer_po_item_row.dart';
 
 class CustomerPoModel {
+  static const List<String> statuses = [
+    'Draft',
+    'Submitted',
+    'Approved',
+    'Rejected',
+    'In Production',
+    'Partially Dispatched',
+    'Completed',
+    'Closed',
+  ];
   final String id;
   final String companyId;
   final String poNumber;

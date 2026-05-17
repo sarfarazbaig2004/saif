@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
+
 class CustomerPoDetailScreen extends StatelessWidget {
   final String companyId;
   final String docId;
@@ -29,14 +31,20 @@ class CustomerPoDetailScreen extends StatelessWidget {
 
   Color _statusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'approved':
+      case 'submitted':
         return Colors.blue.shade700;
-      case 'active':
+      case 'approved':
         return Colors.green.shade700;
+      case 'rejected':
+        return Colors.red.shade700;
+      case 'in production':
+        return Colors.orange.shade800;
+      case 'partially dispatched':
+        return Colors.deepPurple.shade600;
       case 'completed':
         return Colors.teal.shade700;
-      case 'cancelled':
-        return Colors.red.shade700;
+      case 'closed':
+        return Colors.blueGrey.shade700;
       default:
         return Colors.grey.shade600;
     }
@@ -44,16 +52,47 @@ class CustomerPoDetailScreen extends StatelessWidget {
 
   Color _statusBg(String status) {
     switch (status.toLowerCase()) {
-      case 'approved':
+      case 'submitted':
         return Colors.blue.shade50;
-      case 'active':
+      case 'approved':
         return Colors.green.shade50;
+      case 'rejected':
+        return Colors.red.shade50;
+      case 'in production':
+        return Colors.orange.shade50;
+      case 'partially dispatched':
+        return Colors.deepPurple.shade50;
       case 'completed':
         return Colors.teal.shade50;
-      case 'cancelled':
-        return Colors.red.shade50;
+      case 'closed':
+        return Colors.blueGrey.shade50;
       default:
         return Colors.grey.shade100;
+    }
+  }
+
+  Future<void> _updateStatus(BuildContext context, String newStatus) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(companyId)
+          .collection('customer_pos')
+          .doc(docId)
+          .update({
+            'status': newStatus,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Status updated to $newStatus')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update status: $e')));
+      }
     }
   }
 
@@ -110,7 +149,7 @@ class CustomerPoDetailScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
-                  _headerCard(d, status, currency),
+                  _headerCard(context, d, status, currency),
                   const SizedBox(height: 16),
                   _customerCard(d),
                   const SizedBox(height: 16),
@@ -141,6 +180,7 @@ class CustomerPoDetailScreen extends StatelessWidget {
   // ── Header ──────────────────────────────────────────────────────────────────
 
   Widget _headerCard(
+    BuildContext context,
     Map<String, dynamic> d,
     String status,
     NumberFormat currency,
@@ -185,22 +225,56 @@ class CustomerPoDetailScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: _statusBg(status),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  status.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: _statusColor(status),
-                    letterSpacing: 0.5,
+              PopupMenuButton<String>(
+                tooltip: 'Change Status',
+                onSelected: (newStatus) => _updateStatus(context, newStatus),
+                itemBuilder: (_) => CustomerPoModel.statuses.map((s) {
+                  return PopupMenuItem<String>(
+                    value: s,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: _statusColor(s),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(s),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _statusBg(status),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        status.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: _statusColor(status),
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        Icons.arrow_drop_down,
+                        size: 16,
+                        color: _statusColor(status),
+                      ),
+                    ],
                   ),
                 ),
               ),
