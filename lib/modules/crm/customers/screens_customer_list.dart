@@ -76,13 +76,17 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
     Map<String, dynamic> userData, {
     String action = 'view',
   }) {
+    // All authenticated active company users may view the customer list.
+    // Firestore rules enforce isActive(companyId) on reads; this matches that.
+    if (action == 'view') return true;
+
     final role = (userData['role'] ?? '').toString();
     if (_isAdminOrManager(role)) return true;
 
     final permissions = userData['permissions'];
     if (permissions is! Map) return false;
 
-    // New nested structure check: ['crm']['customers']['view']
+    // Nested structure: permissions['crm']['customers'][action]
     final crm = permissions['crm'];
     if (crm is Map) {
       final customers = crm['customers'];
@@ -91,8 +95,7 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
       }
     }
 
-    // Legacy fallback check
-    if (permissions['customers'] == true && action == 'view') return true;
+    // Legacy flat structure
     if (permissions['customers'] is Map &&
         permissions['customers'][action] == true) {
       return true;
