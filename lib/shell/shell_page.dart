@@ -1,8 +1,16 @@
+import 'package:flutter/material.dart';
+
 enum ShellPage {
   dashboard,
-
   platformTenantModules,
 
+  // CRM
+  crmCustomers,
+  crmContacts,
+  crmVisits,
+  crmCommunication,
+
+  // Sales
   salesInquiries,
   salesQuotations,
   salesOrders,
@@ -11,11 +19,21 @@ enum ShellPage {
   salesTasks,
   salesMeetings,
 
-  crmCustomers,
-  crmContacts,
-  crmVisits,
-  crmCommunication,
+  // Customer PO
+  customerPoList,
 
+  // Projects & Job Cards
+  projectsList,
+
+  // Planning & Scheduling
+  planningDashboard,
+  schedulingCalendar,
+
+  // Engineering
+  engineeringDrawings,
+  engineeringBomBoq,
+
+  // Purchase
   purchaseVendors,
   purchaseVendorOffers,
   purchasePurchaseOrders,
@@ -23,6 +41,7 @@ enum ShellPage {
   purchaseGrn,
   purchaseLedger,
 
+  // Inventory
   inventoryProducts,
   inventoryStockSummary,
   inventoryStockIn,
@@ -33,11 +52,13 @@ enum ShellPage {
   inventoryMaterialInward,
   inventoryMaterialIssue,
 
+  // Dispatch
   dispatchReady,
   dispatchChallans,
   dispatchShipmentTracking,
   dispatchDelivered,
 
+  // Production
   productionItems,
   productionProcesses,
   productionWorkCenters,
@@ -49,8 +70,10 @@ enum ShellPage {
   productionInspections,
   productionEntries,
 
+  // HR
   hrHome,
 
+  // Finance
   financeProforma,
   financeTaxInvoice,
   financeTaxInvoiceCreate,
@@ -59,12 +82,14 @@ enum ShellPage {
   financeOutstanding,
   financeExpenses,
 
+  // Reports
   reportsSales,
   reportsInquiry,
   reportsCustomer,
   reportsProduct,
   reportsPayment,
 
+  // Admin
   adminUsers,
   adminRoles,
   adminModules,
@@ -74,6 +99,7 @@ enum ShellPage {
   adminBranches,
   adminAuditLogs,
 
+  // Settings
   settingsGeneral,
 }
 
@@ -108,6 +134,19 @@ extension ShellPageX on ShellPage {
         return 'Customer Visits';
       case ShellPage.crmCommunication:
         return 'Communication History';
+
+      case ShellPage.customerPoList:
+        return 'Customer POs';
+      case ShellPage.projectsList:
+        return 'Projects';
+      case ShellPage.planningDashboard:
+        return 'Planning Board';
+      case ShellPage.schedulingCalendar:
+        return 'Master Schedule';
+      case ShellPage.engineeringDrawings:
+        return 'Drawings & Specs';
+      case ShellPage.engineeringBomBoq:
+        return 'BOM & BOQ';
 
       case ShellPage.purchaseVendors:
         return 'Vendors';
@@ -219,6 +258,154 @@ extension ShellPageX on ShellPage {
 
       case ShellPage.settingsGeneral:
         return 'Settings';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case ShellPage.dashboard:
+        return Icons.home_outlined;
+      case ShellPage.platformTenantModules:
+        return Icons.admin_panel_settings_outlined;
+      case ShellPage.salesInquiries:
+        return Icons.campaign_outlined;
+      case ShellPage.salesQuotations:
+        return Icons.receipt_long_outlined;
+      case ShellPage.salesOrders:
+        return Icons.shopping_bag_outlined;
+      case ShellPage.service:
+        return Icons.build_outlined;
+      case ShellPage.salesFollowUps:
+        return Icons.event_repeat_outlined;
+      case ShellPage.salesTasks:
+        return Icons.task_alt_outlined;
+      case ShellPage.salesMeetings:
+        return Icons.groups_outlined;
+      case ShellPage.crmCustomers:
+        return Icons.people_outline;
+      case ShellPage.crmContacts:
+        return Icons.contact_phone_outlined;
+      case ShellPage.crmVisits:
+        return Icons.location_on_outlined;
+      case ShellPage.crmCommunication:
+        return Icons.chat_bubble_outline;
+
+      case ShellPage.customerPoList:
+        return Icons.request_quote_outlined;
+      case ShellPage.projectsList:
+        return Icons.account_tree_outlined;
+      case ShellPage.planningDashboard:
+        return Icons.schema_outlined;
+      case ShellPage.schedulingCalendar:
+        return Icons.calendar_month_outlined;
+      case ShellPage.engineeringDrawings:
+        return Icons.architecture_outlined;
+      case ShellPage.engineeringBomBoq:
+        return Icons.calculate_outlined;
+
+      case ShellPage.purchaseVendors:
+        return Icons.business_outlined;
+      case ShellPage.purchaseVendorOffers:
+        return Icons.attach_file_outlined;
+      case ShellPage.purchasePurchaseOrders:
+        return Icons.shopping_cart_checkout_outlined;
+      case ShellPage.purchaseOrders:
+        return Icons.shopping_cart_outlined;
+      case ShellPage.purchaseGrn:
+        return Icons.inventory_outlined;
+      case ShellPage.purchaseLedger:
+        return Icons.menu_book_outlined;
+      case ShellPage.inventoryProducts:
+        return Icons.inventory_2_outlined;
+      case ShellPage.inventoryStockSummary:
+        return Icons.bar_chart_outlined;
+      case ShellPage.inventoryStockIn:
+        return Icons.move_to_inbox_outlined;
+      case ShellPage.inventoryStockOut:
+        return Icons.outbox_outlined;
+      case ShellPage.inventoryWarehouse:
+        return Icons.warehouse_outlined;
+      case ShellPage.inventoryLowStock:
+        return Icons.warning_amber_outlined;
+      case ShellPage.inventoryRawMaterialStock:
+        return Icons.category_outlined;
+      case ShellPage.inventoryMaterialInward:
+        return Icons.move_to_inbox_outlined;
+      case ShellPage.inventoryMaterialIssue:
+        return Icons.outbox_outlined;
+      case ShellPage.dispatchReady:
+        return Icons.inventory_2_outlined;
+      case ShellPage.dispatchChallans:
+        return Icons.local_shipping_outlined;
+      case ShellPage.dispatchShipmentTracking:
+        return Icons.route_outlined;
+      case ShellPage.dispatchDelivered:
+        return Icons.done_all_outlined;
+
+      case ShellPage.productionItems:
+        return Icons.widgets_outlined;
+      case ShellPage.productionProcesses:
+        return Icons.account_tree_outlined;
+      case ShellPage.productionWorkCenters:
+        return Icons.precision_manufacturing_outlined;
+      case ShellPage.productionBom:
+        return Icons.schema_outlined;
+      case ShellPage.productionBoq:
+        return Icons.calculate_outlined;
+      case ShellPage.productionJobCards:
+        return Icons.assignment_outlined;
+      case ShellPage.productionContractorJobs:
+        return Icons.engineering_outlined;
+      case ShellPage.productionGalvanizing:
+        return Icons.hot_tub_outlined;
+      case ShellPage.productionInspections:
+        return Icons.fact_check_outlined;
+      case ShellPage.productionEntries:
+        return Icons.factory_outlined;
+      case ShellPage.hrHome:
+        return Icons.badge_outlined;
+      case ShellPage.financeProforma:
+        return Icons.request_quote_outlined;
+      case ShellPage.financeTaxInvoice:
+        return Icons.description_outlined;
+      case ShellPage.financeTaxInvoiceCreate:
+        return Icons.receipt_long_outlined;
+      case ShellPage.financeExportInvoiceCreate:
+        return Icons.public_outlined;
+      case ShellPage.financePaymentsReceived:
+        return Icons.payments_outlined;
+      case ShellPage.financeOutstanding:
+        return Icons.account_balance_wallet_outlined;
+      case ShellPage.financeExpenses:
+        return Icons.receipt_outlined;
+      case ShellPage.reportsSales:
+        return Icons.show_chart_outlined;
+      case ShellPage.reportsInquiry:
+        return Icons.insights_outlined;
+      case ShellPage.reportsCustomer:
+        return Icons.people_alt_outlined;
+      case ShellPage.reportsProduct:
+        return Icons.widgets_outlined;
+      case ShellPage.reportsPayment:
+        return Icons.pie_chart_outline;
+      case ShellPage.adminUsers:
+        return Icons.manage_accounts_outlined;
+      case ShellPage.adminRoles:
+        return Icons.admin_panel_settings_outlined;
+      case ShellPage.adminModules:
+        return Icons.widgets_outlined;
+      case ShellPage.adminInventoryProfile:
+        return Icons.tune_outlined;
+      case ShellPage.adminComplianceLegal:
+        return Icons.gavel_outlined;
+      case ShellPage.adminCompanyProfile:
+        return Icons.apartment_outlined;
+      case ShellPage.adminBranches:
+        return Icons.account_tree_outlined;
+      case ShellPage.adminAuditLogs:
+        return Icons.fact_check_outlined;
+      case ShellPage.settingsGeneral:
+        return Icons.settings_outlined;
     }
   }
 }
