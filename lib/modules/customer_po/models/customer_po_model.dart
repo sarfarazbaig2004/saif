@@ -1,3 +1,5 @@
+import '../widgets/customer_po_item_row.dart';
+
 class CustomerPoModel {
   final String id;
   final String companyId;
@@ -18,6 +20,7 @@ class CustomerPoModel {
   final String ldClause;
   final String status;
   final String? poFileUrl;
+  final List<CustomerPoItemRow> items;
 
   const CustomerPoModel({
     required this.id,
@@ -39,6 +42,7 @@ class CustomerPoModel {
     required this.ldClause,
     required this.status,
     this.poFileUrl,
+    this.items = const [],
   });
 
   Map<String, dynamic> toMap() {
@@ -62,6 +66,7 @@ class CustomerPoModel {
       'ldClause': ldClause,
       'status': status,
       'poFileUrl': poFileUrl,
+      'items': items.map((e) => e.toMap()).toList(),
     };
   }
 }

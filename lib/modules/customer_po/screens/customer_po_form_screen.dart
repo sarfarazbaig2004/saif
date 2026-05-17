@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 import 'package:QUIK/modules/customer_po/providers/customer_po_provider.dart';
+import 'package:QUIK/modules/customer_po/widgets/customer_po_item_row.dart';
+import 'package:QUIK/modules/customer_po/widgets/customer_po_items_table.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
@@ -21,7 +23,6 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   final _projectName = TextEditingController();
   final _siteLocation = TextEditingController();
   final _subject = TextEditingController();
-  final _basicValue = TextEditingController();
   final _gstPercent = TextEditingController(text: '18');
   final _paymentTerms = TextEditingController();
   final _deliveryTerms = TextEditingController();
@@ -30,18 +31,18 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   final _ldClause = TextEditingController();
 
   final DateTime _poDate = DateTime.now();
+  List<CustomerPoItemRow> _items = [];
 
-  double _parseAmount(TextEditingController controller) {
-    return double.tryParse(controller.text.trim()) ?? 0;
-  }
+  double get _basicValue =>
+      _items.fold<double>(0, (sum, item) => sum + item.amount);
+
+  double get _gstAmount =>
+      _basicValue * (double.tryParse(_gstPercent.text.trim()) ?? 0) / 100;
+
+  double get _totalValue => _basicValue + _gstAmount;
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-
-    final basic = _parseAmount(_basicValue);
-    final gstPercent = _parseAmount(_gstPercent);
-    final gstAmount = basic * gstPercent / 100;
-    final total = basic + gstAmount;
 
     final po = CustomerPoModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -52,16 +53,17 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       projectName: _projectName.text.trim(),
       siteLocation: _siteLocation.text.trim(),
       subject: _subject.text.trim(),
-      basicValue: basic,
-      gstPercent: gstPercent,
-      gstAmount: gstAmount,
-      totalValue: total,
+      basicValue: _basicValue,
+      gstPercent: double.tryParse(_gstPercent.text.trim()) ?? 0,
+      gstAmount: _gstAmount,
+      totalValue: _totalValue,
       paymentTerms: _paymentTerms.text.trim(),
       deliveryTerms: _deliveryTerms.text.trim(),
       inspectionRequirement: _inspectionRequirement.text.trim(),
       warranty: _warranty.text.trim(),
       ldClause: _ldClause.text.trim(),
       status: 'draft',
+      items: _items,
     );
 
     try {
@@ -86,7 +88,6 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     _projectName.dispose();
     _siteLocation.dispose();
     _subject.dispose();
-    _basicValue.dispose();
     _gstPercent.dispose();
     _paymentTerms.dispose();
     _deliveryTerms.dispose();
@@ -122,10 +123,6 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final basic = _parseAmount(_basicValue);
-    final gstPercent = _parseAmount(_gstPercent);
-    final total = basic + (basic * gstPercent / 100);
-
     return Scaffold(
       appBar: AppBar(title: const Text('Create Customer PO')),
       body: Form(
@@ -142,17 +139,38 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
             _field('Site Location', _siteLocation),
             const SizedBox(height: 12),
             _field('Subject / Scope', _subject),
-            const SizedBox(height: 12),
-            _field(
-              'Basic Value',
-              _basicValue,
-              required: true,
-              keyboardType: TextInputType.number,
+            const SizedBox(height: 16),
+            CustomerPoItemsTable(
+              onChanged: (items) => setState(() => _items = items),
             ),
             const SizedBox(height: 12),
             _field('GST %', _gstPercent, keyboardType: TextInputType.number),
             const SizedBox(height: 12),
-            Text('Total Value: ₹${total.toStringAsFixed(2)}'),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _summaryRow(
+                      'Basic Value',
+                      '₹${_basicValue.toStringAsFixed(2)}',
+                    ),
+                    const SizedBox(height: 8),
+                    _summaryRow(
+                      'GST (${_gstPercent.text.trim()}%)',
+                      '₹${_gstAmount.toStringAsFixed(2)}',
+                    ),
+                    const Divider(height: 20),
+                    _summaryRow(
+                      'Total Value',
+                      '₹${_totalValue.toStringAsFixed(2)}',
+                      bold: true,
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 12),
             _field('Payment Terms', _paymentTerms),
             const SizedBox(height: 12),
@@ -171,6 +189,20 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _summaryRow(String label, String value, {bool bold = false}) {
+    final style = TextStyle(
+      fontWeight: bold ? FontWeight.w800 : FontWeight.normal,
+      fontSize: bold ? 16 : 14,
+    );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: style),
+        Text(value, style: style),
+      ],
     );
   }
 }
