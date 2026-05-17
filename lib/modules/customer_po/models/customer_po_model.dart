@@ -5,7 +5,12 @@ class CustomerPoModel {
   final String companyId;
   final String poNumber;
   final DateTime poDate;
+  final String customerId;
   final String customerName;
+  final String customerEmail;
+  final String customerMobile;
+  final String customerAddress;
+  final String customerGstNumber;
   final String projectName;
   final String siteLocation;
   final String subject;
@@ -27,6 +32,7 @@ class CustomerPoModel {
     required this.companyId,
     required this.poNumber,
     required this.poDate,
+    required this.customerId,
     required this.customerName,
     required this.projectName,
     required this.siteLocation,
@@ -41,6 +47,10 @@ class CustomerPoModel {
     required this.warranty,
     required this.ldClause,
     required this.status,
+    this.customerEmail = '',
+    this.customerMobile = '',
+    this.customerAddress = '',
+    this.customerGstNumber = '',
     this.poFileUrl,
     this.items = const [],
   });
@@ -51,7 +61,12 @@ class CustomerPoModel {
       'companyId': companyId,
       'poNumber': poNumber,
       'poDate': poDate.toIso8601String(),
+      'customerId': customerId,
       'customerName': customerName,
+      'customerEmail': customerEmail,
+      'customerMobile': customerMobile,
+      'customerAddress': customerAddress,
+      'customerGstNumber': customerGstNumber,
       'projectName': projectName,
       'siteLocation': siteLocation,
       'subject': subject,

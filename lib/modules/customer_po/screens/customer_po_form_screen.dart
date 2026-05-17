@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
@@ -19,11 +20,10 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   final _provider = CustomerPoProvider();
 
   final _poNumber = TextEditingController();
-  final _customerName = TextEditingController();
+  final _gstPercent = TextEditingController(text: '18');
   final _projectName = TextEditingController();
   final _siteLocation = TextEditingController();
   final _subject = TextEditingController();
-  final _gstPercent = TextEditingController(text: '18');
   final _paymentTerms = TextEditingController();
   final _deliveryTerms = TextEditingController();
   final _inspectionRequirement = TextEditingController();
@@ -33,15 +33,141 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   final DateTime _poDate = DateTime.now();
   List<CustomerPoItemRow> _items = [];
 
+  // Customer selector state
+  bool _isLoadingCustomers = false;
+  List<Map<String, dynamic>> _customers = [];
+  String _customerId = '';
+  String _customerName = '';
+  String _customerEmail = '';
+  String _customerMobile = '';
+  String _customerAddress = '';
+  String _customerGstNumber = '';
+  bool _customerErrorVisible = false;
+
   double get _basicValue =>
-      _items.fold<double>(0, (sum, item) => sum + item.amount);
+      _items.fold<double>(0, (acc, item) => acc + item.amount);
 
   double get _gstAmount =>
       _basicValue * (double.tryParse(_gstPercent.text.trim()) ?? 0) / 100;
 
   double get _totalValue => _basicValue + _gstAmount;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomers();
+    _gstPercent.addListener(() => setState(() {}));
+  }
+
+  Future<void> _loadCustomers() async {
+    setState(() => _isLoadingCustomers = true);
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.companyId)
+          .collection('customers')
+          .get();
+      final list = snap.docs.map((doc) {
+        final d = doc.data();
+        return {
+          'id': doc.id,
+          'name': (d['companyName'] ?? d['name'] ?? '').toString(),
+          'email': (d['businessEmail'] ?? d['email'] ?? '').toString(),
+          'mobile': (d['phone'] ?? d['companyPhone'] ?? '').toString(),
+          'address': (d['address'] ?? '').toString(),
+          'gst': (d['gst'] ?? '').toString(),
+        };
+      }).toList();
+      list.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
+      setState(() => _customers = list);
+    } catch (_) {
+      // silent — empty list shown to user
+    } finally {
+      setState(() => _isLoadingCustomers = false);
+    }
+  }
+
+  void _showCustomerPicker() {
+    String search = '';
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final filtered = _customers.where((c) {
+            final name = (c['name'] as String).toLowerCase();
+            return search.isEmpty || name.contains(search.toLowerCase());
+          }).toList();
+
+          return AlertDialog(
+            title: const Text('Select Customer'),
+            content: SizedBox(
+              width: 420,
+              height: 420,
+              child: Column(
+                children: [
+                  TextField(
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      hintText: 'Search customer...',
+                      prefixIcon: Icon(Icons.search),
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    onChanged: (v) => setDialogState(() => search = v),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? const Center(child: Text('No customers found'))
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (_, i) {
+                              final c = filtered[i];
+                              return ListTile(
+                                title: Text(c['name'] as String),
+                                subtitle: (c['email'] as String).isNotEmpty
+                                    ? Text(c['email'] as String)
+                                    : null,
+                                onTap: () {
+                                  setState(() {
+                                    _customerId = c['id'] as String;
+                                    _customerName = c['name'] as String;
+                                    _customerEmail = c['email'] as String;
+                                    _customerMobile = c['mobile'] as String;
+                                    _customerAddress = c['address'] as String;
+                                    _customerGstNumber = c['gst'] as String;
+                                    _customerErrorVisible = false;
+                                  });
+                                  Navigator.pop(ctx);
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _save() async {
+    if (_customerId.isEmpty) {
+      setState(() => _customerErrorVisible = true);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please select a customer')));
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) return;
 
     final po = CustomerPoModel(
@@ -49,7 +175,12 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       companyId: widget.companyId,
       poNumber: _poNumber.text.trim(),
       poDate: _poDate,
-      customerName: _customerName.text.trim(),
+      customerId: _customerId,
+      customerName: _customerName,
+      customerEmail: _customerEmail,
+      customerMobile: _customerMobile,
+      customerAddress: _customerAddress,
+      customerGstNumber: _customerGstNumber,
       projectName: _projectName.text.trim(),
       siteLocation: _siteLocation.text.trim(),
       subject: _subject.text.trim(),
@@ -84,11 +215,10 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   @override
   void dispose() {
     _poNumber.dispose();
-    _customerName.dispose();
+    _gstPercent.dispose();
     _projectName.dispose();
     _siteLocation.dispose();
     _subject.dispose();
-    _gstPercent.dispose();
     _paymentTerms.dispose();
     _deliveryTerms.dispose();
     _inspectionRequirement.dispose();
@@ -121,6 +251,46 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     );
   }
 
+  Widget _customerSelector() {
+    final hasError = _customerErrorVisible && _customerId.isEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: _isLoadingCustomers ? null : _showCustomerPicker,
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: 'Customer *',
+              border: const OutlineInputBorder(),
+              errorText: hasError ? 'Please select a customer' : null,
+              suffixIcon: _isLoadingCustomers
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : const Icon(Icons.arrow_drop_down),
+            ),
+            child: Text(
+              _customerName.isEmpty ? 'Select Customer' : _customerName,
+              style: TextStyle(
+                color: _customerName.isEmpty ? Colors.grey.shade600 : null,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Customer details are managed in CRM',
+          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -132,7 +302,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
           children: [
             _field('Customer PO Number', _poNumber, required: true),
             const SizedBox(height: 12),
-            _field('Customer Name', _customerName, required: true),
+            _customerSelector(),
             const SizedBox(height: 12),
             _field('Project Name', _projectName),
             const SizedBox(height: 12),
