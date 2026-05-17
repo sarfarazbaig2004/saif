@@ -40,4 +40,28 @@ class CustomerPoModel {
     required this.status,
     this.poFileUrl,
   });
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'companyId': companyId,
+      'poNumber': poNumber,
+      'poDate': poDate.toIso8601String(),
+      'customerName': customerName,
+      'projectName': projectName,
+      'siteLocation': siteLocation,
+      'subject': subject,
+      'basicValue': basicValue,
+      'gstPercent': gstPercent,
+      'gstAmount': gstAmount,
+      'totalValue': totalValue,
+      'paymentTerms': paymentTerms,
+      'deliveryTerms': deliveryTerms,
+      'inspectionRequirement': inspectionRequirement,
+      'warranty': warranty,
+      'ldClause': ldClause,
+      'status': status,
+      'poFileUrl': poFileUrl,
+    };
+  }
 }

@@ -11,27 +11,6 @@ class CustomerPoRepository {
         .doc(po.companyId)
         .collection('customer_pos')
         .doc(po.id)
-        .set({
-          'id': po.id,
-          'companyId': po.companyId,
-          'poNumber': po.poNumber,
-          'poDate': po.poDate.toIso8601String(),
-          'customerName': po.customerName,
-          'projectName': po.projectName,
-          'siteLocation': po.siteLocation,
-          'subject': po.subject,
-          'basicValue': po.basicValue,
-          'gstPercent': po.gstPercent,
-          'gstAmount': po.gstAmount,
-          'totalValue': po.totalValue,
-          'paymentTerms': po.paymentTerms,
-          'deliveryTerms': po.deliveryTerms,
-          'inspectionRequirement': po.inspectionRequirement,
-          'warranty': po.warranty,
-          'ldClause': po.ldClause,
-          'status': po.status,
-          'poFileUrl': po.poFileUrl,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        .set({...po.toMap(), 'createdAt': FieldValue.serverTimestamp()});
   }
 }
