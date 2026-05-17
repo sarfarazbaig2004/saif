@@ -22,4 +22,16 @@ class CustomerPoService {
 
     await _repository.createCustomerPo(po);
   }
+
+  Future<void> updateCustomerPo(CustomerPoModel po) async {
+    if (po.poNumber.trim().isEmpty) {
+      throw Exception('PO number is required');
+    }
+
+    if (po.customerName.trim().isEmpty) {
+      throw Exception('Customer name is required');
+    }
+
+    await _repository.updateCustomerPo(po);
+  }
 }

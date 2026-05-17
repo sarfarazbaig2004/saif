@@ -24,4 +24,16 @@ class CustomerPoProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> updateCustomerPo(CustomerPoModel po) async {
+    try {
+      _loading = true;
+      notifyListeners();
+
+      await _service.updateCustomerPo(po);
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
 }

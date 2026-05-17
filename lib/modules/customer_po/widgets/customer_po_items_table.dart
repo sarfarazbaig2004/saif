@@ -4,8 +4,13 @@ import 'customer_po_item_row.dart';
 
 class CustomerPoItemsTable extends StatefulWidget {
   final ValueChanged<List<CustomerPoItemRow>> onChanged;
+  final List<CustomerPoItemRow> initialItems;
 
-  const CustomerPoItemsTable({super.key, required this.onChanged});
+  const CustomerPoItemsTable({
+    super.key,
+    required this.onChanged,
+    this.initialItems = const [],
+  });
 
   @override
   State<CustomerPoItemsTable> createState() => _CustomerPoItemsTableState();
@@ -38,6 +43,22 @@ class _RowControllers {
 class _CustomerPoItemsTableState extends State<CustomerPoItemsTable> {
   final List<CustomerPoItemRow> _items = [];
   final List<_RowControllers> _controllers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    for (final item in widget.initialItems) {
+      _items.add(item);
+      _controllers.add(
+        _RowControllers(
+          desc: item.description,
+          qty: item.quantity,
+          u: item.unit,
+          r: item.rate,
+        ),
+      );
+    }
+  }
 
   @override
   void dispose() {

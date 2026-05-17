@@ -13,4 +13,13 @@ class CustomerPoRepository {
         .doc(po.id)
         .set({...po.toMap(), 'createdAt': FieldValue.serverTimestamp()});
   }
+
+  Future<void> updateCustomerPo(CustomerPoModel po) async {
+    await _firestore
+        .collection('companies')
+        .doc(po.companyId)
+        .collection('customer_pos')
+        .doc(po.id)
+        .update({...po.toMap(), 'updatedAt': FieldValue.serverTimestamp()});
+  }
 }

@@ -10,8 +10,13 @@ import 'package:QUIK/modules/customer_po/widgets/customer_po_items_table.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
+  final String? existingDocId;
 
-  const CustomerPoFormScreen({super.key, required this.companyId});
+  const CustomerPoFormScreen({
+    super.key,
+    required this.companyId,
+    this.existingDocId,
+  });
 
   @override
   State<CustomerPoFormScreen> createState() => _CustomerPoFormScreenState();
@@ -32,8 +37,13 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   final _warranty = TextEditingController();
   final _ldClause = TextEditingController();
 
-  final DateTime _poDate = DateTime.now();
+  DateTime _poDate = DateTime.now();
   List<CustomerPoItemRow> _items = [];
+
+  bool get _isEditMode => widget.existingDocId != null;
+  bool _isLoadingExisting = false;
+  String _existingStatus = 'Draft';
+  String _existingId = '';
 
   // Customer selector state
   bool _isLoadingCustomers = false;
@@ -65,6 +75,10 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     super.initState();
     _loadCustomers();
     _gstPercent.addListener(() => setState(() {}));
+    if (_isEditMode) {
+      _isLoadingExisting = true;
+      _loadExistingData();
+    }
   }
 
   Future<void> _loadCustomers() async {
@@ -99,6 +113,83 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       }
     } finally {
       setState(() => _isLoadingCustomers = false);
+    }
+  }
+
+  Future<void> _loadExistingData() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.companyId)
+          .collection('customer_pos')
+          .doc(widget.existingDocId)
+          .get();
+
+      if (!doc.exists || !mounted) return;
+      final d = doc.data()!;
+
+      final rawItems = (d['items'] as List<dynamic>?) ?? [];
+      final loadedItems = rawItems.map((item) {
+        final m = item as Map<String, dynamic>;
+        return CustomerPoItemRow(
+          description: (m['description'] ?? '').toString(),
+          quantity: (m['quantity'] is num)
+              ? (m['quantity'] as num).toDouble()
+              : 1.0,
+          unit: (m['unit'] ?? 'Nos').toString(),
+          rate: (m['rate'] is num) ? (m['rate'] as num).toDouble() : 0.0,
+        );
+      }).toList();
+
+      DateTime? uploadedAt;
+      final uploadedAtRaw = d['uploadedAt'];
+      if (uploadedAtRaw is Timestamp) {
+        uploadedAt = uploadedAtRaw.toDate();
+      } else if (uploadedAtRaw != null) {
+        uploadedAt = DateTime.tryParse(uploadedAtRaw.toString());
+      }
+
+      final poDateRaw = d['poDate'];
+      DateTime poDate = DateTime.now();
+      if (poDateRaw is Timestamp) {
+        poDate = poDateRaw.toDate();
+      } else if (poDateRaw != null) {
+        poDate = DateTime.tryParse(poDateRaw.toString()) ?? DateTime.now();
+      }
+
+      setState(() {
+        _existingId = doc.id;
+        _existingStatus = (d['status'] ?? 'Draft').toString();
+        _poDate = poDate;
+        _poNumber.text = (d['poNumber'] ?? '').toString();
+        _customerId = (d['customerId'] ?? '').toString();
+        _customerName = (d['customerName'] ?? '').toString();
+        _customerEmail = (d['customerEmail'] ?? '').toString();
+        _customerMobile = (d['customerMobile'] ?? '').toString();
+        _customerAddress = (d['customerAddress'] ?? '').toString();
+        _customerGstNumber = (d['customerGstNumber'] ?? '').toString();
+        _projectName.text = (d['projectName'] ?? '').toString();
+        _siteLocation.text = (d['siteLocation'] ?? '').toString();
+        _subject.text = (d['subject'] ?? '').toString();
+        _gstPercent.text = (d['gstPercent'] ?? 18).toString();
+        _paymentTerms.text = (d['paymentTerms'] ?? '').toString();
+        _deliveryTerms.text = (d['deliveryTerms'] ?? '').toString();
+        _inspectionRequirement.text = (d['inspectionRequirement'] ?? '')
+            .toString();
+        _warranty.text = (d['warranty'] ?? '').toString();
+        _ldClause.text = (d['ldClause'] ?? '').toString();
+        _poDocumentUrl = d['poDocumentUrl'] as String?;
+        _poFileName = d['poFileName'] as String?;
+        _uploadedAt = uploadedAt;
+        _items = loadedItems;
+        _isLoadingExisting = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingExisting = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load PO: $e')));
     }
   }
 
@@ -275,8 +366,12 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
 
     if (!_formKey.currentState!.validate()) return;
 
+    final id = _isEditMode
+        ? _existingId
+        : DateTime.now().millisecondsSinceEpoch.toString();
+
     final po = CustomerPoModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: id,
       companyId: widget.companyId,
       poNumber: _poNumber.text.trim(),
       poDate: _poDate,
@@ -298,7 +393,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       inspectionRequirement: _inspectionRequirement.text.trim(),
       warranty: _warranty.text.trim(),
       ldClause: _ldClause.text.trim(),
-      status: 'Draft',
+      status: _isEditMode ? _existingStatus : 'Draft',
       items: _items,
       poDocumentUrl: _poDocumentUrl,
       poFileName: _poFileName,
@@ -306,17 +401,29 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     );
 
     try {
-      await _provider.createCustomerPo(po);
+      if (_isEditMode) {
+        await _provider.updateCustomerPo(po);
+      } else {
+        await _provider.createCustomerPo(po);
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Customer PO saved successfully')),
+        SnackBar(
+          content: Text(
+            'Customer PO ${_isEditMode ? 'updated' : 'saved'} successfully',
+          ),
+        ),
       );
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to save Customer PO: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to ${_isEditMode ? 'update' : 'save'} Customer PO: $e',
+          ),
+        ),
+      );
     }
   }
 
@@ -339,11 +446,13 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     String label,
     TextEditingController controller, {
     bool required = false,
+    bool readOnly = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      readOnly: readOnly,
       validator: required
           ? (value) {
               if (value == null || value.trim().isEmpty) {
@@ -355,6 +464,8 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
+        filled: readOnly,
+        fillColor: readOnly ? Colors.grey.shade100 : null,
       ),
     );
   }
@@ -365,13 +476,19 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         GestureDetector(
-          onTap: _isLoadingCustomers ? null : _showCustomerPicker,
+          onTap: (_isLoadingCustomers || _isEditMode)
+              ? null
+              : _showCustomerPicker,
           child: InputDecorator(
             decoration: InputDecoration(
               labelText: 'Customer *',
               border: const OutlineInputBorder(),
               errorText: hasError ? 'Please select a customer' : null,
-              suffixIcon: _isLoadingCustomers
+              filled: _isEditMode,
+              fillColor: _isEditMode ? Colors.grey.shade100 : null,
+              suffixIcon: _isEditMode
+                  ? null
+                  : _isLoadingCustomers
                   ? const Padding(
                       padding: EdgeInsets.all(12),
                       child: SizedBox(
@@ -401,14 +518,28 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoadingExisting) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Edit Customer PO')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Create Customer PO')),
+      appBar: AppBar(
+        title: Text(_isEditMode ? 'Edit Customer PO' : 'Create Customer PO'),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _field('Customer PO Number', _poNumber, required: true),
+            _field(
+              'Customer PO Number',
+              _poNumber,
+              required: true,
+              readOnly: _isEditMode,
+            ),
             const SizedBox(height: 12),
             _customerSelector(),
             const SizedBox(height: 12),
@@ -419,6 +550,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
             _field('Subject / Scope', _subject),
             const SizedBox(height: 16),
             CustomerPoItemsTable(
+              initialItems: _items,
               onChanged: (items) => setState(() => _items = items),
             ),
             const SizedBox(height: 12),
@@ -464,7 +596,9 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _provider.loading ? null : _save,
-              child: const Text('Save Customer PO'),
+              child: Text(
+                _isEditMode ? 'Update Customer PO' : 'Save Customer PO',
+              ),
             ),
           ],
         ),

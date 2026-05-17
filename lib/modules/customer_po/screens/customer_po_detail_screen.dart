@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
+import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
 
 class CustomerPoDetailScreen extends StatelessWidget {
   final String companyId;
@@ -120,6 +121,21 @@ class CustomerPoDetailScreen extends StatelessWidget {
           'Customer PO',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Edit PO',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => CustomerPoFormScreen(
+                  companyId: companyId,
+                  existingDocId: docId,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
