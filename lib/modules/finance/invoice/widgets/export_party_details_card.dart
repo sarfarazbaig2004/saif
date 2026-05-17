@@ -39,12 +39,10 @@ class ExportPartyDetailsCard extends StatefulWidget {
   });
 
   @override
-  State<ExportPartyDetailsCard> createState() =>
-      _ExportPartyDetailsCardState();
+  State<ExportPartyDetailsCard> createState() => _ExportPartyDetailsCardState();
 }
 
-class _ExportPartyDetailsCardState
-    extends State<ExportPartyDetailsCard> {
+class _ExportPartyDetailsCardState extends State<ExportPartyDetailsCard> {
   bool same = false;
 
   void _sync() {
@@ -56,15 +54,21 @@ class _ExportPartyDetailsCardState
     );
     widget.shipAddress.value = widget.shipAddress.value.copyWith(
       text: widget.billAddress.text,
-      selection: TextSelection.collapsed(offset: widget.billAddress.text.length),
+      selection: TextSelection.collapsed(
+        offset: widget.billAddress.text.length,
+      ),
     );
     widget.shipCountry.value = widget.shipCountry.value.copyWith(
       text: widget.billCountry.text,
-      selection: TextSelection.collapsed(offset: widget.billCountry.text.length),
+      selection: TextSelection.collapsed(
+        offset: widget.billCountry.text.length,
+      ),
     );
     widget.shipContact.value = widget.shipContact.value.copyWith(
       text: widget.billContact.text,
-      selection: TextSelection.collapsed(offset: widget.billContact.text.length),
+      selection: TextSelection.collapsed(
+        offset: widget.billContact.text.length,
+      ),
     );
     widget.shipEmail.value = widget.shipEmail.value.copyWith(
       text: widget.billEmail.text,
@@ -125,9 +129,13 @@ class _ExportPartyDetailsCardState
             children: [
               const Icon(Icons.business, color: zBlue),
               const SizedBox(width: 10),
-              Text(widget.title,
-                  style: const TextStyle(
-                      fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(
+                widget.title,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const Spacer(),
               Row(
                 children: [
@@ -146,7 +154,7 @@ class _ExportPartyDetailsCardState
                   ),
                   const Text('Ship same as Bill'),
                 ],
-              )
+              ),
             ],
           ),
 
@@ -159,7 +167,7 @@ class _ExportPartyDetailsCardState
               const SizedBox(width: 20),
               Expanded(child: _card('Ship To', false)),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -177,37 +185,46 @@ class _ExportPartyDetailsCardState
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold)),
+            child: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
           const SizedBox(height: 10),
 
-          _field('Company Name',
-              isBill ? widget.billName : widget.shipName,
-              readOnly: isBill ? false : same),
+          _field(
+            'Company Name',
+            isBill ? widget.billName : widget.shipName,
+            readOnly: isBill ? false : same,
+          ),
 
           const SizedBox(height: 10),
 
-          _field('Address',
-              isBill ? widget.billAddress : widget.shipAddress,
-              maxLines: 2,
-              readOnly: isBill ? false : same),
+          _field(
+            'Address',
+            isBill ? widget.billAddress : widget.shipAddress,
+            maxLines: 2,
+            readOnly: isBill ? false : same,
+          ),
 
           const SizedBox(height: 10),
 
           Row(
             children: [
               Expanded(
-                child: _field('Country',
-                    isBill ? widget.billCountry : widget.shipCountry,
-                    readOnly: isBill ? false : same),
+                child: _field(
+                  'Country',
+                  isBill ? widget.billCountry : widget.shipCountry,
+                  readOnly: isBill ? false : same,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _field('Contact Person',
-                    isBill ? widget.billContact : widget.shipContact,
-                    readOnly: isBill ? false : same),
+                child: _field(
+                  'Contact Person',
+                  isBill ? widget.billContact : widget.shipContact,
+                  readOnly: isBill ? false : same,
+                ),
               ),
             ],
           ),
@@ -217,15 +234,19 @@ class _ExportPartyDetailsCardState
           Row(
             children: [
               Expanded(
-                child: _field('Email',
-                    isBill ? widget.billEmail : widget.shipEmail,
-                    readOnly: isBill ? false : same),
+                child: _field(
+                  'Email',
+                  isBill ? widget.billEmail : widget.shipEmail,
+                  readOnly: isBill ? false : same,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _field('Phone',
-                    isBill ? widget.billPhone : widget.shipPhone,
-                    readOnly: isBill ? false : same),
+                child: _field(
+                  'Phone',
+                  isBill ? widget.billPhone : widget.shipPhone,
+                  readOnly: isBill ? false : same,
+                ),
               ),
             ],
           ),
@@ -234,8 +255,12 @@ class _ExportPartyDetailsCardState
     );
   }
 
-  Widget _field(String label, TextEditingController ctrl,
-      {int maxLines = 1, bool readOnly = false}) {
+  Widget _field(
+    String label,
+    TextEditingController ctrl, {
+    int maxLines = 1,
+    bool readOnly = false,
+  }) {
     return TextField(
       controller: ctrl,
       maxLines: maxLines,
@@ -244,8 +269,7 @@ class _ExportPartyDetailsCardState
         labelText: label,
         filled: readOnly,
         fillColor: readOnly ? Colors.grey.shade100 : Colors.transparent,
-        border:
-        OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
       ),
     );
   }

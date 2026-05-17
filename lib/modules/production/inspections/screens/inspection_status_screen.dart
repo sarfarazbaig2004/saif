@@ -38,21 +38,23 @@ class _InspectionStatusScreenState extends State<InspectionStatusScreen> {
   void initState() {
     super.initState();
     final inspection = widget.inspection;
-    _approvedQty = TextEditingController(text: _numText(inspection.approvedQty));
-    _rejectedQty = TextEditingController(text: _numText(inspection.rejectedQty));
+    _approvedQty = TextEditingController(
+      text: _numText(inspection.approvedQty),
+    );
+    _rejectedQty = TextEditingController(
+      text: _numText(inspection.rejectedQty),
+    );
     _rejectionReason = TextEditingController(text: inspection.rejectionReason);
     _inspectorName = TextEditingController(text: inspection.inspectorName);
     _delayReason = TextEditingController(text: inspection.delayReason);
     _remarks = TextEditingController(text: inspection.remarks);
     _clientInspectionRequired = inspection.clientInspectionRequired;
-    _clientInspectionStatus = _clientStatuses.contains(
-      inspection.clientInspectionStatus,
-    )
+    _clientInspectionStatus =
+        _clientStatuses.contains(inspection.clientInspectionStatus)
         ? inspection.clientInspectionStatus
         : 'pending';
-    _dispatchClearanceStatus = _dispatchStatuses.contains(
-      inspection.dispatchClearanceStatus,
-    )
+    _dispatchClearanceStatus =
+        _dispatchStatuses.contains(inspection.dispatchClearanceStatus)
         ? inspection.dispatchClearanceStatus
         : 'pending';
   }

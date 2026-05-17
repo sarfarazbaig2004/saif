@@ -46,7 +46,9 @@ class LocalDatabase {
 
   Box get _quotations {
     if (_quotationsBox == null || !_quotationsBox!.isOpen) {
-      throw Exception('Quotations box not initialized. Call initialize() first.');
+      throw Exception(
+        'Quotations box not initialized. Call initialize() first.',
+      );
     }
     return _quotationsBox!;
   }
@@ -232,8 +234,9 @@ class LocalDatabase {
 
     for (var key in _quotations.keys) {
       try {
-        final quotationData =
-        Map<String, dynamic>.from(_quotations.get(key) as Map);
+        final quotationData = Map<String, dynamic>.from(
+          _quotations.get(key) as Map,
+        );
         if (quotationData['userId'] == userId) {
           quotationData['items'] = jsonDecode(quotationData['items']);
           userQuotations.add(quotationData);

@@ -89,10 +89,19 @@ class RecordPaymentController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final snap = await FirebaseFirestore.instance.collection('companies').doc(companyId).collection('customers').get();
+      final snap = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(companyId)
+          .collection('customers')
+          .get();
       customersList = snap.docs.map((doc) {
         final data = doc.data();
-        return {'id': doc.id, 'name': data.containsKey('name') ? data['name'] : (data['companyName'] ?? 'Unknown')};
+        return {
+          'id': doc.id,
+          'name': data.containsKey('name')
+              ? data['name']
+              : (data['companyName'] ?? 'Unknown'),
+        };
       }).toList();
     } catch (e) {
       debugPrint("❌ Error fetching customers: $e");
@@ -104,7 +113,12 @@ class RecordPaymentController extends ChangeNotifier {
 
   void fetchInvoices(String customerId, {String? prefillInvoiceId}) async {
     selectedCustomerId = customerId;
-    final customer = customersList.firstWhere((c) => c['id'] == customerId, orElse: () => {'name': selectedCustomerName.isEmpty ? 'Unknown' : selectedCustomerName});
+    final customer = customersList.firstWhere(
+      (c) => c['id'] == customerId,
+      orElse: () => {
+        'name': selectedCustomerName.isEmpty ? 'Unknown' : selectedCustomerName,
+      },
+    );
     selectedCustomerName = customer['name'];
 
     isLoadingInvoices = true;
@@ -120,7 +134,9 @@ class RecordPaymentController extends ChangeNotifier {
 
     try {
       final snap = await FirebaseFirestore.instance
-          .collection('companies').doc(companyId).collection('export_invoices')
+          .collection('companies')
+          .doc(companyId)
+          .collection('export_invoices')
           .get();
 
       final rawDocs = snap.docs;
@@ -137,11 +153,15 @@ class RecordPaymentController extends ChangeNotifier {
         if (customerDataName != selected) return false;
 
         final status = (data['paymentStatus'] ?? '').toString().toUpperCase();
-        if (!(status == 'UNPAID' || status == 'PARTIAL' || status == 'PARTIALLY PAID')) return false;
+        if (!(status == 'UNPAID' ||
+            status == 'PARTIAL' ||
+            status == 'PARTIALLY PAID'))
+          return false;
 
         double out = data.containsKey('amountOutstanding')
             ? _parseDouble(data['amountOutstanding'])
-            : (_parseDouble(data['totals']?['grandTotal']) - _parseDouble(data['amountReceived']));
+            : (_parseDouble(data['totals']?['grandTotal']) -
+                  _parseDouble(data['amountReceived']));
 
         return out > 0;
       }).toList();
@@ -169,11 +189,14 @@ class RecordPaymentController extends ChangeNotifier {
       }
 
       if (availableCurrencies.isNotEmpty) {
-        selectedCurrency = availableCurrencies.length == 1 ? availableCurrencies.first : (availableCurrencies.contains('USD') ? 'USD' : availableCurrencies.first);
+        selectedCurrency = availableCurrencies.length == 1
+            ? availableCurrencies.first
+            : (availableCurrencies.contains('USD')
+                  ? 'USD'
+                  : availableCurrencies.first);
       }
 
       _filterInvoicesByCurrency(prefillInvoiceId: prefillInvoiceId);
-
     } catch (e) {
       debugPrint("❌ Error fetching invoices: $e");
     } finally {
@@ -219,7 +242,8 @@ class RecordPaymentController extends ChangeNotifier {
       final data = doc.data() as Map<String, dynamic>;
       double out = data.containsKey('amountOutstanding')
           ? _parseDouble(data['amountOutstanding'])
-          : (_parseDouble(data['totals']?['grandTotal']) - _parseDouble(data['amountReceived']));
+          : (_parseDouble(data['totals']?['grandTotal']) -
+                _parseDouble(data['amountReceived']));
 
       if (prefillInvoiceId == doc.id) {
         ctrl.text = out.toStringAsFixed(2);
@@ -232,9 +256,15 @@ class RecordPaymentController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void fetchInvoicesByName(String customerName, {String? prefillInvoiceId}) async {
+  void fetchInvoicesByName(
+    String customerName, {
+    String? prefillInvoiceId,
+  }) async {
     selectedCustomerName = customerName;
-    final match = customersList.firstWhere((c) => c['name'] == customerName, orElse: () => {'id': ''});
+    final match = customersList.firstWhere(
+      (c) => c['name'] == customerName,
+      orElse: () => {'id': ''},
+    );
     if (match['id'].toString().isNotEmpty) {
       fetchInvoices(match['id'], prefillInvoiceId: prefillInvoiceId);
     } else {
@@ -272,7 +302,8 @@ class RecordPaymentController extends ChangeNotifier {
   }
 
   bool get isValidToSave {
-    if (selectedCustomerId.isEmpty && selectedCustomerName.isEmpty) return false;
+    if (selectedCustomerId.isEmpty && selectedCustomerName.isEmpty)
+      return false;
     if (totalReceived <= 0) return false;
     if (totalAllocated > totalReceived + 0.01) return false;
 
@@ -286,7 +317,8 @@ class RecordPaymentController extends ChangeNotifier {
       final data = doc.data() as Map<String, dynamic>;
       double pending = data.containsKey('amountOutstanding')
           ? _parseDouble(data['amountOutstanding'])
-          : (_parseDouble(data['totals']?['grandTotal']) - _parseDouble(data['amountReceived']));
+          : (_parseDouble(data['totals']?['grandTotal']) -
+                _parseDouble(data['amountReceived']));
       if (validateAllocation(doc.id, pending) != null) return false;
     }
 
@@ -304,26 +336,48 @@ class RecordPaymentController extends ChangeNotifier {
       double exRate = double.tryParse(exchangeRateCtrl.text) ?? 1.0;
 
       final payment = PaymentModel(
-        id: '', companyId: companyId, customerId: selectedCustomerId, customerName: selectedCustomerName,
-        receiptNumber: 'REC-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}',
-        paymentDate: paymentDate, totalAmount: totalReceived, allocatedAmount: totalAllocated, advanceAmount: advanceAmount,
-        currency: selectedCurrency, exchangeRate: exRate, amountInr: baseAmountInr,
-        paymentMode: paymentMode, referenceNo: referenceCtrl.text.trim(), notes: notesCtrl.text.trim(),
-        createdBy: userUid, createdAt: DateTime.now(),
+        id: '',
+        companyId: companyId,
+        customerId: selectedCustomerId,
+        customerName: selectedCustomerName,
+        receiptNumber:
+            'REC-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}',
+        paymentDate: paymentDate,
+        totalAmount: totalReceived,
+        allocatedAmount: totalAllocated,
+        advanceAmount: advanceAmount,
+        currency: selectedCurrency,
+        exchangeRate: exRate,
+        amountInr: baseAmountInr,
+        paymentMode: paymentMode,
+        referenceNo: referenceCtrl.text.trim(),
+        notes: notesCtrl.text.trim(),
+        createdBy: userUid,
+        createdAt: DateTime.now(),
       );
 
       List<PaymentAllocationModel> allocations = [];
       for (var doc in filteredInvoices) {
         double allocAmt = double.tryParse(allocationCtrls[doc.id]!.text) ?? 0.0;
         if (allocAmt > 0) {
-          allocations.add(PaymentAllocationModel(
-            id: '', paymentId: '', invoiceId: doc.id, invoiceNumber: doc['invoiceNumber'] ?? 'Unknown',
-            allocatedAmount: allocAmt, allocatedAt: DateTime.now(),
-          ));
+          allocations.add(
+            PaymentAllocationModel(
+              id: '',
+              paymentId: '',
+              invoiceId: doc.id,
+              invoiceNumber: doc['invoiceNumber'] ?? 'Unknown',
+              allocatedAmount: allocAmt,
+              allocatedAt: DateTime.now(),
+            ),
+          );
         }
       }
 
-      await _service.recordPaymentAndAllocate(companyId: companyId, payment: payment, allocations: allocations);
+      await _service.recordPaymentAndAllocate(
+        companyId: companyId,
+        payment: payment,
+        allocations: allocations,
+      );
       return true;
     } catch (e) {
       debugPrint("❌ Save error: $e");

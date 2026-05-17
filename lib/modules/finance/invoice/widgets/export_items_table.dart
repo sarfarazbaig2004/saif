@@ -23,8 +23,11 @@ class ExportItemsTable extends StatelessWidget {
     onChanged(newItems);
   }
 
-  Future<void> _openItemDialog(BuildContext context,
-      {ExportInvoiceItem? existingItem, int? index}) async {
+  Future<void> _openItemDialog(
+    BuildContext context, {
+    ExportInvoiceItem? existingItem,
+    int? index,
+  }) async {
     final result = await showDialog<ExportInvoiceItem>(
       context: context,
       builder: (_) => DialogAddExportItem(
@@ -59,9 +62,10 @@ class ExportItemsTable extends StatelessWidget {
             const Text(
               'Export Items',
               style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: zText),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: zText,
+              ),
             ),
             const Spacer(),
             ElevatedButton.icon(
@@ -87,9 +91,7 @@ class ExportItemsTable extends StatelessWidget {
               border: Border.all(color: zBorder),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Center(
-              child: Text('No items added'),
-            ),
+            child: const Center(child: Text('No items added')),
           )
         else
           SingleChildScrollView(
@@ -109,34 +111,49 @@ class ExportItemsTable extends StatelessWidget {
                 final i = e.key;
                 final item = e.value;
 
-                return DataRow(cells: [
-                  DataCell(Text('${i + 1}')),
-                  DataCell(Text(item.name)),
-                  DataCell(Text(item.hsnCode)),
-                  DataCell(Text('${item.quantity} ${item.unit}')),
-                  DataCell(Text(
-                      '$currency ${item.rate.toStringAsFixed(2)}')),
+                return DataRow(
+                  cells: [
+                    DataCell(Text('${i + 1}')),
+                    DataCell(Text(item.name)),
+                    DataCell(Text(item.hsnCode)),
+                    DataCell(Text('${item.quantity} ${item.unit}')),
+                    DataCell(Text('$currency ${item.rate.toStringAsFixed(2)}')),
 
-                  // ✅ FIXED → always correct
-                  DataCell(Text(
-                      '$currency ${(item.quantity * item.rate).toStringAsFixed(2)}')),
+                    // ✅ FIXED → always correct
+                    DataCell(
+                      Text(
+                        '$currency ${(item.quantity * item.rate).toStringAsFixed(2)}',
+                      ),
+                    ),
 
-                  DataCell(Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit,
-                            size: 18, color: zBlue),
-                        onPressed: () => _openItemDialog(context,
-                            existingItem: item, index: i),
+                    DataCell(
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.edit,
+                              size: 18,
+                              color: zBlue,
+                            ),
+                            onPressed: () => _openItemDialog(
+                              context,
+                              existingItem: item,
+                              index: i,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete,
+                              size: 18,
+                              color: Colors.red,
+                            ),
+                            onPressed: () => _removeItem(i),
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete,
-                            size: 18, color: Colors.red),
-                        onPressed: () => _removeItem(i),
-                      ),
-                    ],
-                  )),
-                ]);
+                    ),
+                  ],
+                );
               }).toList(),
             ),
           ),

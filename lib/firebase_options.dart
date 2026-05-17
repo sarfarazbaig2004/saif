@@ -64,7 +64,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '466125619602',
     projectId: 'quik-aman-erp',
     storageBucket: 'quik-aman-erp.firebasestorage.app',
-    iosClientId: '466125619602-ddk4jrvi4q6l68hthrcf8atj1aklu0te.apps.googleusercontent.com',
+    iosClientId:
+        '466125619602-ddk4jrvi4q6l68hthrcf8atj1aklu0te.apps.googleusercontent.com',
     iosBundleId: 'com.example.genzProtech',
   );
 
@@ -74,7 +75,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '466125619602',
     projectId: 'quik-aman-erp',
     storageBucket: 'quik-aman-erp.firebasestorage.app',
-    iosClientId: '466125619602-ddk4jrvi4q6l68hthrcf8atj1aklu0te.apps.googleusercontent.com',
+    iosClientId:
+        '466125619602-ddk4jrvi4q6l68hthrcf8atj1aklu0te.apps.googleusercontent.com',
     iosBundleId: 'com.example.genzProtech',
   );
 
@@ -87,5 +89,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'quik-aman-erp.firebasestorage.app',
     measurementId: 'G-Z7TEQBVD24',
   );
-
 }

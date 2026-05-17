@@ -27,14 +27,22 @@ class TaxInvoiceScreen extends StatelessWidget {
           child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: zText, size: 22),
+                icon: const Icon(
+                  Icons.arrow_back_rounded,
+                  color: zText,
+                  size: 22,
+                ),
                 onPressed: onBack,
                 splashRadius: 24,
               ),
               const SizedBox(width: 8),
               const Text(
                 'Create Tax Invoice',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: zText),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: zText,
+                ),
               ),
             ],
           ),
@@ -46,13 +54,30 @@ class TaxInvoiceScreen extends StatelessWidget {
               children: [
                 Container(
                   padding: const EdgeInsets.all(20),
-                  decoration: const BoxDecoration(color: zBlueSoft, shape: BoxShape.circle),
+                  decoration: const BoxDecoration(
+                    color: zBlueSoft,
+                    shape: BoxShape.circle,
+                  ),
                   child: const Icon(Icons.receipt_long, size: 48, color: zBlue),
                 ),
                 const SizedBox(height: 20),
-                const Text('Tax Invoice Module', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: zText)),
+                const Text(
+                  'Tax Invoice Module',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    color: zText,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                const Text('This module will use the same premium 2-pane layout.', style: TextStyle(fontSize: 14, color: zMuted, fontWeight: FontWeight.w500)),
+                const Text(
+                  'This module will use the same premium 2-pane layout.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: zMuted,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),

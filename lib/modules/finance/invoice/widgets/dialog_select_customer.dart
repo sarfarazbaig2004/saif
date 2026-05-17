@@ -4,20 +4,14 @@ import 'package:flutter/material.dart';
 class DialogSelectCustomer extends StatefulWidget {
   final String companyId;
 
-  const DialogSelectCustomer({
-    super.key,
-    required this.companyId,
-  });
+  const DialogSelectCustomer({super.key, required this.companyId});
 
   @override
-  State<DialogSelectCustomer> createState() =>
-      _DialogSelectCustomerState();
+  State<DialogSelectCustomer> createState() => _DialogSelectCustomerState();
 }
 
-class _DialogSelectCustomerState
-    extends State<DialogSelectCustomer> {
-  final TextEditingController _searchController =
-  TextEditingController();
+class _DialogSelectCustomerState extends State<DialogSelectCustomer> {
+  final TextEditingController _searchController = TextEditingController();
 
   String _searchQuery = '';
 
@@ -32,8 +26,7 @@ class _DialogSelectCustomerState
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape:
-      RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: 620,
         height: 620,
@@ -56,7 +49,7 @@ class _DialogSelectCustomerState
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
-                )
+                ),
               ],
             ),
 
@@ -71,16 +64,16 @@ class _DialogSelectCustomerState
                 suffixIcon: _searchQuery.isEmpty
                     ? null
                     : IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() => _searchQuery = '');
-                  },
-                ),
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      ),
                 border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8)),
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12),
               ),
               onChanged: (value) {
                 setState(() {
@@ -100,33 +93,27 @@ class _DialogSelectCustomerState
                     .collection('customers')
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState ==
-                      ConnectionState.waiting) {
-                    return const Center(
-                        child: CircularProgressIndicator());
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
                   }
 
-                  if (!snapshot.hasData ||
-                      snapshot.data!.docs.isEmpty) {
-                    return const Center(
-                        child: Text('No customers found.'));
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Center(child: Text('No customers found.'));
                   }
 
                   final docs = snapshot.data!.docs.where((doc) {
-                    final data =
-                    doc.data() as Map<String, dynamic>;
+                    final data = doc.data() as Map<String, dynamic>;
 
                     // SAFE DELETE CHECK
                     if (data['isDeleted'] == true) return false;
 
-                    final name = _safe(data['companyName'] ??
-                        data['name'])
-                        .toLowerCase();
-                    final email =
-                    _safe(data['email']).toLowerCase();
+                    final name = _safe(
+                      data['companyName'] ?? data['name'],
+                    ).toLowerCase();
+                    final email = _safe(data['email']).toLowerCase();
                     final phone = _safe(
-                        data['mobile'] ?? data['phone'])
-                        .toLowerCase();
+                      data['mobile'] ?? data['phone'],
+                    ).toLowerCase();
 
                     return _searchQuery.isEmpty ||
                         name.contains(_searchQuery) ||
@@ -135,24 +122,19 @@ class _DialogSelectCustomerState
                   }).toList();
 
                   if (docs.isEmpty) {
-                    return const Center(
-                        child: Text('No matching customers.'));
+                    return const Center(child: Text('No matching customers.'));
                   }
 
                   return ListView.separated(
                     itemCount: docs.length,
-                    separatorBuilder: (_, __) =>
-                    const Divider(height: 1),
+                    separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final doc = docs[index];
-                      final data =
-                      doc.data() as Map<String, dynamic>;
+                      final data = doc.data() as Map<String, dynamic>;
 
-                      final name = _safe(
-                          data['companyName'] ?? data['name']);
+                      final name = _safe(data['companyName'] ?? data['name']);
                       final email = _safe(data['email']);
-                      final phone =
-                      _safe(data['mobile'] ?? data['phone']);
+                      final phone = _safe(data['mobile'] ?? data['phone']);
 
                       return InkWell(
                         onTap: () {
@@ -161,22 +143,22 @@ class _DialogSelectCustomerState
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           child: Row(
                             children: [
                               CircleAvatar(
                                 radius: 18,
-                                backgroundColor:
-                                const Color(0xFF1A3A52)
-                                    .withValues(alpha: 0.1),
+                                backgroundColor: const Color(
+                                  0xFF1A3A52,
+                                ).withValues(alpha: 0.1),
                                 child: Text(
-                                  name.isNotEmpty
-                                      ? name[0].toUpperCase()
-                                      : 'C',
+                                  name.isNotEmpty ? name[0].toUpperCase() : 'C',
                                   style: const TextStyle(
-                                      color: Color(0xFF1A3A52),
-                                      fontWeight:
-                                      FontWeight.bold),
+                                    color: Color(0xFF1A3A52),
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -184,16 +166,13 @@ class _DialogSelectCustomerState
                               // DETAILS
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      name.isEmpty
-                                          ? 'Unknown Customer'
-                                          : name,
+                                      name.isEmpty ? 'Unknown Customer' : name,
                                       style: const TextStyle(
-                                          fontWeight:
-                                          FontWeight.w600),
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
@@ -203,16 +182,20 @@ class _DialogSelectCustomerState
                                           ? phone
                                           : 'No contact info',
                                       style: const TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey),
+                                        fontSize: 12,
+                                        color: Colors.grey,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
 
                               // SELECT ICON
-                              const Icon(Icons.arrow_forward_ios,
-                                  size: 14, color: Colors.grey)
+                              const Icon(
+                                Icons.arrow_forward_ios,
+                                size: 14,
+                                color: Colors.grey,
+                              ),
                             ],
                           ),
                         ),

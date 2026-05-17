@@ -24,11 +24,8 @@ class MiniBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       constraints: const BoxConstraints(minHeight: 22),
-      padding: padding ??
-          const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 5,
-          ),
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: backgroundColor,
         borderRadius: BorderRadius.circular(999),
@@ -38,11 +35,7 @@ class MiniBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(
-              icon,
-              size: fontSize + 2,
-              color: textColor,
-            ),
+            Icon(icon, size: fontSize + 2, color: textColor),
             const SizedBox(width: 4),
           ],
           Flexible(

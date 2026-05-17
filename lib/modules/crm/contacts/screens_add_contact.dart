@@ -60,8 +60,8 @@ class _ScreensAddContactState extends State<ScreensAddContact> {
       final snapshot = await widget.companyRef.get();
       final data = snapshot.data() ?? {};
 
-      final companyName =
-      (data['companyName'] ?? data['name'] ?? '').toString();
+      final companyName = (data['companyName'] ?? data['name'] ?? '')
+          .toString();
 
       final city = (data['city'] ?? '').toString().trim();
       final state = (data['state'] ?? '').toString().trim();
@@ -230,10 +230,7 @@ class _ScreensAddContactState extends State<ScreensAddContact> {
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide(color: Colors.red.shade400, width: 1.4),
       ),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 16,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
     );
   }
 
@@ -254,9 +251,7 @@ class _ScreensAddContactState extends State<ScreensAddContact> {
     );
   }
 
-  Widget _buildResponsiveRow({
-    required List<Widget> children,
-  }) {
+  Widget _buildResponsiveRow({required List<Widget> children}) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final stacked = constraints.maxWidth < 700;
@@ -288,209 +283,215 @@ class _ScreensAddContactState extends State<ScreensAddContact> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEdit ? 'Edit Contact' : 'Add Contact'),
-      ),
+      appBar: AppBar(title: Text(_isEdit ? 'Edit Contact' : 'Add Contact')),
       body: _isLoadingCompany
           ? const Center(child: CircularProgressIndicator())
           : Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 980),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildHeader(),
-                        const SizedBox(height: 18),
-                        LayoutBuilder(
-                          builder: (context, constraints) {
-                            final isWide = constraints.maxWidth >= 860;
+              key: _formKey,
+              child: Column(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 120),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 980),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildHeader(),
+                              const SizedBox(height: 18),
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final isWide = constraints.maxWidth >= 860;
 
-                            if (isWide) {
-                              return Row(
-                                crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    flex: 3,
-                                    child: Column(
+                                  if (isWide) {
+                                    return Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        _SectionCard(
-                                          title: 'Contact Information',
-                                          subtitle:
-                                          'Basic details of the person',
-                                          icon: Icons.person_outline,
+                                        Expanded(
+                                          flex: 3,
                                           child: Column(
                                             children: [
-                                              _buildTextField(
-                                                controller:
-                                                _nameController,
-                                                label: 'Contact Name *',
+                                              _SectionCard(
+                                                title: 'Contact Information',
+                                                subtitle:
+                                                    'Basic details of the person',
                                                 icon: Icons.person_outline,
-                                                validator: (v) =>
-                                                v == null ||
-                                                    v.trim()
-                                                        .isEmpty
-                                                    ? 'Required'
-                                                    : null,
-                                              ),
-                                              const SizedBox(height: 14),
-                                              _buildResponsiveRow(
-                                                children: [
-                                                  _buildTextField(
-                                                    controller:
-                                                    _designationController,
-                                                    label: 'Designation',
-                                                    icon: Icons
-                                                        .badge_outlined,
-                                                  ),
-                                                  _buildTextField(
-                                                    controller:
-                                                    _departmentController,
-                                                    label: 'Department',
-                                                    icon: Icons
-                                                        .account_tree_outlined,
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        _SectionCard(
-                                          title: 'Communication Details',
-                                          subtitle:
-                                          'Official contact information',
-                                          icon: Icons.call_outlined,
-                                          child: Column(
-                                            children: [
-                                              _buildResponsiveRow(
-                                                children: [
-                                                  _buildTextField(
-                                                    controller:
-                                                    _emailController,
-                                                    label: 'Email',
-                                                    icon: Icons
-                                                        .email_outlined,
-                                                    keyboardType:
-                                                    TextInputType
-                                                        .emailAddress,
-                                                    validator: (v) {
-                                                      final text = (v ?? '')
-                                                          .trim();
-                                                      if (text.isEmpty) {
-                                                        return null;
-                                                      }
-                                                      if (!RegExp(
-                                                        r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                                                      ).hasMatch(text)) {
-                                                        return 'Enter valid email';
-                                                      }
-                                                      return null;
-                                                    },
-                                                  ),
-                                                  _buildTextField(
-                                                    controller:
-                                                    _phoneController,
-                                                    label: 'Phone',
-                                                    icon: Icons
-                                                        .phone_outlined,
-                                                    keyboardType:
-                                                    TextInputType
-                                                        .phone,
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Column(
-                                      children: [
-                                        _SectionCard(
-                                          title: 'Role in Company',
-                                          subtitle:
-                                          'Use this to mark key point of contact',
-                                          icon: Icons
-                                              .verified_user_outlined,
-                                          child: Column(
-                                            children: [
-                                              Container(
-                                                width: double.infinity,
-                                                padding:
-                                                const EdgeInsets.all(
-                                                    14),
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                  _isPrimary
-                                                      ? Colors.green
-                                                      .shade50
-                                                      : Colors.grey
-                                                      .shade50,
-                                                  borderRadius:
-                                                  BorderRadius
-                                                      .circular(14),
-                                                  border: Border.all(
-                                                    color:
-                                                    _isPrimary
-                                                        ? Colors.green
-                                                        .shade200
-                                                        : Colors.grey
-                                                        .shade300,
-                                                  ),
-                                                ),
-                                                child: Row(
+                                                child: Column(
                                                   children: [
-                                                    Checkbox(
-                                                      value: _isPrimary,
-                                                      onChanged: (v) {
-                                                        setState(() {
-                                                          _isPrimary =
-                                                              v ?? false;
-                                                        });
-                                                      },
+                                                    _buildTextField(
+                                                      controller:
+                                                          _nameController,
+                                                      label: 'Contact Name *',
+                                                      icon:
+                                                          Icons.person_outline,
+                                                      validator: (v) =>
+                                                          v == null ||
+                                                              v.trim().isEmpty
+                                                          ? 'Required'
+                                                          : null,
                                                     ),
-                                                    const SizedBox(
-                                                        width: 8),
-                                                    Expanded(
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                        children: [
-                                                          const Text(
-                                                            'Primary contact for this company',
-                                                            style:
-                                                            TextStyle(
-                                                              fontWeight:
-                                                              FontWeight
-                                                                  .w700,
+                                                    const SizedBox(height: 14),
+                                                    _buildResponsiveRow(
+                                                      children: [
+                                                        _buildTextField(
+                                                          controller:
+                                                              _designationController,
+                                                          label: 'Designation',
+                                                          icon: Icons
+                                                              .badge_outlined,
+                                                        ),
+                                                        _buildTextField(
+                                                          controller:
+                                                              _departmentController,
+                                                          label: 'Department',
+                                                          icon: Icons
+                                                              .account_tree_outlined,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              const SizedBox(height: 16),
+                                              _SectionCard(
+                                                title: 'Communication Details',
+                                                subtitle:
+                                                    'Official contact information',
+                                                icon: Icons.call_outlined,
+                                                child: Column(
+                                                  children: [
+                                                    _buildResponsiveRow(
+                                                      children: [
+                                                        _buildTextField(
+                                                          controller:
+                                                              _emailController,
+                                                          label: 'Email',
+                                                          icon: Icons
+                                                              .email_outlined,
+                                                          keyboardType:
+                                                              TextInputType
+                                                                  .emailAddress,
+                                                          validator: (v) {
+                                                            final text =
+                                                                (v ?? '')
+                                                                    .trim();
+                                                            if (text.isEmpty) {
+                                                              return null;
+                                                            }
+                                                            if (!RegExp(
+                                                              r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                                            ).hasMatch(text)) {
+                                                              return 'Enter valid email';
+                                                            }
+                                                            return null;
+                                                          },
+                                                        ),
+                                                        _buildTextField(
+                                                          controller:
+                                                              _phoneController,
+                                                          label: 'Phone',
+                                                          icon: Icons
+                                                              .phone_outlined,
+                                                          keyboardType:
+                                                              TextInputType
+                                                                  .phone,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Expanded(
+                                          flex: 2,
+                                          child: Column(
+                                            children: [
+                                              _SectionCard(
+                                                title: 'Role in Company',
+                                                subtitle:
+                                                    'Use this to mark key point of contact',
+                                                icon: Icons
+                                                    .verified_user_outlined,
+                                                child: Column(
+                                                  children: [
+                                                    Container(
+                                                      width: double.infinity,
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            14,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: _isPrimary
+                                                            ? Colors
+                                                                  .green
+                                                                  .shade50
+                                                            : Colors
+                                                                  .grey
+                                                                  .shade50,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              14,
                                                             ),
+                                                        border: Border.all(
+                                                          color: _isPrimary
+                                                              ? Colors
+                                                                    .green
+                                                                    .shade200
+                                                              : Colors
+                                                                    .grey
+                                                                    .shade300,
+                                                        ),
+                                                      ),
+                                                      child: Row(
+                                                        children: [
+                                                          Checkbox(
+                                                            value: _isPrimary,
+                                                            onChanged: (v) {
+                                                              setState(() {
+                                                                _isPrimary =
+                                                                    v ?? false;
+                                                              });
+                                                            },
                                                           ),
                                                           const SizedBox(
-                                                              height: 4),
-                                                          Text(
-                                                            _isPrimary
-                                                                ? 'This contact will become the main company contact.'
-                                                                : 'Enable this if this person is the main point of contact.',
-                                                            style:
-                                                            TextStyle(
-                                                              fontSize:
-                                                              12.5,
-                                                              color: Colors
-                                                                  .grey
-                                                                  .shade700,
+                                                            width: 8,
+                                                          ),
+                                                          Expanded(
+                                                            child: Column(
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment
+                                                                      .start,
+                                                              children: [
+                                                                const Text(
+                                                                  'Primary contact for this company',
+                                                                  style: TextStyle(
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .w700,
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(
+                                                                  height: 4,
+                                                                ),
+                                                                Text(
+                                                                  _isPrimary
+                                                                      ? 'This contact will become the main company contact.'
+                                                                      : 'Enable this if this person is the main point of contact.',
+                                                                  style: TextStyle(
+                                                                    fontSize:
+                                                                        12.5,
+                                                                    color: Colors
+                                                                        .grey
+                                                                        .shade700,
+                                                                  ),
+                                                                ),
+                                                              ],
                                                             ),
                                                           ),
                                                         ],
@@ -499,197 +500,188 @@ class _ScreensAddContactState extends State<ScreensAddContact> {
                                                   ],
                                                 ),
                                               ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 16),
-                                        _SectionCard(
-                                          title: 'Tips',
-                                          subtitle:
-                                          'Recommended CRM usage',
-                                          icon: Icons.lightbulb_outline,
-                                          child: Column(
-                                            crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                            children: const [
-                                              _TipLine(
-                                                text:
-                                                'Use official company email whenever possible.',
-                                              ),
-                                              SizedBox(height: 8),
-                                              _TipLine(
-                                                text:
-                                                'Mark only one contact as primary for cleaner CRM data.',
-                                              ),
-                                              SizedBox(height: 8),
-                                              _TipLine(
-                                                text:
-                                                'Add designation and department for better follow-up tracking.',
+                                              const SizedBox(height: 16),
+                                              _SectionCard(
+                                                title: 'Tips',
+                                                subtitle:
+                                                    'Recommended CRM usage',
+                                                icon: Icons.lightbulb_outline,
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: const [
+                                                    _TipLine(
+                                                      text:
+                                                          'Use official company email whenever possible.',
+                                                    ),
+                                                    SizedBox(height: 8),
+                                                    _TipLine(
+                                                      text:
+                                                          'Mark only one contact as primary for cleaner CRM data.',
+                                                    ),
+                                                    SizedBox(height: 8),
+                                                    _TipLine(
+                                                      text:
+                                                          'Add designation and department for better follow-up tracking.',
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                             ],
                                           ),
                                         ),
                                       ],
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }
+                                    );
+                                  }
 
-                            return Column(
-                              children: [
-                                _SectionCard(
-                                  title: 'Contact Information',
-                                  subtitle:
-                                  'Basic details of the person',
-                                  icon: Icons.person_outline,
-                                  child: Column(
+                                  return Column(
                                     children: [
-                                      _buildTextField(
-                                        controller: _nameController,
-                                        label: 'Contact Name *',
+                                      _SectionCard(
+                                        title: 'Contact Information',
+                                        subtitle: 'Basic details of the person',
                                         icon: Icons.person_outline,
-                                        validator: (v) =>
-                                        v == null || v.trim().isEmpty
-                                            ? 'Required'
-                                            : null,
-                                      ),
-                                      const SizedBox(height: 14),
-                                      _buildTextField(
-                                        controller:
-                                        _designationController,
-                                        label: 'Designation',
-                                        icon: Icons.badge_outlined,
-                                      ),
-                                      const SizedBox(height: 14),
-                                      _buildTextField(
-                                        controller:
-                                        _departmentController,
-                                        label: 'Department',
-                                        icon:
-                                        Icons.account_tree_outlined,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                _SectionCard(
-                                  title: 'Communication Details',
-                                  subtitle:
-                                  'Official contact information',
-                                  icon: Icons.call_outlined,
-                                  child: Column(
-                                    children: [
-                                      _buildTextField(
-                                        controller: _emailController,
-                                        label: 'Email',
-                                        icon: Icons.email_outlined,
-                                        keyboardType:
-                                        TextInputType.emailAddress,
-                                        validator: (v) {
-                                          final text =
-                                          (v ?? '').trim();
-                                          if (text.isEmpty) {
-                                            return null;
-                                          }
-                                          if (!RegExp(
-                                            r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
-                                          ).hasMatch(text)) {
-                                            return 'Enter valid email';
-                                          }
-                                          return null;
-                                        },
-                                      ),
-                                      const SizedBox(height: 14),
-                                      _buildTextField(
-                                        controller: _phoneController,
-                                        label: 'Phone',
-                                        icon: Icons.phone_outlined,
-                                        keyboardType:
-                                        TextInputType.phone,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                _SectionCard(
-                                  title: 'Role in Company',
-                                  subtitle:
-                                  'Use this to mark key point of contact',
-                                  icon:
-                                  Icons.verified_user_outlined,
-                                  child: Container(
-                                    width: double.infinity,
-                                    padding:
-                                    const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
-                                      color: _isPrimary
-                                          ? Colors.green.shade50
-                                          : Colors.grey.shade50,
-                                      borderRadius:
-                                      BorderRadius.circular(14),
-                                      border: Border.all(
-                                        color: _isPrimary
-                                            ? Colors.green.shade200
-                                            : Colors.grey.shade300,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Checkbox(
-                                          value: _isPrimary,
-                                          onChanged: (v) {
-                                            setState(() {
-                                              _isPrimary = v ?? false;
-                                            });
-                                          },
+                                        child: Column(
+                                          children: [
+                                            _buildTextField(
+                                              controller: _nameController,
+                                              label: 'Contact Name *',
+                                              icon: Icons.person_outline,
+                                              validator: (v) =>
+                                                  v == null || v.trim().isEmpty
+                                                  ? 'Required'
+                                                  : null,
+                                            ),
+                                            const SizedBox(height: 14),
+                                            _buildTextField(
+                                              controller:
+                                                  _designationController,
+                                              label: 'Designation',
+                                              icon: Icons.badge_outlined,
+                                            ),
+                                            const SizedBox(height: 14),
+                                            _buildTextField(
+                                              controller: _departmentController,
+                                              label: 'Department',
+                                              icon: Icons.account_tree_outlined,
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                            CrossAxisAlignment
-                                                .start,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      _SectionCard(
+                                        title: 'Communication Details',
+                                        subtitle:
+                                            'Official contact information',
+                                        icon: Icons.call_outlined,
+                                        child: Column(
+                                          children: [
+                                            _buildTextField(
+                                              controller: _emailController,
+                                              label: 'Email',
+                                              icon: Icons.email_outlined,
+                                              keyboardType:
+                                                  TextInputType.emailAddress,
+                                              validator: (v) {
+                                                final text = (v ?? '').trim();
+                                                if (text.isEmpty) {
+                                                  return null;
+                                                }
+                                                if (!RegExp(
+                                                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                                ).hasMatch(text)) {
+                                                  return 'Enter valid email';
+                                                }
+                                                return null;
+                                              },
+                                            ),
+                                            const SizedBox(height: 14),
+                                            _buildTextField(
+                                              controller: _phoneController,
+                                              label: 'Phone',
+                                              icon: Icons.phone_outlined,
+                                              keyboardType: TextInputType.phone,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      _SectionCard(
+                                        title: 'Role in Company',
+                                        subtitle:
+                                            'Use this to mark key point of contact',
+                                        icon: Icons.verified_user_outlined,
+                                        child: Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(
+                                            color: _isPrimary
+                                                ? Colors.green.shade50
+                                                : Colors.grey.shade50,
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                            border: Border.all(
+                                              color: _isPrimary
+                                                  ? Colors.green.shade200
+                                                  : Colors.grey.shade300,
+                                            ),
+                                          ),
+                                          child: Row(
                                             children: [
-                                              const Text(
-                                                'Primary contact for this company',
-                                                style: TextStyle(
-                                                  fontWeight:
-                                                  FontWeight.w700,
-                                                ),
+                                              Checkbox(
+                                                value: _isPrimary,
+                                                onChanged: (v) {
+                                                  setState(() {
+                                                    _isPrimary = v ?? false;
+                                                  });
+                                                },
                                               ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                _isPrimary
-                                                    ? 'This contact will become the main company contact.'
-                                                    : 'Enable this if this person is the main point of contact.',
-                                                style: TextStyle(
-                                                  fontSize: 12.5,
-                                                  color: Colors
-                                                      .grey.shade700,
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    const Text(
+                                                      'Primary contact for this company',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      _isPrimary
+                                                          ? 'This contact will become the main company contact.'
+                                                          : 'Enable this if this person is the main point of contact.',
+                                                      style: TextStyle(
+                                                        fontSize: 12.5,
+                                                        color: Colors
+                                                            .grey
+                                                            .shade700,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
-                ),
+                  _buildBottomSaveBar(),
+                ],
               ),
             ),
-            _buildBottomSaveBar(),
-          ],
-        ),
-      ),
     );
   }
 
@@ -700,10 +692,7 @@ class _ScreensAddContactState extends State<ScreensAddContact> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
-          colors: [
-            Colors.blue.shade700,
-            Colors.indigo.shade600,
-          ],
+          colors: [Colors.blue.shade700, Colors.indigo.shade600],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -789,9 +778,7 @@ class _ScreensAddContactState extends State<ScreensAddContact> {
       padding: const EdgeInsets.fromLTRB(20, 14, 20, 18),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(
-          top: BorderSide(color: Colors.grey.shade200),
-        ),
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.03),
@@ -827,18 +814,18 @@ class _ScreensAddContactState extends State<ScreensAddContact> {
                     onPressed: _isSaving ? null : _save,
                     icon: _isSaving
                         ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.4,
-                        color: Colors.white,
-                      ),
-                    )
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              color: Colors.white,
+                            ),
+                          )
                         : Icon(
-                      _isEdit
-                          ? Icons.save_outlined
-                          : Icons.add_circle_outline,
-                    ),
+                            _isEdit
+                                ? Icons.save_outlined
+                                : Icons.add_circle_outline,
+                          ),
                     label: Text(_isEdit ? 'Update' : 'Save Contact'),
                     style: ElevatedButton.styleFrom(
                       shape: RoundedRectangleBorder(
@@ -894,11 +881,7 @@ class _SectionCard extends StatelessWidget {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: Colors.blue.shade50,
-                child: Icon(
-                  icon,
-                  size: 20,
-                  color: Colors.blue.shade700,
-                ),
+                child: Icon(icon, size: 20, color: Colors.blue.shade700),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -937,9 +920,7 @@ class _SectionCard extends StatelessWidget {
 class _TipLine extends StatelessWidget {
   final String text;
 
-  const _TipLine({
-    required this.text,
-  });
+  const _TipLine({required this.text});
 
   @override
   Widget build(BuildContext context) {

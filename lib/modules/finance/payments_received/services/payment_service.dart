@@ -19,9 +19,12 @@ class PaymentService {
       // 1. Lock & Read affected invoices (Done in a single initial pass)
       Map<String, DocumentSnapshot> invoiceSnapshots = {};
       for (var alloc in allocations) {
-        final invRef = companyRef.collection('export_invoices').doc(alloc.invoiceId);
+        final invRef = companyRef
+            .collection('export_invoices')
+            .doc(alloc.invoiceId);
         final snapshot = await transaction.get(invRef);
-        if (!snapshot.exists) throw Exception("Invoice ${alloc.invoiceNumber} not found.");
+        if (!snapshot.exists)
+          throw Exception("Invoice ${alloc.invoiceNumber} not found.");
         invoiceSnapshots[alloc.invoiceId] = snapshot;
       }
 
@@ -32,7 +35,9 @@ class PaymentService {
 
         double currentOutstanding = data.containsKey('amountOutstanding')
             ? (data['amountOutstanding']).toDouble()
-            : ((data['totals']?['grandTotal'] ?? 0.0) - (data['amountReceived'] ?? 0.0)).toDouble();
+            : ((data['totals']?['grandTotal'] ?? 0.0) -
+                      (data['amountReceived'] ?? 0.0))
+                  .toDouble();
 
         double currentReceived = (data['amountReceived'] ?? 0.0).toDouble();
         double totalAmount = (data['totals']?['grandTotal'] ?? 0.0).toDouble();
@@ -40,7 +45,9 @@ class PaymentService {
 
         // Tolerance added for floating point errors
         if (alloc.allocatedAmount > currentOutstanding + 0.01) {
-          throw Exception("Cannot allocate ${alloc.allocatedAmount} to ${alloc.invoiceNumber}. Only $currentOutstanding is pending.");
+          throw Exception(
+            "Cannot allocate ${alloc.allocatedAmount} to ${alloc.invoiceNumber}. Only $currentOutstanding is pending.",
+          );
         }
 
         double newReceived = _round(currentReceived + alloc.allocatedAmount);
@@ -51,7 +58,9 @@ class PaymentService {
         double newBaseOutstanding = _round(newOutstanding * exchangeRate);
 
         // Strict ERP Status Logic
-        String newStatus = newOutstanding <= 0 ? 'PAID' : (newReceived > 0 ? 'PARTIALLY PAID' : 'UNPAID');
+        String newStatus = newOutstanding <= 0
+            ? 'PAID'
+            : (newReceived > 0 ? 'PARTIALLY PAID' : 'UNPAID');
 
         // Update Invoice Document
         transaction.update(snap.reference, {
@@ -63,7 +72,9 @@ class PaymentService {
         });
 
         // Atomic Sync to Outstanding Ledger
-        final outstandingRef = companyRef.collection('outstanding').doc(alloc.invoiceId);
+        final outstandingRef = companyRef
+            .collection('outstanding')
+            .doc(alloc.invoiceId);
 
         // ⚡ OPTIMIZATION: Safely merge core fields to prevent broken ledger links
         // without requiring a costly extra read operation inside the transaction loop.
@@ -103,7 +114,9 @@ class PaymentService {
       if (payment.currency == 'INR') {
         calculatedBaseAmount = _round(payment.totalAmount);
       } else {
-        calculatedBaseAmount = _round(payment.totalAmount * payment.exchangeRate);
+        calculatedBaseAmount = _round(
+          payment.totalAmount * payment.exchangeRate,
+        );
       }
 
       // 4. Queue Final Payment Record

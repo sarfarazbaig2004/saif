@@ -57,11 +57,11 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   Set<String> get _currentEnabledModuleIds {
     final moduleAccess = ModuleAccessProvider.maybeOf(context);
 
-if (moduleAccess == null) {
-  return <String>{};
-}
+    if (moduleAccess == null) {
+      return <String>{};
+    }
 
-return moduleAccess.enabledModuleIds;
+    return moduleAccess.enabledModuleIds;
   }
 
   @override
@@ -70,7 +70,8 @@ return moduleAccess.enabledModuleIds;
     final enabledModuleIds = _currentEnabledModuleIds;
     final hadLoadedIds = _lastLoadedEnabledModuleIds;
 
-    final hasChanged = hadLoadedIds == null ||
+    final hasChanged =
+        hadLoadedIds == null ||
         hadLoadedIds.length != enabledModuleIds.length ||
         !hadLoadedIds.containsAll(enabledModuleIds);
 
@@ -108,11 +109,7 @@ return moduleAccess.enabledModuleIds;
       'Logistics Coordinator',
       'Dispatch Manager',
     ],
-    'Finance': [
-      'Accounts Executive',
-      'Senior Accountant',
-      'Finance Manager',
-    ],
+    'Finance': ['Accounts Executive', 'Senior Accountant', 'Finance Manager'],
     'Administration': [
       'Admin Executive',
       'Office Administrator',
@@ -138,18 +135,23 @@ return moduleAccess.enabledModuleIds;
   // 🔥 CHANGED: 'sales' is completely removed from the export_import array
   List<String> get activeModules {
     final enabledModules = permissionModuleOrder
-        .where((moduleKey) => moduleKey == PermissionModules.dashboard
-            || _currentEnabledModuleIds.contains(moduleKey))
+        .where(
+          (moduleKey) =>
+              moduleKey == PermissionModules.dashboard ||
+              _currentEnabledModuleIds.contains(moduleKey),
+        )
         .toList(growable: false);
 
     if (isExportImport) {
-      return enabledModules.where((moduleKey) {
-        if (moduleKey == PermissionModules.sales) return false;
-        if (moduleKey == PermissionModules.crm) return true;
-        if (moduleKey == PermissionModules.finance) return true;
-        if (moduleKey == PermissionModules.reports) return true;
-        return moduleKey == PermissionModules.dashboard;
-      }).toList(growable: false);
+      return enabledModules
+          .where((moduleKey) {
+            if (moduleKey == PermissionModules.sales) return false;
+            if (moduleKey == PermissionModules.crm) return true;
+            if (moduleKey == PermissionModules.finance) return true;
+            if (moduleKey == PermissionModules.reports) return true;
+            return moduleKey == PermissionModules.dashboard;
+          })
+          .toList(growable: false);
     }
 
     return enabledModules;
@@ -215,7 +217,9 @@ return moduleAccess.enabledModuleIds;
   }
 
   String _moduleIdFromDepartmentDoc(Map<String, dynamic> department) {
-    return (department['moduleId'] ?? department['module'] ?? department['moduleKey'])
+    return (department['moduleId'] ??
+            department['module'] ??
+            department['moduleKey'])
         .toString()
         .trim();
   }
@@ -293,33 +297,39 @@ return moduleAccess.enabledModuleIds;
       final rawRoles = await _userManagementService.fetchTenantRoles(
         companyId: widget.companyId,
       );
-      final rawDepartments = await _userManagementService.fetchTenantDepartments(
-        companyId: widget.companyId,
+      final rawDepartments = await _userManagementService
+          .fetchTenantDepartments(companyId: widget.companyId);
+
+      final tenantRoles = rawRoles
+          .where((role) {
+            final isActive = role['isActive'] == true;
+            if (!isActive) return false;
+            final moduleId = _moduleIdFromRoleDoc(role);
+            if (moduleId.isNotEmpty && !enabledModuleIds.contains(moduleId)) {
+              return false;
+            }
+            return true;
+          })
+          .toList(growable: false);
+
+      final tenantDepartments = rawDepartments
+          .where((department) {
+            final isActive = department['isActive'] == true;
+            if (!isActive) return false;
+            final moduleId = _moduleIdFromDepartmentDoc(department);
+            if (moduleId.isNotEmpty && !enabledModuleIds.contains(moduleId)) {
+              return false;
+            }
+            return true;
+          })
+          .toList(growable: false);
+
+      tenantRoles.sort(
+        (a, b) => _roleLabelFromDoc(a).compareTo(_roleLabelFromDoc(b)),
       );
-
-      final tenantRoles = rawRoles.where((role) {
-        final isActive = role['isActive'] == true;
-        if (!isActive) return false;
-        final moduleId = _moduleIdFromRoleDoc(role);
-        if (moduleId.isNotEmpty && !enabledModuleIds.contains(moduleId)) {
-          return false;
-        }
-        return true;
-      }).toList(growable: false);
-
-      final tenantDepartments = rawDepartments.where((department) {
-        final isActive = department['isActive'] == true;
-        if (!isActive) return false;
-        final moduleId = _moduleIdFromDepartmentDoc(department);
-        if (moduleId.isNotEmpty && !enabledModuleIds.contains(moduleId)) {
-          return false;
-        }
-        return true;
-      }).toList(growable: false);
-
-      tenantRoles.sort((a, b) => _roleLabelFromDoc(a).compareTo(_roleLabelFromDoc(b)));
       tenantDepartments.sort(
-        (a, b) => _departmentLabelFromDoc(a).compareTo(_departmentLabelFromDoc(b)),
+        (a, b) =>
+            _departmentLabelFromDoc(a).compareTo(_departmentLabelFromDoc(b)),
       );
 
       setState(() {
@@ -331,15 +341,21 @@ return moduleAccess.enabledModuleIds;
           ..clear()
           ..addAll(tenantDepartments);
 
-        if (!_tenantRoles.any((role) => _roleKeyFromDoc(role) == selectedRole) &&
+        if (!_tenantRoles.any(
+              (role) => _roleKeyFromDoc(role) == selectedRole,
+            ) &&
             _tenantRoles.isNotEmpty) {
           selectedRole = _roleKeyFromDoc(_tenantRoles.first);
         }
 
-        if (!_tenantDepartments.any((department) =>
-                _departmentLabelFromDoc(department) == selectedDepartment) &&
+        if (!_tenantDepartments.any(
+              (department) =>
+                  _departmentLabelFromDoc(department) == selectedDepartment,
+            ) &&
             _tenantDepartments.isNotEmpty) {
-          selectedDepartment = _departmentLabelFromDoc(_tenantDepartments.first);
+          selectedDepartment = _departmentLabelFromDoc(
+            _tenantDepartments.first,
+          );
         }
       });
 
@@ -365,8 +381,9 @@ return moduleAccess.enabledModuleIds;
     if (!_tenantRoles.any((role) => _roleKeyFromDoc(role) == selectedRole)) {
       return false;
     }
-    if (!_tenantDepartments.any((department) =>
-        _departmentLabelFromDoc(department) == selectedDepartment)) {
+    if (!_tenantDepartments.any(
+      (department) => _departmentLabelFromDoc(department) == selectedDepartment,
+    )) {
       return false;
     }
     return true;
@@ -398,33 +415,30 @@ return moduleAccess.enabledModuleIds;
     }
 
     final bool hasTenantSetup =
-    _tenantRoles.isNotEmpty &&
-    _tenantDepartments.isNotEmpty;
+        _tenantRoles.isNotEmpty && _tenantDepartments.isNotEmpty;
 
-if (!hasTenantSetup) {
-  return Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(14),
-    margin: const EdgeInsets.only(bottom: 16),
-    decoration: BoxDecoration(
-      color: const Color(0xFFF8FAFC),
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(
-        color: const Color(0xFFE2E8F0),
-      ),
-    ),
-    child: const Text(
-      'Using default QUIK ERP roles and departments because tenant settings are not configured yet.',
-      style: TextStyle(
-        color: Color(0xFF475569),
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-      ),
-    ),
-  );
-}
+    if (!hasTenantSetup) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: const Text(
+          'Using default QUIK ERP roles and departments because tenant settings are not configured yet.',
+          style: TextStyle(
+            color: Color(0xFF475569),
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      );
+    }
 
-return const SizedBox.shrink();
+    return const SizedBox.shrink();
   }
 
   String _normalizeEmail(String email) {
@@ -445,12 +459,12 @@ return const SizedBox.shrink();
             'taxInvoice': true,
             'paymentReceived': true,
             'outstanding': true,
-            'expenseEntries': true
+            'expenseEntries': true,
           },
           'reports': {
             'salesReport': true,
             'customerReport': true,
-            'paymentReport': true
+            'paymentReport': true,
           },
         };
       } else {
@@ -471,7 +485,9 @@ return const SizedBox.shrink();
     return mergePermissionsWithCanonicalShape(
       permissions ??
           _getIndustryDefaultPermissions(
-              role: role, isExportImport: isExportImport),
+            role: role,
+            isExportImport: isExportImport,
+          ),
     );
   }
 
@@ -484,7 +500,9 @@ return const SizedBox.shrink();
             isExportImport: isExportImport,
           );
 
-    final filteredPermissions = _filterPermissionsByEnabledModules(rawPermissions);
+    final filteredPermissions = _filterPermissionsByEnabledModules(
+      rawPermissions,
+    );
 
     setState(() {
       permissions = _buildUiPermissionState(
@@ -496,9 +514,9 @@ return const SizedBox.shrink();
   }
 
   Map<String, dynamic> _readModulePermissions(
-      Map<String, dynamic> permissionsMap,
-      String moduleKey,
-      ) {
+    Map<String, dynamic> permissionsMap,
+    String moduleKey,
+  ) {
     final moduleValue = permissionsMap[moduleKey];
 
     if (moduleKey == PermissionModules.dashboard) {
@@ -529,8 +547,9 @@ return const SizedBox.shrink();
     }
 
     final moduleMap = Map<String, dynamic>.from(updated[moduleKey] ?? {});
-    final submoduleMap =
-    Map<String, dynamic>.from(moduleMap[submoduleKey] ?? {});
+    final submoduleMap = Map<String, dynamic>.from(
+      moduleMap[submoduleKey] ?? {},
+    );
     submoduleMap[action] = value;
     moduleMap[submoduleKey] = submoduleMap;
     updated[moduleKey] = moduleMap;
@@ -556,7 +575,9 @@ return const SizedBox.shrink();
   }
 
   int _selectedPermissionCount(
-      Map<String, dynamic> permissionsMap, List<String> activeMods) {
+    Map<String, dynamic> permissionsMap,
+    List<String> activeMods,
+  ) {
     int count = 0;
 
     for (final moduleKey in activeMods) {
@@ -658,11 +679,11 @@ return const SizedBox.shrink();
           title: const Text('Invite Created'),
           content: SelectableText(
             'Invite Code: ${result.inviteCode}\n\n'
-                'Valid for 7 days.\n'
-                'Role: ${formatRole(selectedRole)}\n'
-                'Department: $selectedDepartment\n'
-                'Designation: $selectedDesignation\n'
-                'Selected permissions: ${_selectedPermissionCount(permissions, activeModules)}',
+            'Valid for 7 days.\n'
+            'Role: ${formatRole(selectedRole)}\n'
+            'Department: $selectedDepartment\n'
+            'Designation: $selectedDesignation\n'
+            'Selected permissions: ${_selectedPermissionCount(permissions, activeModules)}',
           ),
           actions: [
             TextButton(
@@ -705,8 +726,9 @@ return const SizedBox.shrink();
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      prefixIcon:
-      icon == null ? null : Icon(icon, color: _inviteMutedTextColor),
+      prefixIcon: icon == null
+          ? null
+          : Icon(icon, color: _inviteMutedTextColor),
       filled: true,
       fillColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -750,11 +772,7 @@ return const SizedBox.shrink();
       keyboardType: keyboardType,
       validator: validator,
       readOnly: readOnly,
-      decoration: _inputDecoration(
-        label: label,
-        hint: hint,
-        icon: icon,
-      ),
+      decoration: _inputDecoration(label: label, hint: hint, icon: icon),
     );
   }
 
@@ -768,17 +786,14 @@ return const SizedBox.shrink();
   }) {
     return DropdownButtonFormField<String>(
       initialValue: options.contains(value) ? value : null,
-      decoration: _inputDecoration(
-        label: label,
-        icon: icon,
-      ),
+      decoration: _inputDecoration(label: label, icon: icon),
       items: options
           .map(
             (e) => DropdownMenuItem<String>(
-          value: e,
-          child: Text(labelBuilder != null ? labelBuilder(e) : e),
-        ),
-      )
+              value: e,
+              child: Text(labelBuilder != null ? labelBuilder(e) : e),
+            ),
+          )
           .toList(),
       onChanged: onChanged,
       validator: (value) {
@@ -855,11 +870,12 @@ return const SizedBox.shrink();
     required bool isExportImport,
     required Map<String, dynamic> modulePermissions,
     required void Function(
-        String moduleKey,
-        String? submoduleKey,
-        String action,
-        bool value,
-        ) onActionChanged,
+      String moduleKey,
+      String? submoduleKey,
+      String action,
+      bool value,
+    )
+    onActionChanged,
   }) {
     final moduleLabel = formatModuleLabel(moduleKey);
     final selectedCount = _countEnabledActionsInModule(
@@ -900,8 +916,10 @@ return const SizedBox.shrink();
                 ),
               ),
               Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: selectedCount == 0
                       ? const Color(0xFFF1F5F9)
@@ -923,64 +941,65 @@ return const SizedBox.shrink();
           ),
           children: moduleKey == PermissionModules.dashboard
               ? [
-            _buildActionGroup(
-              title: 'Dashboard',
-              actions: Map<String, bool>.from(modulePermissions),
-              onChanged: (action, value) => onActionChanged(
-                moduleKey,
-                null,
-                action,
-                value,
-              ),
-            ),
-          ]
+                  _buildActionGroup(
+                    title: 'Dashboard',
+                    actions: Map<String, bool>.from(modulePermissions),
+                    onChanged: (action, value) =>
+                        onActionChanged(moduleKey, null, action, value),
+                  ),
+                ]
               : (permissionSubmoduleMap[moduleKey] ?? const <String>[])
-              .where((submoduleKey) {
-            // 🔥 CHANGED: Deep strict filtering for export_import
-            if (isExportImport) {
-              if (moduleKey == 'sales') return false; // Strictly blocked
-              if (moduleKey == 'crm') return submoduleKey == 'customers';
-              if (moduleKey == 'finance') {
-                return [
-                  'taxInvoice',
-                  'paymentReceived',
-                  'outstanding',
-                  'expenseEntries'
-                ].contains(submoduleKey);
-              }
-              if (moduleKey == 'reports') {
-                return [
-                  'salesReport',
-                  'customerReport', // inquiryReport explicitly blocked
-                  'paymentReport'
-                ].contains(submoduleKey);
-              }
-              return false;
-            }
-            return true;
-          }).map((submoduleKey) {
-            final submodulePermissions = Map<String, bool>.from(
-                modulePermissions[submoduleKey] ?? {});
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: _buildActionGroup(
-                title: formatSubmoduleLabel(submoduleKey),
-                actions: submodulePermissions,
-                onChanged: (action, value) => onActionChanged(
-                  moduleKey,
-                  submoduleKey,
-                  action,
-                  value,
-                ),
-              ),
-            );
-          }).toList(),
+                    .where((submoduleKey) {
+                      // 🔥 CHANGED: Deep strict filtering for export_import
+                      if (isExportImport) {
+                        if (moduleKey == 'sales')
+                          return false; // Strictly blocked
+                        if (moduleKey == 'crm')
+                          return submoduleKey == 'customers';
+                        if (moduleKey == 'finance') {
+                          return [
+                            'taxInvoice',
+                            'paymentReceived',
+                            'outstanding',
+                            'expenseEntries',
+                          ].contains(submoduleKey);
+                        }
+                        if (moduleKey == 'reports') {
+                          return [
+                            'salesReport',
+                            'customerReport', // inquiryReport explicitly blocked
+                            'paymentReport',
+                          ].contains(submoduleKey);
+                        }
+                        return false;
+                      }
+                      return true;
+                    })
+                    .map((submoduleKey) {
+                      final submodulePermissions = Map<String, bool>.from(
+                        modulePermissions[submoduleKey] ?? {},
+                      );
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: _buildActionGroup(
+                          title: formatSubmoduleLabel(submoduleKey),
+                          actions: submodulePermissions,
+                          onChanged: (action, value) => onActionChanged(
+                            moduleKey,
+                            submoduleKey,
+                            action,
+                            value,
+                          ),
+                        ),
+                      );
+                    })
+                    .toList(),
         ),
       ),
     );
@@ -1110,20 +1129,11 @@ return const SizedBox.shrink();
     );
   }
 
-  Widget _buildDesktopTwoColumn({
-    required Widget left,
-    required Widget right,
-  }) {
+  Widget _buildDesktopTwoColumn({required Widget left, required Widget right}) {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (constraints.maxWidth < 860) {
-          return Column(
-            children: [
-              left,
-              const SizedBox(height: 16),
-              right,
-            ],
-          );
+          return Column(children: [left, const SizedBox(height: 16), right]);
         }
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1160,10 +1170,7 @@ return const SizedBox.shrink();
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(
-            height: 1,
-            color: const Color(0xFFE2E8F0),
-          ),
+          child: Container(height: 1, color: const Color(0xFFE2E8F0)),
         ),
       ),
       body: SafeArea(
@@ -1202,14 +1209,16 @@ return const SizedBox.shrink();
                           ),
                         ),
                         OutlinedButton.icon(
-                          onPressed:
-                          isLoading ? null : () => Navigator.pop(context),
+                          onPressed: isLoading
+                              ? null
+                              : () => Navigator.pop(context),
                           icon: const Icon(Icons.arrow_back_rounded),
                           label: const Text('Back'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: _inviteHeadingTextColor,
                             side: const BorderSide(
-                                color: _inviteCardBorderColor),
+                              color: _inviteCardBorderColor,
+                            ),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 18,
                               vertical: 14,
@@ -1225,7 +1234,7 @@ return const SizedBox.shrink();
                     _buildSectionCard(
                       title: 'Basic Details',
                       subtitle:
-                      'Enter employee identity details for the invitation.',
+                          'Enter employee identity details for the invitation.',
                       child: Column(
                         children: [
                           _buildDesktopTwoColumn(
@@ -1252,8 +1261,9 @@ return const SizedBox.shrink();
                                 if (value.isEmpty) {
                                   return 'Email is required';
                                 }
-                                final emailRegex =
-                                RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+                                final emailRegex = RegExp(
+                                  r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+                                );
                                 if (!emailRegex.hasMatch(value)) {
                                   return 'Enter a valid email';
                                 }
@@ -1280,7 +1290,7 @@ return const SizedBox.shrink();
                     _buildSectionCard(
                       title: 'Department & Role',
                       subtitle:
-                      'Assign the employee to a department and choose the access role.',
+                          'Assign the employee to a department and choose the access role.',
                       trailing: TextButton(
                         onPressed: isLoading
                             ? null
@@ -1338,7 +1348,7 @@ return const SizedBox.shrink();
                               options: accessScopeList,
                               icon: Icons.lock_open_outlined,
                               labelBuilder: (value) =>
-                              accessScopeLabels[value] ?? value,
+                                  accessScopeLabels[value] ?? value,
                               onChanged: (value) {
                                 setState(() {
                                   selectedAccessScope =
@@ -1378,7 +1388,7 @@ return const SizedBox.shrink();
                     _buildSectionCard(
                       title: 'Module Permissions',
                       subtitle:
-                      'Permissions are aligned with your QUIK ERP modules and submodules.',
+                          'Permissions are aligned with your QUIK ERP modules and submodules.',
                       child: Column(
                         children: activeModules.map((moduleKey) {
                           return _buildPermissionModuleCard(
@@ -1388,22 +1398,23 @@ return const SizedBox.shrink();
                               permissions,
                               moduleKey,
                             ),
-                            onActionChanged: (
-                                String module,
-                                String? submodule,
-                                String action,
-                                bool value,
+                            onActionChanged:
+                                (
+                                  String module,
+                                  String? submodule,
+                                  String action,
+                                  bool value,
                                 ) {
-                              setState(() {
-                                permissions = _setPermissionValue(
-                                  permissionsMap: permissions,
-                                  moduleKey: module,
-                                  submoduleKey: submodule,
-                                  action: action,
-                                  value: value,
-                                );
-                              });
-                            },
+                                  setState(() {
+                                    permissions = _setPermissionValue(
+                                      permissionsMap: permissions,
+                                      moduleKey: module,
+                                      submoduleKey: submodule,
+                                      action: action,
+                                      value: value,
+                                    );
+                                  });
+                                },
                           );
                         }).toList(),
                       ),
@@ -1454,7 +1465,9 @@ return const SizedBox.shrink();
                                 SizedBox(
                                   width: double.infinity,
                                   child: ElevatedButton(
-                                    onPressed: isLoading || !_canCreateInvite ? null : _createInvite,
+                                    onPressed: isLoading || !_canCreateInvite
+                                        ? null
+                                        : _createInvite,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: _invitePrimaryColor,
                                       foregroundColor: Colors.white,
@@ -1468,19 +1481,19 @@ return const SizedBox.shrink();
                                     ),
                                     child: isLoading
                                         ? const SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        color: Colors.white,
-                                        strokeWidth: 2.4,
-                                      ),
-                                    )
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              color: Colors.white,
+                                              strokeWidth: 2.4,
+                                            ),
+                                          )
                                         : const Text(
-                                      'Create Invite',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
+                                            'Create Invite',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
                                   ),
                                 ),
                               ],
@@ -1510,7 +1523,9 @@ return const SizedBox.shrink();
                               ),
                               const Spacer(),
                               ElevatedButton(
-                                onPressed: isLoading || !_canCreateInvite ? null : _createInvite,
+                                onPressed: isLoading || !_canCreateInvite
+                                    ? null
+                                    : _createInvite,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _invitePrimaryColor,
                                   foregroundColor: Colors.white,
@@ -1525,19 +1540,19 @@ return const SizedBox.shrink();
                                 ),
                                 child: isLoading
                                     ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2.4,
-                                  ),
-                                )
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2.4,
+                                        ),
+                                      )
                                     : const Text(
-                                  'Create Invite',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                                        'Create Invite',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
                               ),
                             ],
                           );
@@ -1595,8 +1610,9 @@ class _PermissionChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color:
-                value ? const Color(0xFF1E3A8A) : _inviteHeadingTextColor,
+                color: value
+                    ? const Color(0xFF1E3A8A)
+                    : _inviteHeadingTextColor,
               ),
             ),
           ],

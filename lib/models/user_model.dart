@@ -95,66 +95,54 @@ class UserModel {
   }
 
   factory UserModel.fromMap(
-      Map<String, dynamic> map, {
-        String? companyIdOverride,
-        String? uidOverride,
-      }) {
+    Map<String, dynamic> map, {
+    String? companyIdOverride,
+    String? uidOverride,
+  }) {
     final reportingManager = _safeMap(map['reportingManager']);
 
-    final roleValue = _readString(
-      map,
-      ['role', 'roleKey'],
-      fallback: 'sales',
-    );
+    final roleValue = _readString(map, ['role', 'roleKey'], fallback: 'sales');
 
-    final roleLabelValue = _readString(
-      map,
-      ['roleLabel', 'roleName', 'role'],
-      fallback: roleValue,
-    );
+    final roleLabelValue = _readString(map, [
+      'roleLabel',
+      'roleName',
+      'role',
+    ], fallback: roleValue);
 
-    final nameValue = _readString(
-      map,
-      ['name', 'displayName', 'fullName'],
-      fallback: '',
-    );
+    final nameValue = _readString(map, [
+      'name',
+      'displayName',
+      'fullName',
+    ], fallback: '');
 
-    final companyIdValue = companyIdOverride ??
-        _readString(
-          map,
-          ['companyId'],
-          fallback: '',
-        );
+    final companyIdValue =
+        companyIdOverride ?? _readString(map, ['companyId'], fallback: '');
 
-    final uidValue = uidOverride ??
-        _readString(
-          map,
-          ['uid', 'userUid', 'id'],
-          fallback: '',
-        );
+    final uidValue =
+        uidOverride ?? _readString(map, ['uid', 'userUid', 'id'], fallback: '');
 
-    final isDeletedValue = _readBool(
-      map,
-      ['isDeleted'],
-      fallback: false,
-    );
+    final isDeletedValue = _readBool(map, ['isDeleted'], fallback: false);
 
-    final isActiveValue = _readBool(
-      map,
-      ['isActive'],
-      fallback: true,
-    );
+    final isActiveValue = _readBool(map, ['isActive'], fallback: true);
 
     final statusValue = _readString(
       map,
       ['status'],
-      fallback: isDeletedValue ? 'archived' : (isActiveValue ? 'active' : 'inactive'),
+      fallback: isDeletedValue
+          ? 'archived'
+          : (isActiveValue ? 'active' : 'inactive'),
     );
 
     final permissionsValue = _normalizeMap(map['permissions']);
 
-    final rawIndustry = _readString(map, ['industry', 'industryType', 'businessCategory'], fallback: '');
-    final finalIndustry = (rawIndustry.toLowerCase().contains('export') && rawIndustry.toLowerCase().contains('import'))
+    final rawIndustry = _readString(map, [
+      'industry',
+      'industryType',
+      'businessCategory',
+    ], fallback: '');
+    final finalIndustry =
+        (rawIndustry.toLowerCase().contains('export') &&
+            rawIndustry.toLowerCase().contains('import'))
         ? 'export_import'
         : rawIndustry;
 
@@ -163,7 +151,11 @@ class UserModel {
       companyId: companyIdValue,
       name: nameValue,
       email: _readString(map, ['email'], fallback: ''),
-      phone: _readString(map, ['phone', 'mobile', 'mobileNumber'], fallback: ''),
+      phone: _readString(map, [
+        'phone',
+        'mobile',
+        'mobileNumber',
+      ], fallback: ''),
       role: roleValue,
       roleLabel: roleLabelValue,
       isAdmin: _readBool(map, ['isAdmin'], fallback: false),
@@ -196,9 +188,9 @@ class UserModel {
   }
 
   factory UserModel.fromCompanyUserDoc(
-      DocumentSnapshot<Map<String, dynamic>> doc, {
-        required String companyId,
-      }) {
+    DocumentSnapshot<Map<String, dynamic>> doc, {
+    required String companyId,
+  }) {
     final data = doc.data() ?? <String, dynamic>{};
 
     return UserModel.fromMap(
@@ -253,11 +245,12 @@ class UserModel {
       branchId: branchId ?? this.branchId,
       branchName: branchName ?? this.branchName,
       reportingManagerUid: reportingManagerUid ?? this.reportingManagerUid,
-      reportingManagerName:
-      reportingManagerName ?? this.reportingManagerName,
+      reportingManagerName: reportingManagerName ?? this.reportingManagerName,
       accessScope: accessScope ?? this.accessScope,
       industry: industry ?? this.industry,
-      permissions: permissions != null ? _normalizeMap(permissions) : this.permissions,
+      permissions: permissions != null
+          ? _normalizeMap(permissions)
+          : this.permissions,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -266,10 +259,10 @@ class UserModel {
   }
 
   static String _readString(
-      Map<String, dynamic> source,
-      List<String> keys, {
-        String fallback = '',
-      }) {
+    Map<String, dynamic> source,
+    List<String> keys, {
+    String fallback = '',
+  }) {
     for (final key in keys) {
       final value = source[key];
       if (value == null) continue;
@@ -280,10 +273,10 @@ class UserModel {
   }
 
   static bool _readBool(
-      Map<String, dynamic> source,
-      List<String> keys, {
-        bool fallback = false,
-      }) {
+    Map<String, dynamic> source,
+    List<String> keys, {
+    bool fallback = false,
+  }) {
     for (final key in keys) {
       final value = source[key];
       if (value is bool) return value;
@@ -306,9 +299,7 @@ class UserModel {
       return Map<String, dynamic>.from(value);
     }
     if (value is Map) {
-      return value.map(
-            (key, val) => MapEntry(key.toString(), val),
-      );
+      return value.map((key, val) => MapEntry(key.toString(), val));
     }
     return <String, dynamic>{};
   }
@@ -316,19 +307,14 @@ class UserModel {
   static Map<String, dynamic> _normalizeMap(dynamic value) {
     if (value is Map<String, dynamic>) {
       return value.map(
-            (key, val) => MapEntry(
-          key,
-          val is Map ? _normalizeMap(val) : val,
-        ),
+        (key, val) => MapEntry(key, val is Map ? _normalizeMap(val) : val),
       );
     }
 
     if (value is Map) {
       return value.map(
-            (key, val) => MapEntry(
-          key.toString(),
-          val is Map ? _normalizeMap(val) : val,
-        ),
+        (key, val) =>
+            MapEntry(key.toString(), val is Map ? _normalizeMap(val) : val),
       );
     }
 

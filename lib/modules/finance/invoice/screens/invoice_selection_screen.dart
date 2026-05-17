@@ -54,23 +54,19 @@ class InvoiceSelectionScreen extends StatelessWidget {
 
                     return isDesktop
                         ? Row(
-                      children: [
-                        Expanded(
-                          child: _buildTaxInvoiceCard(context),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: _buildExportInvoiceCard(context),
-                        ),
-                      ],
-                    )
+                            children: [
+                              Expanded(child: _buildTaxInvoiceCard(context)),
+                              const SizedBox(width: 20),
+                              Expanded(child: _buildExportInvoiceCard(context)),
+                            ],
+                          )
                         : Column(
-                      children: [
-                        _buildTaxInvoiceCard(context),
-                        const SizedBox(height: 16),
-                        _buildExportInvoiceCard(context),
-                      ],
-                    );
+                            children: [
+                              _buildTaxInvoiceCard(context),
+                              const SizedBox(height: 16),
+                              _buildExportInvoiceCard(context),
+                            ],
+                          );
                   },
                 ),
               ),
@@ -85,7 +81,7 @@ class InvoiceSelectionScreen extends StatelessWidget {
     return _HoverableInvoiceCard(
       title: 'Tax Invoice',
       subtitle:
-      'Used for domestic sales within India. Includes GST calculation, HSN codes, and compliance reporting.',
+          'Used for domestic sales within India. Includes GST calculation, HSN codes, and compliance reporting.',
       icon: Icons.receipt_long_outlined,
       primaryColor: zBlue,
       backgroundColor: zBlueSoft,
@@ -99,7 +95,7 @@ class InvoiceSelectionScreen extends StatelessWidget {
     return _HoverableInvoiceCard(
       title: 'Export Invoice',
       subtitle:
-      'For international sales. Includes foreign currency, LUT/Bond compliance, shipping & logistics details.',
+          'For international sales. Includes foreign currency, LUT/Bond compliance, shipping & logistics details.',
       icon: Icons.public_outlined,
       primaryColor: zPurple,
       backgroundColor: zPurpleSoft,
@@ -136,8 +132,7 @@ class _HoverableInvoiceCard extends StatefulWidget {
   });
 
   @override
-  State<_HoverableInvoiceCard> createState() =>
-      _HoverableInvoiceCardState();
+  State<_HoverableInvoiceCard> createState() => _HoverableInvoiceCardState();
 }
 
 class _HoverableInvoiceCardState extends State<_HoverableInvoiceCard> {
@@ -154,12 +149,7 @@ class _HoverableInvoiceCardState extends State<_HoverableInvoiceCard> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           transform: Matrix4.identity()
-            ..scaleByDouble(
-              _hover ? 1.02 : 1.0,
-              _hover ? 1.02 : 1.0,
-              1,
-              1,
-            ),
+            ..scaleByDouble(_hover ? 1.02 : 1.0, _hover ? 1.02 : 1.0, 1, 1),
           padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -192,15 +182,20 @@ class _HoverableInvoiceCardState extends State<_HoverableInvoiceCard> {
                       color: widget.backgroundColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(widget.icon,
-                        color: widget.primaryColor, size: 24),
+                    child: Icon(
+                      widget.icon,
+                      color: widget.primaryColor,
+                      size: 24,
+                    ),
                   ),
                   const Spacer(),
 
                   // 🔥 Tag Badge
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: widget.primaryColor.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(6),
@@ -213,7 +208,7 @@ class _HoverableInvoiceCardState extends State<_HoverableInvoiceCard> {
                         color: widget.primaryColor,
                       ),
                     ),
-                  )
+                  ),
                 ],
               ),
 
@@ -244,8 +239,10 @@ class _HoverableInvoiceCardState extends State<_HoverableInvoiceCard> {
               // 🔥 CTA Button
               AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: _hover
                       ? widget.primaryColor
@@ -260,20 +257,18 @@ class _HoverableInvoiceCardState extends State<_HoverableInvoiceCard> {
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        color:
-                        _hover ? Colors.white : widget.primaryColor,
+                        color: _hover ? Colors.white : widget.primaryColor,
                       ),
                     ),
                     const SizedBox(width: 6),
                     Icon(
                       Icons.arrow_forward_rounded,
                       size: 16,
-                      color:
-                      _hover ? Colors.white : widget.primaryColor,
+                      color: _hover ? Colors.white : widget.primaryColor,
                     ),
                   ],
                 ),
-              )
+              ),
             ],
           ),
         ),

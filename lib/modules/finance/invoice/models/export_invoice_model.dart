@@ -191,7 +191,9 @@ class Logistics {
       modeOfTransport: map['modeOfTransport'] ?? '',
       vesselOrFlight: map['vesselOrFlight'] ?? '',
       shippingBillNo: map['shippingBillNo'] ?? '',
-      shippingBillDate: map['shippingBillDate'] != null ? (map['shippingBillDate'] as Timestamp).toDate() : null,
+      shippingBillDate: map['shippingBillDate'] != null
+          ? (map['shippingBillDate'] as Timestamp).toDate()
+          : null,
       marksAndNos: map['marksAndNos'] ?? '',
       numberOfPackages: _parseInt(map['numberOfPackages']),
       grossWeight: _parseDouble(map['grossWeight']),
@@ -521,7 +523,8 @@ class ExportInvoiceModel {
       customerId: map['customerId'] ?? '',
       invoiceNumber: map['invoiceNumber'] ?? '',
       exportReference: map['exportReference'] ?? '',
-      invoiceDate: (map['invoiceDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      invoiceDate:
+          (map['invoiceDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       buyerOrderDate: (map['buyerOrderDate'] as Timestamp?)?.toDate(),
       dueDate: (map['dueDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
       paymentTerms: map['paymentTerms'] ?? 'Due on Receipt',
@@ -538,7 +541,9 @@ class ExportInvoiceModel {
       exportDetails: ExportDetails.fromMap(map['exportDetails'] ?? {}),
       logistics: Logistics.fromMap(map['logistics'] ?? {}),
       items: List<ExportInvoiceItem>.from(
-        (map['items'] ?? []).map((x) => ExportInvoiceItem.fromMap(x, x['id'] ?? docId)),
+        (map['items'] ?? []).map(
+          (x) => ExportInvoiceItem.fromMap(x, x['id'] ?? docId),
+        ),
       ),
       taxDetails: TaxDetails.fromMap(map['taxDetails'] ?? {}),
       totals: Totals.fromMap(map['totals'] ?? {}),

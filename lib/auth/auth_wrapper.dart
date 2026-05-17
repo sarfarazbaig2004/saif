@@ -129,9 +129,7 @@ class _UserProfileGateState extends State<_UserProfileGate> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_error != null) {
@@ -153,10 +151,7 @@ class _UserProfileGateState extends State<_UserProfileGate> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 10),
-                ElevatedButton(
-                  onPressed: _logout,
-                  child: const Text('Logout'),
-                ),
+                ElevatedButton(onPressed: _logout, child: const Text('Logout')),
               ],
             ),
           ),
@@ -183,16 +178,14 @@ class _UserProfileGateState extends State<_UserProfileGate> {
 
     if (companyId.isEmpty) {
       return const Scaffold(
-        body: Center(
-          child: Text('Company ID missing in user profile.'),
-        ),
+        body: Center(child: Text('Company ID missing in user profile.')),
       );
     }
 
     final allowedTenantIds = [companyId];
     final role = (data['role'] ?? 'sales').toString();
-    final companyName =
-        (data['companyName'] ?? AmanAppConfig.companyName).toString();
+    final companyName = (data['companyName'] ?? AmanAppConfig.companyName)
+        .toString();
     final permissions = Map<String, dynamic>.from(data['permissions'] ?? {});
 
     final userDisplayName =
@@ -318,9 +311,7 @@ class _TenantModuleBackfillGateState extends State<_TenantModuleBackfillGate> {
   @override
   Widget build(BuildContext context) {
     if (!_ready) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return widget.child;

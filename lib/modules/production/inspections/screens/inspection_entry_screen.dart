@@ -40,7 +40,9 @@ class _InspectionEntryScreenState extends State<InspectionEntryScreen> {
   @override
   void initState() {
     super.initState();
-    _inspectionId = _activeTenantId.isEmpty ? '' : _repository.newInspectionId();
+    _inspectionId = _activeTenantId.isEmpty
+        ? ''
+        : _repository.newInspectionId();
   }
 
   String get _activeTenantId => widget.tenantId.trim();

@@ -6,12 +6,8 @@ class ComplaintFormScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Complaint'),
-      ),
-      body: const Center(
-        child: Text('Complaint Form Coming Soon'),
-      ),
+      appBar: AppBar(title: const Text('Create Complaint')),
+      body: const Center(child: Text('Complaint Form Coming Soon')),
     );
   }
 }

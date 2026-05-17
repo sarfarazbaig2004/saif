@@ -184,7 +184,10 @@ class _HrHomeScreenState extends State<HrHomeScreen>
                           labelText: 'Employment Type',
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'staff', child: Text('Staff')),
+                          DropdownMenuItem(
+                            value: 'staff',
+                            child: Text('Staff'),
+                          ),
                           DropdownMenuItem(
                             value: 'worker',
                             child: Text('Worker'),
@@ -292,7 +295,10 @@ class _HrHomeScreenState extends State<HrHomeScreen>
                         decoration: const InputDecoration(labelText: 'Shift'),
                         items: const [
                           DropdownMenuItem(value: 'Day', child: Text('Day')),
-                          DropdownMenuItem(value: 'Night', child: Text('Night')),
+                          DropdownMenuItem(
+                            value: 'Night',
+                            child: Text('Night'),
+                          ),
                           DropdownMenuItem(
                             value: 'General',
                             child: Text('General'),
@@ -494,9 +500,9 @@ class _HrHomeScreenState extends State<HrHomeScreen>
   }
 
   void _savedSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -511,7 +517,8 @@ class _EmployeeList extends StatelessWidget {
       stream: repository.watchEmployees(),
       builder: (context, snapshot) {
         return _HrListShell(
-          loading: snapshot.connectionState == ConnectionState.waiting &&
+          loading:
+              snapshot.connectionState == ConnectionState.waiting &&
               !snapshot.hasData,
           error: snapshot.error,
           emptyTitle: 'No employees yet',
@@ -544,7 +551,8 @@ class _AttendanceList extends StatelessWidget {
       stream: repository.watchAttendance(),
       builder: (context, snapshot) {
         return _HrListShell(
-          loading: snapshot.connectionState == ConnectionState.waiting &&
+          loading:
+              snapshot.connectionState == ConnectionState.waiting &&
               !snapshot.hasData,
           error: snapshot.error,
           emptyTitle: 'No attendance yet',
@@ -577,7 +585,8 @@ class _WageList extends StatelessWidget {
       stream: repository.watchWageEntries(),
       builder: (context, snapshot) {
         return _HrListShell(
-          loading: snapshot.connectionState == ConnectionState.waiting &&
+          loading:
+              snapshot.connectionState == ConnectionState.waiting &&
               !snapshot.hasData,
           error: snapshot.error,
           emptyTitle: 'No wage entries yet',

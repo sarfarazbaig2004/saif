@@ -1,4 +1,3 @@
-
 enum ShellPage {
   dashboard,
 
@@ -77,7 +76,6 @@ enum ShellPage {
 
   settingsGeneral,
 }
-
 
 extension ShellPageX on ShellPage {
   String get label {

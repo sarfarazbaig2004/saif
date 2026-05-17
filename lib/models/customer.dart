@@ -284,10 +284,10 @@ class Customer {
 
   factory Customer.fromMap(String id, Map<String, dynamic> map) {
     final resolvedName = (map['companyName'] ?? map['name'] ?? '').toString();
-    final resolvedPhone =
-    (map['companyPhone'] ?? map['phone'] ?? '').toString();
-    final resolvedEmail =
-    (map['businessEmail'] ?? map['email'] ?? '').toString();
+    final resolvedPhone = (map['companyPhone'] ?? map['phone'] ?? '')
+        .toString();
+    final resolvedEmail = (map['businessEmail'] ?? map['email'] ?? '')
+        .toString();
 
     return Customer(
       id: id,

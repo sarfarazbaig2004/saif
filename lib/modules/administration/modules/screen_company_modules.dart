@@ -109,9 +109,9 @@ class _ScreenCompanyModulesState extends State<ScreenCompanyModules> {
       if (!mounted) return;
       final moduleAccess = ModuleAccessProvider.maybeOf(context, listen: false);
 
-if (moduleAccess != null) {
-  await moduleAccess.refresh();
-}
+      if (moduleAccess != null) {
+        await moduleAccess.refresh();
+      }
 
       if (!mounted) return;
       setState(() => _saving = false);

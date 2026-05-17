@@ -66,7 +66,10 @@ class InspectionDetailScreen extends StatelessWidget {
               children: [
                 _DetailRow(label: 'Job Card No', value: inspection.jobCardNo),
                 _DetailRow(label: 'Job Card ID', value: inspection.jobCardId),
-                _DetailRow(label: 'Project Code', value: inspection.projectCode),
+                _DetailRow(
+                  label: 'Project Code',
+                  value: inspection.projectCode,
+                ),
                 _DetailRow(label: 'Product', value: inspection.productName),
                 _DetailRow(
                   label: 'Dispatch Commitment',
@@ -98,10 +101,7 @@ class InspectionDetailScreen extends StatelessWidget {
                   label: 'Rejection Reason',
                   value: inspection.rejectionReason,
                 ),
-                _DetailRow(
-                  label: 'Inspector',
-                  value: inspection.inspectorName,
-                ),
+                _DetailRow(label: 'Inspector', value: inspection.inspectorName),
               ],
             ),
             const SizedBox(height: 12),
@@ -124,7 +124,10 @@ class InspectionDetailScreen extends StatelessWidget {
                   label: 'Dispatch Allowed',
                   value: inspection.isDispatchAllowed ? 'yes' : 'no',
                 ),
-                _DetailRow(label: 'Delay Reason', value: inspection.delayReason),
+                _DetailRow(
+                  label: 'Delay Reason',
+                  value: inspection.delayReason,
+                ),
                 _DetailRow(label: 'Remarks', value: inspection.remarks),
               ],
             ),

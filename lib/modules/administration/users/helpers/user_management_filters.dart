@@ -106,7 +106,8 @@ List<UserDoc> filterUsersLocally({
 
     final currentStatus = _readNormalizedStatus(data);
 
-    final matchesSearch = normalizedQuery.isEmpty ||
+    final matchesSearch =
+        normalizedQuery.isEmpty ||
         displayName.contains(normalizedQuery) ||
         email.contains(normalizedQuery) ||
         phone.contains(normalizedQuery) ||
@@ -123,10 +124,11 @@ List<UserDoc> filterUsersLocally({
     final matchesStatus =
         normalizedStatus == 'all' || currentStatus == normalizedStatus;
 
-    final matchesDepartment = normalizedDepartment == 'all' ||
-        department == normalizedDepartment;
+    final matchesDepartment =
+        normalizedDepartment == 'all' || department == normalizedDepartment;
 
-    final matchesBranch = normalizedBranchId.isEmpty ||
+    final matchesBranch =
+        normalizedBranchId.isEmpty ||
         normalizedBranchId == 'all' ||
         branchId == normalizedBranchId;
 
@@ -138,7 +140,7 @@ List<UserDoc> filterUsersLocally({
   }).toList();
 
   filtered.sort(
-        (a, b) => _compareUsers(
+    (a, b) => _compareUsers(
       a: a,
       b: b,
       sortField: state.sortField,
@@ -206,15 +208,9 @@ int _compareUsers({
   final aData = a.data();
   final bData = b.data();
 
-  final dynamic aValue = _getSortValue(
-    data: aData,
-    sortField: sortField,
-  );
+  final dynamic aValue = _getSortValue(data: aData, sortField: sortField);
 
-  final dynamic bValue = _getSortValue(
-    data: bData,
-    sortField: sortField,
-  );
+  final dynamic bValue = _getSortValue(data: bData, sortField: sortField);
 
   int result;
 

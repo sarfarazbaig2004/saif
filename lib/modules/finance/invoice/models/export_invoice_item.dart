@@ -43,8 +43,7 @@ class ExportInvoiceItem {
   double get computedAmount => quantity * rate;
 
   // ✅ Detect mismatch (for audit/debug)
-  bool get isAmountMismatch =>
-      (amount - computedAmount).abs() > 0.01;
+  bool get isAmountMismatch => (amount - computedAmount).abs() > 0.01;
 
   // ✅ CLEAN & PRODUCTION SAFE MAP
   Map<String, dynamic> toMap() {
@@ -99,11 +98,9 @@ class ExportInvoiceItem {
       // ✅ Always trust computed value
       amount: computed,
 
-      createdAt:
-      (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       createdBy: map['createdBy'] ?? '',
-      updatedAt:
-      (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (map['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedBy: map['updatedBy'] ?? '',
       isActive: map['isActive'] ?? true,
       isDeleted: map['isDeleted'] ?? false,

@@ -78,10 +78,7 @@ class UsersSection extends StatelessWidget {
             title: 'Users',
             subtitle: 'View and manage all company users',
             trailing: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(999),
@@ -136,13 +133,13 @@ class UsersSection extends StatelessWidget {
                       onToggle: (isSelfUser || isDeleted)
                           ? null
                           : () async {
-                        await onToggle(doc);
-                      },
+                              await onToggle(doc);
+                            },
                       onDelete: (isSelfUser || isDeleted)
                           ? null
                           : () async {
-                        await onDelete(doc);
-                      },
+                              await onDelete(doc);
+                            },
                     ),
                   );
                 }).toList(),

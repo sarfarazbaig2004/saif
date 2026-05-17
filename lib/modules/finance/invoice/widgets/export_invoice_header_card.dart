@@ -82,27 +82,17 @@ class ExportInvoiceHeaderCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _dropdown(
-                  'Export Type',
-                  exportType,
-                  const {
-                    'WITH_LUT': 'With LUT (No IGST)',
-                    'WITH_IGST': 'With IGST Payment',
-                  },
-                  onExportTypeChanged,
-                ),
+                child: _dropdown('Export Type', exportType, const {
+                  'WITH_LUT': 'With LUT (No IGST)',
+                  'WITH_IGST': 'With IGST Payment',
+                }, onExportTypeChanged),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _dropdown(
-                  'Nature of Supply',
-                  natureOfSupply,
-                  const {
-                    'GOODS': 'Goods',
-                    'SERVICES': 'Services',
-                  },
-                  onNatureOfSupplyChanged,
-                ),
+                child: _dropdown('Nature of Supply', natureOfSupply, const {
+                  'GOODS': 'Goods',
+                  'SERVICES': 'Services',
+                }, onNatureOfSupplyChanged),
               ),
             ],
           ),
@@ -113,16 +103,11 @@ class ExportInvoiceHeaderCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _dropdown(
-                  'Currency',
-                  currency,
-                  const {
-                    'USD': 'USD - US Dollar',
-                    'EUR': 'EUR - Euro',
-                    'INR': 'INR - Indian Rupee',
-                  },
-                  onCurrencyChanged,
-                ),
+                child: _dropdown('Currency', currency, const {
+                  'USD': 'USD - US Dollar',
+                  'EUR': 'EUR - Euro',
+                  'INR': 'INR - Indian Rupee',
+                }, onCurrencyChanged),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -177,8 +162,12 @@ class ExportInvoiceHeaderCard extends StatelessWidget {
   }
 
   // ================= COMMON FIELD =================
-  Widget _field(String label, TextEditingController controller,
-      {bool isNumber = false, bool readOnly = false}) {
+  Widget _field(
+    String label,
+    TextEditingController controller, {
+    bool isNumber = false,
+    bool readOnly = false,
+  }) {
     return TextField(
       controller: controller,
       readOnly: readOnly,
@@ -195,15 +184,16 @@ class ExportInvoiceHeaderCard extends StatelessWidget {
   }
 
   // ================= DROPDOWN =================
-  Widget _dropdown(String label, String value,
-      Map<String, String> items, ValueChanged<String?> onChanged) {
+  Widget _dropdown(
+    String label,
+    String value,
+    Map<String, String> items,
+    ValueChanged<String?> onChanged,
+  ) {
     return DropdownButtonFormField<String>(
       initialValue: value,
       items: items.entries
-          .map((e) => DropdownMenuItem(
-        value: e.key,
-        child: Text(e.value),
-      ))
+          .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
           .toList(),
       onChanged: onChanged,
       decoration: InputDecoration(

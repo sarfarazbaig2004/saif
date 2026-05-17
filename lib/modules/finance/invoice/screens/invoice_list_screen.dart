@@ -60,12 +60,20 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
             children: [
               const Text(
                 'Create New Invoice',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: zText),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: zText,
+                ),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Select the type of invoice you want to generate.',
-                style: TextStyle(fontSize: 14, color: zMuted, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: zMuted,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               const SizedBox(height: 24),
               _CreateOptionCard(
@@ -82,7 +90,8 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
               const SizedBox(height: 12),
               _CreateOptionCard(
                 title: 'Export Invoice',
-                subtitle: 'Specialized invoice for international shipping & customs.',
+                subtitle:
+                    'Specialized invoice for international shipping & customs.',
                 icon: Icons.public_outlined,
                 color: zPurple,
                 bgColor: zPurpleSoft,
@@ -151,7 +160,9 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               elevation: 0,
               backgroundColor: Colors.transparent,
               child: Container(
@@ -160,23 +171,47 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                   color: Colors.white,
                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, 10))],
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 20,
+                      offset: Offset(0, 10),
+                    ),
+                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: Colors.red.shade50, shape: BoxShape.circle),
-                      child: Icon(Icons.cancel_outlined, color: Colors.red.shade600, size: 36),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.cancel_outlined,
+                        color: Colors.red.shade600,
+                        size: 36,
+                      ),
                     ),
                     const SizedBox(height: 20),
-                    const Text('Confirm Cancellation', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: zText)),
+                    const Text(
+                      'Confirm Cancellation',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: zText,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     const Text(
                       'This will cancel the invoice and clear outstanding ledgers. Please enter your password to confirm.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 14, color: zMuted, height: 1.4),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: zMuted,
+                        height: 1.4,
+                      ),
                     ),
                     const SizedBox(height: 20),
 
@@ -187,31 +222,76 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                       enabled: !isLoading,
                       decoration: InputDecoration(
                         hintText: 'Account Password',
-                        prefixIcon: const Icon(Icons.lock_outline, size: 18, color: zMuted),
+                        prefixIcon: const Icon(
+                          Icons.lock_outline,
+                          size: 18,
+                          color: zMuted,
+                        ),
                         suffixIcon: IconButton(
-                          icon: Icon(obscurePwd ? Icons.visibility_off : Icons.visibility, size: 18, color: zMuted),
-                          onPressed: () => setState(() => obscurePwd = !obscurePwd),
+                          icon: Icon(
+                            obscurePwd
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            size: 18,
+                            color: zMuted,
+                          ),
+                          onPressed: () =>
+                              setState(() => obscurePwd = !obscurePwd),
                         ),
                         isDense: true,
                         filled: true,
                         fillColor: const Color(0xFFF9FAFB),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.grey.shade300)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.red, width: 1.5)),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: Colors.red,
+                            width: 1.5,
+                          ),
+                        ),
                       ),
                     ),
 
                     if (errorMsg.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(6)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                         child: Row(
                           children: [
-                            Icon(Icons.error_outline, size: 16, color: Colors.red.shade700),
+                            Icon(
+                              Icons.error_outline,
+                              size: 16,
+                              color: Colors.red.shade700,
+                            ),
                             const SizedBox(width: 8),
-                            Expanded(child: Text(errorMsg, style: TextStyle(color: Colors.red.shade700, fontSize: 12, fontWeight: FontWeight.w600))),
+                            Expanded(
+                              child: Text(
+                                errorMsg,
+                                style: TextStyle(
+                                  color: Colors.red.shade700,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -224,11 +304,21 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                           child: OutlinedButton(
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                               side: BorderSide(color: Colors.grey.shade300),
                             ),
-                            onPressed: isLoading ? null : () => Navigator.pop(ctx),
-                            child: const Text('Close', style: TextStyle(color: zText, fontWeight: FontWeight.w600)),
+                            onPressed: isLoading
+                                ? null
+                                : () => Navigator.pop(ctx),
+                            child: const Text(
+                              'Close',
+                              style: TextStyle(
+                                color: zText,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -239,57 +329,88 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                               foregroundColor: Colors.white,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
                             ),
-                            onPressed: isLoading ? null : () async {
-                              final pwd = pwdController.text.trim();
-                              if (pwd.isEmpty) {
-                                setState(() => errorMsg = 'Please enter your password.');
-                                return;
-                              }
+                            onPressed: isLoading
+                                ? null
+                                : () async {
+                                    final pwd = pwdController.text.trim();
+                                    if (pwd.isEmpty) {
+                                      setState(
+                                        () => errorMsg =
+                                            'Please enter your password.',
+                                      );
+                                      return;
+                                    }
 
-                              setState(() {
-                                isLoading = true;
-                                errorMsg = '';
-                              });
+                                    setState(() {
+                                      isLoading = true;
+                                      errorMsg = '';
+                                    });
 
-                              try {
-                                final user = FirebaseAuth.instance.currentUser;
-                                if (user == null || user.email == null) {
-                                  throw FirebaseAuthException(code: 'user-not-found', message: 'No active user found.');
-                                }
+                                    try {
+                                      final user =
+                                          FirebaseAuth.instance.currentUser;
+                                      if (user == null || user.email == null) {
+                                        throw FirebaseAuthException(
+                                          code: 'user-not-found',
+                                          message: 'No active user found.',
+                                        );
+                                      }
 
-                                // 🔥 RE-AUTHENTICATE USER
-                                final credential = EmailAuthProvider.credential(
-                                  email: user.email!,
-                                  password: pwd,
-                                );
-                                await user.reauthenticateWithCredential(credential);
+                                      // 🔥 RE-AUTHENTICATE USER
+                                      final credential =
+                                          EmailAuthProvider.credential(
+                                            email: user.email!,
+                                            password: pwd,
+                                          );
+                                      await user.reauthenticateWithCredential(
+                                        credential,
+                                      );
 
-                                // If success, close dialog and cancel invoice
-                                if (context.mounted) {
-                                  Navigator.pop(ctx);
-                                  _cancelInvoice(docId);
-                                }
-                              } on FirebaseAuthException catch (e) {
-                                setState(() {
-                                  isLoading = false;
-                                  if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
-                                    errorMsg = 'Incorrect password. Action denied.';
-                                  } else {
-                                    errorMsg = e.message ?? 'Authentication failed.';
-                                  }
-                                });
-                              } catch (e) {
-                                setState(() {
-                                  isLoading = false;
-                                  errorMsg = 'An unexpected error occurred.';
-                                });
-                              }
-                            },
+                                      // If success, close dialog and cancel invoice
+                                      if (context.mounted) {
+                                        Navigator.pop(ctx);
+                                        _cancelInvoice(docId);
+                                      }
+                                    } on FirebaseAuthException catch (e) {
+                                      setState(() {
+                                        isLoading = false;
+                                        if (e.code == 'wrong-password' ||
+                                            e.code == 'invalid-credential') {
+                                          errorMsg =
+                                              'Incorrect password. Action denied.';
+                                        } else {
+                                          errorMsg =
+                                              e.message ??
+                                              'Authentication failed.';
+                                        }
+                                      });
+                                    } catch (e) {
+                                      setState(() {
+                                        isLoading = false;
+                                        errorMsg =
+                                            'An unexpected error occurred.';
+                                      });
+                                    }
+                                  },
                             child: isLoading
-                                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                : const Text('Confirm', style: TextStyle(fontWeight: FontWeight.w700)),
+                                ? const SizedBox(
+                                    height: 18,
+                                    width: 18,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Text(
+                                    'Confirm',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
                           ),
                         ),
                       ],
@@ -310,18 +431,30 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
       final batch = db.batch();
 
       // 1. UPDATE: Change invoice status to CANCELLED (Keeps document for compliance)
-      final invoiceRef = db.collection('companies').doc(widget.companyId).collection('export_invoices').doc(docId);
+      final invoiceRef = db
+          .collection('companies')
+          .doc(widget.companyId)
+          .collection('export_invoices')
+          .doc(docId);
       batch.update(invoiceRef, {
         'status': 'CANCELLED',
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
       // 2. HARD DELETE: Remove the associated outstanding ledger document to clear accounts
-      final outstandingRef = db.collection('companies').doc(widget.companyId).collection('outstanding').doc(docId);
+      final outstandingRef = db
+          .collection('companies')
+          .doc(widget.companyId)
+          .collection('outstanding')
+          .doc(docId);
       batch.delete(outstandingRef);
 
       // 3. ACTIVITY LOG: Create an immutable audit log entry
-      final logRef = db.collection('companies').doc(widget.companyId).collection('invoice_activity_logs').doc();
+      final logRef = db
+          .collection('companies')
+          .doc(widget.companyId)
+          .collection('invoice_activity_logs')
+          .doc();
       batch.set(logRef, {
         'invoiceId': docId,
         'action': 'CANCELLED',
@@ -334,13 +467,19 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Invoice cancelled successfully'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Invoice cancelled successfully'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to cancel invoice: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Failed to cancel invoice: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -366,7 +505,10 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
         foregroundColor: Colors.white,
         elevation: 4,
         icon: const Icon(Icons.add),
-        label: const Text('New Invoice', style: TextStyle(fontWeight: FontWeight.w800)),
+        label: const Text(
+          'New Invoice',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
         onPressed: () => _showCreateOptions(context),
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -376,7 +518,12 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+            return Center(
+              child: Text(
+                'Error: ${snapshot.error}',
+                style: const TextStyle(color: Colors.red),
+              ),
+            );
           }
 
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -409,25 +556,40 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
             final buyerName = inv.buyer.name.toLowerCase();
             final docStatus = inv.status.toLowerCase();
 
-            final matchesSearch = query.isEmpty || invNum.contains(query) || buyerName.contains(query);
-            final matchesStatus = _statusFilter == 'all' || docStatus == _statusFilter.toLowerCase();
+            final matchesSearch =
+                query.isEmpty ||
+                invNum.contains(query) ||
+                buyerName.contains(query);
+            final matchesStatus =
+                _statusFilter == 'all' ||
+                docStatus == _statusFilter.toLowerCase();
 
             return matchesSearch && matchesStatus;
           }).toList();
 
           // Apply Sorting
           if (_sortOption == 'amount_desc') {
-            filteredInvoices.sort((a, b) => b.totals.grandTotal.compareTo(a.totals.grandTotal));
+            filteredInvoices.sort(
+              (a, b) => b.totals.grandTotal.compareTo(a.totals.grandTotal),
+            );
           } else if (_sortOption == 'customer_asc') {
-            filteredInvoices.sort((a, b) => a.buyer.name.toLowerCase().compareTo(b.buyer.name.toLowerCase()));
+            filteredInvoices.sort(
+              (a, b) => a.buyer.name.toLowerCase().compareTo(
+                b.buyer.name.toLowerCase(),
+              ),
+            );
           } else {
             filteredInvoices.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           }
 
           // Quick Stats
           final totalCount = filteredInvoices.length;
-          final draftCount = filteredInvoices.where((inv) => inv.status.toLowerCase() == 'draft').length;
-          final finalCount = filteredInvoices.where((inv) => inv.status.toLowerCase() == 'submitted').length;
+          final draftCount = filteredInvoices
+              .where((inv) => inv.status.toLowerCase() == 'draft')
+              .length;
+          final finalCount = filteredInvoices
+              .where((inv) => inv.status.toLowerCase() == 'submitted')
+              .length;
 
           return Column(
             children: [
@@ -442,32 +604,49 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                         height: 38,
                         child: TextField(
                           controller: _searchController,
-                          onChanged: (value) => setState(() => _searchQuery = value),
+                          onChanged: (value) =>
+                              setState(() => _searchQuery = value),
                           decoration: InputDecoration(
                             hintText: 'Search by Invoice No or Customer',
-                            prefixIcon: const Icon(Icons.search, size: 18, color: zMuted),
-                            suffixIcon: _searchQuery.isEmpty ? null : IconButton(
-                              icon: const Icon(Icons.close, size: 17),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _searchQuery = '');
-                              },
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              size: 18,
+                              color: zMuted,
                             ),
+                            suffixIcon: _searchQuery.isEmpty
+                                ? null
+                                : IconButton(
+                                    icon: const Icon(Icons.close, size: 17),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _searchQuery = '');
+                                    },
+                                  ),
                             isDense: true,
                             filled: true,
                             fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
                             border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.grey.shade300)
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(color: Colors.grey.shade300)
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade300,
+                              ),
                             ),
                             focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(color: zBlue, width: 1.5)
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: const BorderSide(
+                                color: zBlue,
+                                width: 1.5,
+                              ),
                             ),
                           ),
                         ),
@@ -490,12 +669,47 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                         icon: const Icon(Icons.sort, size: 18, color: zText),
                         tooltip: 'Sort Invoices',
                         offset: const Offset(0, 40),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         onSelected: (val) => setState(() => _sortOption = val),
                         itemBuilder: (_) => [
-                          PopupMenuItem(value: 'date_desc', child: Text('Date (Latest First)', style: TextStyle(fontSize: 13, fontWeight: _sortOption == 'date_desc' ? FontWeight.bold : FontWeight.normal))),
-                          PopupMenuItem(value: 'amount_desc', child: Text('Amount (High to Low)', style: TextStyle(fontSize: 13, fontWeight: _sortOption == 'amount_desc' ? FontWeight.bold : FontWeight.normal))),
-                          PopupMenuItem(value: 'customer_asc', child: Text('Customer (A-Z)', style: TextStyle(fontSize: 13, fontWeight: _sortOption == 'customer_asc' ? FontWeight.bold : FontWeight.normal))),
+                          PopupMenuItem(
+                            value: 'date_desc',
+                            child: Text(
+                              'Date (Latest First)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: _sortOption == 'date_desc'
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'amount_desc',
+                            child: Text(
+                              'Amount (High to Low)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: _sortOption == 'amount_desc'
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'customer_asc',
+                            child: Text(
+                              'Customer (A-Z)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: _sortOption == 'customer_asc'
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -505,14 +719,25 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
 
               // QUICK STATS
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
                 child: Row(
                   children: [
                     _MiniStatText(label: 'Total', value: totalCount.toString()),
                     const SizedBox(width: 12),
-                    _MiniStatText(label: 'Drafts', value: draftCount.toString(), color: zOrange),
+                    _MiniStatText(
+                      label: 'Drafts',
+                      value: draftCount.toString(),
+                      color: zOrange,
+                    ),
                     const SizedBox(width: 12),
-                    _MiniStatText(label: 'Finalized', value: finalCount.toString(), color: Colors.green.shade700),
+                    _MiniStatText(
+                      label: 'Finalized',
+                      value: finalCount.toString(),
+                      color: Colors.green.shade700,
+                    ),
                   ],
                 ),
               ),
@@ -520,44 +745,49 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
               // LIST VIEW
               Expanded(
                 child: filteredInvoices.isEmpty
-                    ? _EmptyInvoiceState(hasSearch: _searchQuery.isNotEmpty || _statusFilter != 'all')
+                    ? _EmptyInvoiceState(
+                        hasSearch:
+                            _searchQuery.isNotEmpty || _statusFilter != 'all',
+                      )
                     : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
-                  itemCount: filteredInvoices.length,
-                  itemBuilder: (context, index) {
-                    final invoice = filteredInvoices[index];
-                    return TweenAnimationBuilder<double>(
-                      duration: Duration(milliseconds: 300 + (index * 50).clamp(0, 400)),
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      curve: Curves.easeOutCubic,
-                      builder: (context, value, child) {
-                        return Transform.translate(
-                          offset: Offset(0, 20 * (1 - value)),
-                          child: Opacity(opacity: value, child: child),
-                        );
-                      },
-                      child: _InvoiceCard(
-                        invoice: invoice,
-                        onView: () {
-                          if (!mounted) return;
-                          _handleInvoiceAction('view', invoice);
-                        },
-                        onEdit: () {
-                          if (!mounted) return;
-                          _handleInvoiceAction('edit', invoice);
-                        },
-                        onRecordPayment: () {
-                          if (!mounted) return;
-                          _handleInvoiceAction('payment', invoice);
-                        },
-                        onCancel: () {
-                          if (!mounted) return;
-                          _confirmCancel(invoice.id);
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
+                        itemCount: filteredInvoices.length,
+                        itemBuilder: (context, index) {
+                          final invoice = filteredInvoices[index];
+                          return TweenAnimationBuilder<double>(
+                            duration: Duration(
+                              milliseconds: 300 + (index * 50).clamp(0, 400),
+                            ),
+                            tween: Tween(begin: 0.0, end: 1.0),
+                            curve: Curves.easeOutCubic,
+                            builder: (context, value, child) {
+                              return Transform.translate(
+                                offset: Offset(0, 20 * (1 - value)),
+                                child: Opacity(opacity: value, child: child),
+                              );
+                            },
+                            child: _InvoiceCard(
+                              invoice: invoice,
+                              onView: () {
+                                if (!mounted) return;
+                                _handleInvoiceAction('view', invoice);
+                              },
+                              onEdit: () {
+                                if (!mounted) return;
+                                _handleInvoiceAction('edit', invoice);
+                              },
+                              onRecordPayment: () {
+                                if (!mounted) return;
+                                _handleInvoiceAction('payment', invoice);
+                              },
+                              onCancel: () {
+                                if (!mounted) return;
+                                _confirmCancel(invoice.id);
+                              },
+                            ),
+                          );
                         },
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           );
@@ -604,15 +834,18 @@ class _InvoiceCardState extends State<_InvoiceCard> {
         : isDraft
         ? 'DRAFT'
         : (invoice.paymentStatus.isEmpty
-        ? 'UNPAID'
-        : invoice.paymentStatus.toUpperCase());
+              ? 'UNPAID'
+              : invoice.paymentStatus.toUpperCase());
 
     double safeOutstanding = invoice.amountOutstanding;
     if (safeOutstanding < 0) safeOutstanding = 0;
 
     double paidPct = 0.0;
     if (invoice.totals.grandTotal > 0) {
-      paidPct = (invoice.amountReceived / invoice.totals.grandTotal).clamp(0.0, 1.0);
+      paidPct = (invoice.amountReceived / invoice.totals.grandTotal).clamp(
+        0.0,
+        1.0,
+      );
     }
 
     Color chipBg;
@@ -634,13 +867,15 @@ class _InvoiceCardState extends State<_InvoiceCard> {
       chipBg = Colors.red.shade50;
       chipText = Colors.red.shade800;
       chipBorder = Colors.red.shade200;
-    } else { // UNPAID
+    } else {
+      // UNPAID
       chipBg = Colors.amber.shade50;
       chipText = Colors.amber.shade900;
       chipBorder = Colors.amber.shade300;
     }
 
-    final dateStr = '${DateFormat('dd MMM yyyy').format(invoice.invoiceDate)} • Due ${DateFormat('dd MMM yyyy').format(invoice.dueDate)}';
+    final dateStr =
+        '${DateFormat('dd MMM yyyy').format(invoice.invoiceDate)} • Due ${DateFormat('dd MMM yyyy').format(invoice.dueDate)}';
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -656,12 +891,17 @@ class _InvoiceCardState extends State<_InvoiceCard> {
           decoration: BoxDecoration(
             color: isCancelled ? const Color(0xFFF9FAFB) : Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _isHovered ? zBlue.withValues(alpha: 0.4) : Colors.grey.shade200, width: 1),
+            border: Border.all(
+              color: _isHovered
+                  ? zBlue.withValues(alpha: 0.4)
+                  : Colors.grey.shade200,
+              width: 1,
+            ),
             boxShadow: [
               BoxShadow(
-                  color: Colors.black.withValues(alpha: _isHovered ? 0.06 : 0.02),
-                  blurRadius: _isHovered ? 16 : 8,
-                  offset: const Offset(0, 4)
+                color: Colors.black.withValues(alpha: _isHovered ? 0.06 : 0.02),
+                blurRadius: _isHovered ? 16 : 8,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -681,36 +921,58 @@ class _InvoiceCardState extends State<_InvoiceCard> {
                           Row(
                             children: [
                               Text(
-                                invoice.invoiceNumber.isEmpty ? 'Pending Number' : invoice.invoiceNumber,
+                                invoice.invoiceNumber.isEmpty
+                                    ? 'Pending Number'
+                                    : invoice.invoiceNumber,
                                 style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: zMuted,
-                                    decoration: isCancelled ? TextDecoration.lineThrough : null
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: zMuted,
+                                  decoration: isCancelled
+                                      ? TextDecoration.lineThrough
+                                      : null,
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              _InfoChip(label: displayStatus, bgColor: chipBg, textColor: chipText, borderColor: chipBorder),
+                              _InfoChip(
+                                label: displayStatus,
+                                bgColor: chipBg,
+                                textColor: chipText,
+                                borderColor: chipBorder,
+                              ),
                             ],
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            invoice.buyer.name.isEmpty ? 'Unknown Customer' : invoice.buyer.name,
+                            invoice.buyer.name.isEmpty
+                                ? 'Unknown Customer'
+                                : invoice.buyer.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                fontSize: 17,
-                                color: isCancelled ? zMuted : zText,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.2
+                              fontSize: 17,
+                              color: isCancelled ? zMuted : zText,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.2,
                             ),
                           ),
                           const SizedBox(height: 6),
                           Row(
                             children: [
-                              Icon(Icons.calendar_today_rounded, size: 13, color: zMuted.withValues(alpha: 0.7)),
+                              Icon(
+                                Icons.calendar_today_rounded,
+                                size: 13,
+                                color: zMuted.withValues(alpha: 0.7),
+                              ),
                               const SizedBox(width: 6),
-                              Text(dateStr, style: const TextStyle(fontSize: 13, color: zMuted, fontWeight: FontWeight.w500)),
+                              Text(
+                                dateStr,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: zMuted,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ],
                           ),
                         ],
@@ -726,11 +988,13 @@ class _InvoiceCardState extends State<_InvoiceCard> {
                           Text(
                             '${invoice.currency} ${_formatCurrency(invoice.totals.grandTotal)}',
                             style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                color: isCancelled ? zMuted : zText,
-                                letterSpacing: -0.5,
-                                decoration: isCancelled ? TextDecoration.lineThrough : null
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: isCancelled ? zMuted : zText,
+                              letterSpacing: -0.5,
+                              decoration: isCancelled
+                                  ? TextDecoration.lineThrough
+                                  : null,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -740,51 +1004,66 @@ class _InvoiceCardState extends State<_InvoiceCard> {
                               children: [
                                 Text(
                                   'Balance:',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: zMuted.withValues(alpha: 0.8)),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: zMuted.withValues(alpha: 0.8),
+                                  ),
                                 ),
                                 Text(
                                   _formatCurrency(safeOutstanding),
                                   style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
-                                      color: safeOutstanding > 0 ? Colors.red.shade600 : zMuted
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: safeOutstanding > 0
+                                        ? Colors.red.shade600
+                                        : zMuted,
                                   ),
                                 ),
                               ],
                             ),
                             const SizedBox(height: 6),
                             TweenAnimationBuilder<double>(
-                                duration: const Duration(milliseconds: 800),
-                                curve: Curves.easeOutCubic,
-                                tween: Tween(begin: 0.0, end: paidPct),
-                                builder: (context, value, child) {
-                                  return Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(8),
-                                          child: LinearProgressIndicator(
-                                            value: value,
-                                            minHeight: 5,
-                                            backgroundColor: Colors.grey.shade100,
-                                            valueColor: AlwaysStoppedAnimation<Color>(
-                                                value == 1.0 ? Colors.green.shade500 : zBlue.withValues(alpha: 0.8)
-                                            ),
-                                          ),
+                              duration: const Duration(milliseconds: 800),
+                              curve: Curves.easeOutCubic,
+                              tween: Tween(begin: 0.0, end: paidPct),
+                              builder: (context, value, child) {
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: LinearProgressIndicator(
+                                          value: value,
+                                          minHeight: 5,
+                                          backgroundColor: Colors.grey.shade100,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                value == 1.0
+                                                    ? Colors.green.shade500
+                                                    : zBlue.withValues(
+                                                        alpha: 0.8,
+                                                      ),
+                                              ),
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${(value * 100).toInt()}% Paid',
-                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: zMuted.withValues(alpha: 0.8)),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${(value * 100).toInt()}% Paid',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: zMuted.withValues(alpha: 0.8),
                                       ),
-                                    ],
-                                  );
-                                }
+                                    ),
+                                  ],
+                                );
+                              },
                             ),
-                          ]
+                          ],
                         ],
                       ),
                     ),
@@ -798,34 +1077,61 @@ class _InvoiceCardState extends State<_InvoiceCard> {
               Container(
                 decoration: const BoxDecoration(
                   color: Color(0xFFFAFAFA),
-                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+                  borderRadius: BorderRadius.vertical(
+                    bottom: Radius.circular(12),
+                  ),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     TextButton.icon(
                       onPressed: widget.onView,
                       icon: const Icon(Icons.remove_red_eye_outlined, size: 16),
-                      label: const Text('View', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      label: const Text(
+                        'View',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
                       style: TextButton.styleFrom(
                         foregroundColor: zText,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 0,
+                        ),
                         minimumSize: const Size(0, 36),
                       ),
                     ),
                     const Spacer(),
-                    if (!isDraft && !isCancelled && invoice.paymentStatus.toUpperCase() != 'PAID')
+                    if (!isDraft &&
+                        !isCancelled &&
+                        invoice.paymentStatus.toUpperCase() != 'PAID')
                       FilledButton.icon(
                         onPressed: widget.onRecordPayment,
                         icon: const Icon(Icons.payment, size: 16),
-                        label: const Text('Record Payment', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                        label: const Text(
+                          'Record Payment',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
                         style: FilledButton.styleFrom(
                           backgroundColor: zBlue,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           minimumSize: const Size(0, 36),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 0,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                         ),
                       ),
 
@@ -838,10 +1144,16 @@ class _InvoiceCardState extends State<_InvoiceCard> {
                           highlightColor: Colors.transparent,
                         ),
                         child: PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_horiz, color: zMuted, size: 20),
+                          icon: const Icon(
+                            Icons.more_horiz,
+                            color: zMuted,
+                            size: 20,
+                          ),
                           tooltip: 'Options',
                           offset: const Offset(0, 40),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           elevation: 4,
                           onSelected: (val) {
                             if (val == 'edit') widget.onEdit();
@@ -850,31 +1162,52 @@ class _InvoiceCardState extends State<_InvoiceCard> {
                           itemBuilder: (ctx) => [
                             if (invoice.paymentStatus.toUpperCase() != 'PAID')
                               PopupMenuItem(
-                                  value: 'edit',
-                                  height: 40,
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.edit_outlined, size: 18, color: zText.withValues(alpha: 0.8)),
-                                      const SizedBox(width: 10),
-                                      const Text('Edit Invoice', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-                                    ],
-                                  )
-                              ),
-                            PopupMenuItem(
-                                value: 'cancel',
+                                value: 'edit',
                                 height: 40,
                                 child: Row(
                                   children: [
-                                    Icon(Icons.cancel_outlined, size: 18, color: Colors.red.shade600),
+                                    Icon(
+                                      Icons.edit_outlined,
+                                      size: 18,
+                                      color: zText.withValues(alpha: 0.8),
+                                    ),
                                     const SizedBox(width: 10),
-                                    Text('Cancel Invoice', style: TextStyle(color: Colors.red.shade700, fontWeight: FontWeight.w600, fontSize: 13)),
+                                    const Text(
+                                      'Edit Invoice',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                   ],
-                                )
+                                ),
+                              ),
+                            PopupMenuItem(
+                              value: 'cancel',
+                              height: 40,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.cancel_outlined,
+                                    size: 18,
+                                    color: Colors.red.shade600,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(
+                                    'Cancel Invoice',
+                                    style: TextStyle(
+                                      color: Colors.red.shade700,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
                       ),
-                    ]
+                    ],
                   ],
                 ),
               ),
@@ -923,7 +1256,10 @@ class _CreateOptionCard extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: Icon(icon, color: color, size: 24),
             ),
             const SizedBox(width: 16),
@@ -931,9 +1267,23 @@ class _CreateOptionCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: zText)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: zText,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(fontSize: 12.5, color: zMuted, fontWeight: FontWeight.w500)),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12.5,
+                      color: zMuted,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -964,7 +1314,14 @@ class _FilterDropdown extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('Status: ', style: TextStyle(fontSize: 13, color: zMuted, fontWeight: FontWeight.w600)),
+          const Text(
+            'Status: ',
+            style: TextStyle(
+              fontSize: 13,
+              color: zMuted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
@@ -972,7 +1329,11 @@ class _FilterDropdown extends StatelessWidget {
                 padding: EdgeInsets.only(left: 4.0),
                 child: Icon(Icons.keyboard_arrow_down, size: 16, color: zText),
               ),
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: zText),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: zText,
+              ),
               onChanged: onChanged,
               items: const [
                 DropdownMenuItem(value: 'all', child: Text('All')),
@@ -1000,8 +1361,22 @@ class _MiniStatText extends StatelessWidget {
     return Text.rich(
       TextSpan(
         children: [
-          TextSpan(text: '$label: ', style: const TextStyle(fontSize: 12, color: zMuted, fontWeight: FontWeight.w600)),
-          TextSpan(text: value, style: TextStyle(fontSize: 13, color: color ?? zText, fontWeight: FontWeight.w800)),
+          TextSpan(
+            text: '$label: ',
+            style: const TextStyle(
+              fontSize: 12,
+              color: zMuted,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          TextSpan(
+            text: value,
+            style: TextStyle(
+              fontSize: 13,
+              color: color ?? zText,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
       ),
     );
@@ -1014,18 +1389,31 @@ class _InfoChip extends StatelessWidget {
   final Color textColor;
   final Color borderColor;
 
-  const _InfoChip({required this.label, required this.bgColor, required this.textColor, required this.borderColor});
+  const _InfoChip({
+    required this.label,
+    required this.bgColor,
+    required this.textColor,
+    required this.borderColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-          color: bgColor,
-          border: Border.all(color: borderColor, width: 0.5),
-          borderRadius: BorderRadius.circular(6)
+        color: bgColor,
+        border: Border.all(color: borderColor, width: 0.5),
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: textColor, letterSpacing: 0.5)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          color: textColor,
+          letterSpacing: 0.5,
+        ),
+      ),
     );
   }
 }
@@ -1057,28 +1445,44 @@ class _EmptyInvoiceState extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 20, offset: const Offset(0, 10))
-                  ]
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
               child: Icon(
-                  hasSearch ? Icons.search_off_rounded : Icons.receipt_long_rounded,
-                  size: 48,
-                  color: zMuted.withValues(alpha: 0.5)
+                hasSearch
+                    ? Icons.search_off_rounded
+                    : Icons.receipt_long_rounded,
+                size: 48,
+                color: zMuted.withValues(alpha: 0.5),
               ),
             ),
             const SizedBox(height: 24),
             Text(
-                hasSearch ? 'No invoices match your search' : 'No invoices yet',
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: zText)
+              hasSearch ? 'No invoices match your search' : 'No invoices yet',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: zText,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              hasSearch ? 'Try adjusting your filters.' : 'Click "New Invoice" to get started',
-              style: const TextStyle(color: zMuted, fontSize: 14, fontWeight: FontWeight.w500),
+              hasSearch
+                  ? 'Try adjusting your filters.'
+                  : 'Click "New Invoice" to get started',
+              style: const TextStyle(
+                color: zMuted,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
@@ -1129,24 +1533,48 @@ class _SkeletonCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(height: 14, width: 100, color: Colors.grey.shade200),
+                        Container(
+                          height: 14,
+                          width: 100,
+                          color: Colors.grey.shade200,
+                        ),
                         const SizedBox(height: 12),
-                        Container(height: 18, width: 180, color: Colors.grey.shade200),
+                        Container(
+                          height: 18,
+                          width: 180,
+                          color: Colors.grey.shade200,
+                        ),
                         const SizedBox(height: 12),
-                        Container(height: 12, width: 140, color: Colors.grey.shade200),
+                        Container(
+                          height: 12,
+                          width: 140,
+                          color: Colors.grey.shade200,
+                        ),
                       ],
                     ),
                   ),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Container(height: 20, width: 90, color: Colors.grey.shade200),
+                      Container(
+                        height: 20,
+                        width: 90,
+                        color: Colors.grey.shade200,
+                      ),
                       const SizedBox(height: 16),
-                      Container(height: 8, width: 120, color: Colors.grey.shade200),
+                      Container(
+                        height: 8,
+                        width: 120,
+                        color: Colors.grey.shade200,
+                      ),
                       const SizedBox(height: 8),
-                      Container(height: 12, width: 80, color: Colors.grey.shade200),
+                      Container(
+                        height: 12,
+                        width: 80,
+                        color: Colors.grey.shade200,
+                      ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),

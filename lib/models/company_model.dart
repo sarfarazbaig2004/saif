@@ -59,8 +59,11 @@ class CompanyModel {
   }
 
   factory CompanyModel.fromMap(Map<String, dynamic> map) {
-    final rawIndustry = (map['industryType'] ?? map['businessCategory'] ?? '').toString();
-    final finalIndustry = (rawIndustry.toLowerCase().contains('export') && rawIndustry.toLowerCase().contains('import'))
+    final rawIndustry = (map['industryType'] ?? map['businessCategory'] ?? '')
+        .toString();
+    final finalIndustry =
+        (rawIndustry.toLowerCase().contains('export') &&
+            rawIndustry.toLowerCase().contains('import'))
         ? 'export_import'
         : rawIndustry;
 

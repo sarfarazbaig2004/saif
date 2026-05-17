@@ -20,10 +20,7 @@ class EmptyStateCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        vertical: verticalPadding,
-        horizontal: 18,
-      ),
+      padding: EdgeInsets.symmetric(vertical: verticalPadding, horizontal: 18),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(16),
@@ -31,11 +28,7 @@ class EmptyStateCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(
-            icon,
-            size: 44,
-            color: mutedTextColor,
-          ),
+          Icon(icon, size: 44, color: mutedTextColor),
           const SizedBox(height: 12),
           Text(
             title,
@@ -46,12 +39,7 @@ class EmptyStateCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: mutedTextColor,
-            ),
-          ),
+          Text(subtitle, style: const TextStyle(color: mutedTextColor)),
         ],
       ),
     );

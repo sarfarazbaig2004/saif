@@ -41,8 +41,7 @@ class _HeaderIconButtonState extends State<HeaderIconButton> {
         ? baseColor.withValues(alpha: 0.30)
         : cardBorderColor;
 
-    final Color iconColor =
-    disabled ? Colors.grey : baseColor;
+    final Color iconColor = disabled ? Colors.grey : baseColor;
 
     return Tooltip(
       message: widget.tooltip,
@@ -65,11 +64,7 @@ class _HeaderIconButtonState extends State<HeaderIconButton> {
                 border: Border.all(color: borderColor),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                widget.icon,
-                color: iconColor,
-                size: 20,
-              ),
+              child: Icon(widget.icon, color: iconColor, size: 20),
             ),
           ),
         ),

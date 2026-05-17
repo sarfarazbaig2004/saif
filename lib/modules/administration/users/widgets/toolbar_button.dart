@@ -55,10 +55,7 @@ class ToolbarButton extends StatelessWidget {
     return OutlinedButton.icon(
       onPressed: onTap,
       icon: Icon(icon, size: iconSize),
-      label: Text(
-        label,
-        style: TextStyle(fontSize: fontSize),
-      ),
+      label: Text(label, style: TextStyle(fontSize: fontSize)),
       style: OutlinedButton.styleFrom(
         foregroundColor: primaryColor,
         side: const BorderSide(color: cardBorderColor),

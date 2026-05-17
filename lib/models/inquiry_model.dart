@@ -17,24 +17,25 @@ class Inquiry {
   final String contactEmail;
   final String contactDesignation;
 
-  final String source;          // Phone / WhatsApp / Email / Visit / Tender / Website
+  final String source; // Phone / WhatsApp / Email / Visit / Tender / Website
   final String sourceReference; // L&T, IndiaMART, JustDial etc.
-  final String channelRef;      // kept for old code compatibility
-  final String inquiryType;     // Product / Service / Project / Both
+  final String channelRef; // kept for old code compatibility
+  final String inquiryType; // Product / Service / Project / Both
 
   final String requiredProducts;
   final String location;
-  final String quantityScope;   // new field
-  final String quantityNote;    // old compatibility field
-  final String expectedValue;   // new field
-  final String budgetNote;      // old compatibility field
+  final String quantityScope; // new field
+  final String quantityNote; // old compatibility field
+  final String expectedValue; // new field
+  final String budgetNote; // old compatibility field
   final String deliveryTimeline;
 
   final String notes;
   final String internalNotes;
 
-  final String priority;        // Hot / Warm / Cold
-  final String status;          // Open / Quotation Pending / Quotation Sent / Won / Lost / Not Qualified
+  final String priority; // Hot / Warm / Cold
+  final String
+  status; // Open / Quotation Pending / Quotation Sent / Won / Lost / Not Qualified
 
   final DateTime? nextFollowUpDate;
   final DateTime? expectedClosureDate;
@@ -278,8 +279,9 @@ class Inquiry {
       'priority': priority,
       'status': status,
 
-      'nextFollowUpDate':
-      nextFollowUpDate == null ? null : Timestamp.fromDate(nextFollowUpDate!),
+      'nextFollowUpDate': nextFollowUpDate == null
+          ? null
+          : Timestamp.fromDate(nextFollowUpDate!),
       'expectedClosureDate': expectedClosureDate == null
           ? null
           : Timestamp.fromDate(expectedClosureDate!),

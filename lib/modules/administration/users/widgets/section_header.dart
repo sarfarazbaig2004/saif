@@ -31,10 +31,7 @@ class SectionHeader extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(color: mutedTextColor),
-              ),
+              Text(subtitle, style: const TextStyle(color: mutedTextColor)),
             ],
           ),
         ),

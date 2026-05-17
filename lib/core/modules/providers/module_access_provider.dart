@@ -65,7 +65,8 @@ class ModuleAccessController extends ChangeNotifier {
 
       final enabledIds = await _service.fetchEnabledModuleIds(
         normalizedTenantId,
-        forceRefresh: forceRefresh ||
+        forceRefresh:
+            forceRefresh ||
             seedResult.modulesCreated > 0 ||
             seedResult.modulesRepaired > 0,
         fallbackToActiveRegistryWhenUnconfigured:
@@ -127,10 +128,7 @@ class ModuleAccessProvider extends StatefulWidget {
     return provider?.notifier;
   }
 
-  static ModuleAccessController of(
-    BuildContext context, {
-    bool listen = true,
-  }) {
+  static ModuleAccessController of(BuildContext context, {bool listen = true}) {
     final controller = maybeOf(context, listen: listen);
 
     assert(
@@ -194,10 +192,7 @@ class _ModuleAccessProviderState extends State<ModuleAccessProvider> {
   void _loadTenantAfterBuild({required bool forceRefresh}) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _controller.loadForTenant(
-        widget.tenantId,
-        forceRefresh: forceRefresh,
-      );
+      _controller.loadForTenant(widget.tenantId, forceRefresh: forceRefresh);
     });
   }
 
@@ -211,16 +206,10 @@ class _ModuleAccessProviderState extends State<ModuleAccessProvider> {
 
   @override
   Widget build(BuildContext context) {
-    return _ModuleAccessScope(
-      notifier: _controller,
-      child: widget.child,
-    );
+    return _ModuleAccessScope(notifier: _controller, child: widget.child);
   }
 }
 
 class _ModuleAccessScope extends InheritedNotifier<ModuleAccessController> {
-  const _ModuleAccessScope({
-    required super.notifier,
-    required super.child,
-  });
+  const _ModuleAccessScope({required super.notifier, required super.child});
 }

@@ -59,21 +59,15 @@ class FilterDropdown extends StatelessWidget {
       ),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: cardBorderColor,
-        ),
+        borderSide: const BorderSide(color: cardBorderColor),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: cardBorderColor,
-        ),
+        borderSide: const BorderSide(color: cardBorderColor),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: accentColor,
-        ),
+        borderSide: const BorderSide(color: accentColor),
       ),
       floatingLabelStyle: const TextStyle(
         color: primaryColor,

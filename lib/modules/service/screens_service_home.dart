@@ -32,9 +32,7 @@ class ServiceHomeScreen extends StatelessWidget {
             title: const Text('Complaints'),
             onTap: () {
               Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const ComplaintListScreen(),
-                ),
+                MaterialPageRoute(builder: (_) => const ComplaintListScreen()),
               );
             },
           ),

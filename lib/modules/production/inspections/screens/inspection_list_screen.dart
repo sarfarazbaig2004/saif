@@ -86,7 +86,6 @@ class InspectionListScreen extends StatelessWidget {
       },
     );
   }
-
 }
 
 class _NearDispatchAlert extends StatelessWidget {

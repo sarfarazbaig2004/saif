@@ -119,19 +119,13 @@ class UserStatCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: mutedTextColor,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: mutedTextColor, fontSize: 13),
                 ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     subtitle!,
-                    style: const TextStyle(
-                      color: mutedTextColor,
-                      fontSize: 11,
-                    ),
+                    style: const TextStyle(color: mutedTextColor, fontSize: 11),
                   ),
                 ],
               ],

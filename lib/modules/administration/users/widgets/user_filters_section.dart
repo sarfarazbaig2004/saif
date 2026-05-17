@@ -56,12 +56,12 @@ class UserFiltersSection extends StatelessWidget {
             subtitle: 'Search and refine user records',
             trailing: isDesktop
                 ? ToolbarButton(
-              label: 'Invite User',
-              icon: Icons.person_add_alt_1,
-              primary: true,
-              onTap: onInvite,
-              compact: true,
-            )
+                    label: 'Invite User',
+                    icon: Icons.person_add_alt_1,
+                    primary: true,
+                    onTap: onInvite,
+                    compact: true,
+                  )
                 : null,
           ),
           const SizedBox(height: 14),
@@ -123,7 +123,7 @@ class UserFiltersSection extends StatelessWidget {
                     child: Text('All Departments'),
                   ),
                   ...departments.map(
-                        (dept) => DropdownMenuItem(
+                    (dept) => DropdownMenuItem(
                       value: dept.toLowerCase(),
                       child: Text(dept),
                     ),

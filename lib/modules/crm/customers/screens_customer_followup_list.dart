@@ -38,7 +38,9 @@ class _ScreensCustomerFollowUpListState
   }
 
   bool get _hasActiveFilters =>
-      _modeFilter.isNotEmpty || _outcomeFilter.isNotEmpty || _dueFilter.isNotEmpty;
+      _modeFilter.isNotEmpty ||
+      _outcomeFilter.isNotEmpty ||
+      _dueFilter.isNotEmpty;
 
   void _resetFilters() {
     setState(() {
@@ -72,10 +74,7 @@ class _ScreensCustomerFollowUpListState
               children: [
                 const Text(
                   'Filters',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
@@ -88,10 +87,10 @@ class _ScreensCustomerFollowUpListState
                   items: _followUpModeOptions
                       .map(
                         (e) => DropdownMenuItem<String>(
-                      value: e.toLowerCase(),
-                      child: Text(e),
-                    ),
-                  )
+                          value: e.toLowerCase(),
+                          child: Text(e),
+                        ),
+                      )
                       .toList(),
                   onChanged: (value) {
                     tempMode = value ?? '';
@@ -108,10 +107,10 @@ class _ScreensCustomerFollowUpListState
                   items: _followUpOutcomeOptions
                       .map(
                         (e) => DropdownMenuItem<String>(
-                      value: e.toLowerCase(),
-                      child: Text(e),
-                    ),
-                  )
+                          value: e.toLowerCase(),
+                          child: Text(e),
+                        ),
+                      )
                       .toList(),
                   onChanged: (value) {
                     tempOutcome = value ?? '';
@@ -126,14 +125,8 @@ class _ScreensCustomerFollowUpListState
                     border: OutlineInputBorder(),
                   ),
                   items: const [
-                    DropdownMenuItem(
-                      value: 'overdue',
-                      child: Text('Overdue'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'today',
-                      child: Text('Today'),
-                    ),
+                    DropdownMenuItem(value: 'overdue', child: Text('Overdue')),
+                    DropdownMenuItem(value: 'today', child: Text('Today')),
                     DropdownMenuItem(
                       value: 'upcoming',
                       child: Text('Upcoming'),
@@ -287,12 +280,15 @@ class _ScreensCustomerFollowUpListState
                               ),
                               ...contactDocs.map((doc) {
                                 final data = doc.data();
-                                final name =
-                                (data['name'] ?? '').toString().trim();
-                                final designation =
-                                (data['designation'] ?? '').toString().trim();
-                                final phone =
-                                (data['phone'] ?? '').toString().trim();
+                                final name = (data['name'] ?? '')
+                                    .toString()
+                                    .trim();
+                                final designation = (data['designation'] ?? '')
+                                    .toString()
+                                    .trim();
+                                final phone = (data['phone'] ?? '')
+                                    .toString()
+                                    .trim();
 
                                 final title = [
                                   name,
@@ -322,18 +318,23 @@ class _ScreensCustomerFollowUpListState
                                 }
 
                                 final selectedDoc = contactDocs.firstWhere(
-                                      (e) => e.id == value,
+                                  (e) => e.id == value,
                                 );
 
                                 final data = selectedDoc.data();
-                                selectedContactName =
-                                    (data['name'] ?? '').toString().trim();
-                                selectedContactPhone =
-                                    (data['phone'] ?? '').toString().trim();
-                                selectedContactEmail =
-                                    (data['email'] ?? '').toString().trim();
+                                selectedContactName = (data['name'] ?? '')
+                                    .toString()
+                                    .trim();
+                                selectedContactPhone = (data['phone'] ?? '')
+                                    .toString()
+                                    .trim();
+                                selectedContactEmail = (data['email'] ?? '')
+                                    .toString()
+                                    .trim();
                                 selectedContactDesignation =
-                                    (data['designation'] ?? '').toString().trim();
+                                    (data['designation'] ?? '')
+                                        .toString()
+                                        .trim();
                               });
                             },
                           );
@@ -350,10 +351,10 @@ class _ScreensCustomerFollowUpListState
                         items: _followUpModeOptions
                             .map(
                               (e) => DropdownMenuItem<String>(
-                            value: e,
-                            child: Text(e),
-                          ),
-                        )
+                                value: e,
+                                child: Text(e),
+                              ),
+                            )
                             .toList(),
                         onChanged: (value) {
                           setModalState(() {
@@ -372,10 +373,10 @@ class _ScreensCustomerFollowUpListState
                         items: _followUpOutcomeOptions
                             .map(
                               (e) => DropdownMenuItem<String>(
-                            value: e,
-                            child: Text(e),
-                          ),
-                        )
+                                value: e,
+                                child: Text(e),
+                              ),
+                            )
                             .toList(),
                         onChanged: (value) {
                           setModalState(() {
@@ -439,123 +440,128 @@ class _ScreensCustomerFollowUpListState
               ),
               actions: [
                 TextButton(
-                  onPressed:
-                  isSubmitting ? null : () => Navigator.pop(dialogContext),
+                  onPressed: isSubmitting
+                      ? null
+                      : () => Navigator.pop(dialogContext),
                   child: const Text('Cancel'),
                 ),
                 ElevatedButton.icon(
                   onPressed: isSubmitting
                       ? null
                       : () async {
-                    final discussion = discussionController.text.trim();
-                    final nextAction = nextActionController.text.trim();
+                          final discussion = discussionController.text.trim();
+                          final nextAction = nextActionController.text.trim();
 
-                    if (discussion.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please enter discussion details'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      return;
-                    }
+                          if (discussion.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Please enter discussion details',
+                                ),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
 
-                    setModalState(() => isSubmitting = true);
+                          setModalState(() => isSubmitting = true);
 
-                    try {
-                      final followUpsRef =
-                      widget.customerRef.collection('followUps');
+                          try {
+                            final followUpsRef = widget.customerRef.collection(
+                              'followUps',
+                            );
 
-                      await followUpsRef.add({
-                        'companyId': widget.companyId,
-                        'customerId': widget.customerRef.id,
-                        'customerName': widget.customerName,
-                        'contactId': selectedContactId ?? '',
-                        'contactName': selectedContactName,
-                        'contactPhone': selectedContactPhone,
-                        'contactEmail': selectedContactEmail,
-                        'contactDesignation': selectedContactDesignation,
-                        'followUpDate':
-                        Timestamp.fromDate(followUpDateTime),
-                        'followUpMode': selectedMode,
-                        'discussion': discussion,
-                        'outcome': selectedOutcome,
-                        'nextAction': nextAction,
-                        'nextFollowUpDate': nextFollowUpDate != null
-                            ? Timestamp.fromDate(nextFollowUpDate!)
-                            : null,
-                        'createdAt': FieldValue.serverTimestamp(),
-                        'createdByUid': widget.currentUserUid,
-                        'createdByName': widget.currentUserName,
-                        'updatedAt': FieldValue.serverTimestamp(),
-                        'updatedByUid': widget.currentUserUid,
-                        'updatedByName': widget.currentUserName,
-                      });
+                            await followUpsRef.add({
+                              'companyId': widget.companyId,
+                              'customerId': widget.customerRef.id,
+                              'customerName': widget.customerName,
+                              'contactId': selectedContactId ?? '',
+                              'contactName': selectedContactName,
+                              'contactPhone': selectedContactPhone,
+                              'contactEmail': selectedContactEmail,
+                              'contactDesignation': selectedContactDesignation,
+                              'followUpDate': Timestamp.fromDate(
+                                followUpDateTime,
+                              ),
+                              'followUpMode': selectedMode,
+                              'discussion': discussion,
+                              'outcome': selectedOutcome,
+                              'nextAction': nextAction,
+                              'nextFollowUpDate': nextFollowUpDate != null
+                                  ? Timestamp.fromDate(nextFollowUpDate!)
+                                  : null,
+                              'createdAt': FieldValue.serverTimestamp(),
+                              'createdByUid': widget.currentUserUid,
+                              'createdByName': widget.currentUserName,
+                              'updatedAt': FieldValue.serverTimestamp(),
+                              'updatedByUid': widget.currentUserUid,
+                              'updatedByName': widget.currentUserName,
+                            });
 
-                      final latestSnap = await followUpsRef
-                          .orderBy('followUpDate', descending: true)
-                          .limit(1)
-                          .get();
+                            final latestSnap = await followUpsRef
+                                .orderBy('followUpDate', descending: true)
+                                .limit(1)
+                                .get();
 
-                      final totalSnap = await followUpsRef.get();
+                            final totalSnap = await followUpsRef.get();
 
-                      if (latestSnap.docs.isNotEmpty) {
-                        final latestData = latestSnap.docs.first.data();
+                            if (latestSnap.docs.isNotEmpty) {
+                              final latestData = latestSnap.docs.first.data();
 
-                        await widget.customerRef.update({
-                          'lastFollowUpAt': latestData['followUpDate'],
-                          'lastFollowUpByUid':
-                          latestData['createdByUid'] ?? '',
-                          'lastFollowUpByName':
-                          latestData['createdByName'] ?? '',
-                          'lastFollowUpMode':
-                          latestData['followUpMode'] ?? '',
-                          'lastFollowUpSummary':
-                          latestData['discussion'] ?? '',
-                          'lastFollowUpOutcome':
-                          latestData['outcome'] ?? '',
-                          'nextFollowUpDate':
-                          latestData['nextFollowUpDate'],
-                          'followUpCount': totalSnap.docs.length,
-                          'updatedAt': FieldValue.serverTimestamp(),
-                          'updatedBy': widget.currentUserUid,
-                          'updatedByUid': widget.currentUserUid,
-                          'updatedByName': widget.currentUserName,
-                        });
-                      }
+                              await widget.customerRef.update({
+                                'lastFollowUpAt': latestData['followUpDate'],
+                                'lastFollowUpByUid':
+                                    latestData['createdByUid'] ?? '',
+                                'lastFollowUpByName':
+                                    latestData['createdByName'] ?? '',
+                                'lastFollowUpMode':
+                                    latestData['followUpMode'] ?? '',
+                                'lastFollowUpSummary':
+                                    latestData['discussion'] ?? '',
+                                'lastFollowUpOutcome':
+                                    latestData['outcome'] ?? '',
+                                'nextFollowUpDate':
+                                    latestData['nextFollowUpDate'],
+                                'followUpCount': totalSnap.docs.length,
+                                'updatedAt': FieldValue.serverTimestamp(),
+                                'updatedBy': widget.currentUserUid,
+                                'updatedByUid': widget.currentUserUid,
+                                'updatedByName': widget.currentUserName,
+                              });
+                            }
 
-                      if (!mounted) return;
-                      Navigator.pop(dialogContext);
+                            if (!mounted) return;
+                            Navigator.pop(dialogContext);
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Follow-up added successfully'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    } catch (e) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Failed to add follow-up: $e'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    } finally {
-                      if (mounted) {
-                        setModalState(() => isSubmitting = false);
-                      }
-                    }
-                  },
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Follow-up added successfully'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          } catch (e) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Failed to add follow-up: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          } finally {
+                            if (mounted) {
+                              setModalState(() => isSubmitting = false);
+                            }
+                          }
+                        },
                   icon: isSubmitting
                       ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
                       : const Icon(Icons.save_outlined),
                   label: const Text('Save Follow-up'),
                 ),
@@ -572,7 +578,9 @@ class _ScreensCustomerFollowUpListState
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete follow-up?'),
-        content: const Text('This follow-up entry will be permanently deleted.'),
+        content: const Text(
+          'This follow-up entry will be permanently deleted.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -580,10 +588,7 @@ class _ScreensCustomerFollowUpListState
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -648,8 +653,8 @@ class _ScreensCustomerFollowUpListState
   }
 
   List<QueryDocumentSnapshot<Map<String, dynamic>>> _applyFilters(
-      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
-      ) {
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+  ) {
     final query = _searchQuery.trim().toLowerCase();
     final now = DateTime.now();
     final todayOnly = DateTime(now.year, now.month, now.day);
@@ -662,21 +667,27 @@ class _ScreensCustomerFollowUpListState
       final discussion = (data['discussion'] ?? '').toString().toLowerCase();
       final nextAction = (data['nextAction'] ?? '').toString().toLowerCase();
       final contactName = (data['contactName'] ?? '').toString().toLowerCase();
-      final contactPhone = (data['contactPhone'] ?? '').toString().toLowerCase();
-      final contactEmail = (data['contactEmail'] ?? '').toString().toLowerCase();
-      final createdByName =
-      (data['createdByName'] ?? '').toString().toLowerCase();
+      final contactPhone = (data['contactPhone'] ?? '')
+          .toString()
+          .toLowerCase();
+      final contactEmail = (data['contactEmail'] ?? '')
+          .toString()
+          .toLowerCase();
+      final createdByName = (data['createdByName'] ?? '')
+          .toString()
+          .toLowerCase();
 
       final nextFollowUpDate = _readDate(data['nextFollowUpDate']);
       final nextOnly = nextFollowUpDate == null
           ? null
           : DateTime(
-        nextFollowUpDate.year,
-        nextFollowUpDate.month,
-        nextFollowUpDate.day,
-      );
+              nextFollowUpDate.year,
+              nextFollowUpDate.month,
+              nextFollowUpDate.day,
+            );
 
-      final matchesSearch = query.isEmpty ||
+      final matchesSearch =
+          query.isEmpty ||
           mode.contains(query) ||
           outcome.contains(query) ||
           discussion.contains(query) ||
@@ -689,7 +700,8 @@ class _ScreensCustomerFollowUpListState
       final matchesMode =
           _modeFilter.isEmpty || mode == _modeFilter.trim().toLowerCase();
 
-      final matchesOutcome = _outcomeFilter.isEmpty ||
+      final matchesOutcome =
+          _outcomeFilter.isEmpty ||
           outcome == _outcomeFilter.trim().toLowerCase();
 
       bool matchesDue = true;
@@ -712,16 +724,16 @@ class _ScreensCustomerFollowUpListState
     final followUpsRef = widget.customerRef.collection('followUps');
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Follow-ups • ${widget.customerName}'),
-      ),
+      appBar: AppBar(title: Text('Follow-ups • ${widget.customerName}')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openAddFollowUpDialog,
         icon: const Icon(Icons.add_task_outlined),
         label: const Text('Add Follow-up'),
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: followUpsRef.orderBy('followUpDate', descending: true).snapshots(),
+        stream: followUpsRef
+            .orderBy('followUpDate', descending: true)
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(
@@ -784,15 +796,15 @@ class _ScreensCustomerFollowUpListState
                             suffixIcon: _searchQuery.trim().isEmpty
                                 ? null
                                 : IconButton(
-                              tooltip: 'Clear',
-                              icon: const Icon(Icons.close, size: 17),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _searchQuery = '';
-                                });
-                              },
-                            ),
+                                    tooltip: 'Clear',
+                                    icon: const Icon(Icons.close, size: 17),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {
+                                        _searchQuery = '';
+                                      });
+                                    },
+                                  ),
                             isDense: true,
                             filled: true,
                             fillColor: Colors.grey.shade100,
@@ -895,224 +907,227 @@ class _ScreensCustomerFollowUpListState
               Expanded(
                 child: filteredDocs.isEmpty
                     ? _EmptyFollowUpState(
-                  hasSearch:
-                  _searchQuery.trim().isNotEmpty || _hasActiveFilters,
-                  onReset: () {
-                    _searchController.clear();
-                    setState(() {
-                      _searchQuery = '';
-                    });
-                    _resetFilters();
-                  },
-                )
+                        hasSearch:
+                            _searchQuery.trim().isNotEmpty || _hasActiveFilters,
+                        onReset: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                          _resetFilters();
+                        },
+                      )
                     : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
-                  itemCount: filteredDocs.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 10),
-                  itemBuilder: (context, index) {
-                    final doc = filteredDocs[index];
-                    final data = doc.data();
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
+                        itemCount: filteredDocs.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (context, index) {
+                          final doc = filteredDocs[index];
+                          final data = doc.data();
 
-                    final followUpDate = _readDate(data['followUpDate']);
-                    final nextFollowUpDate =
-                    _readDate(data['nextFollowUpDate']);
-                    final createdByName =
-                    (data['createdByName'] ?? '').toString();
-                    final followUpMode =
-                    (data['followUpMode'] ?? '').toString();
-                    final discussion =
-                    (data['discussion'] ?? '').toString();
-                    final outcome = (data['outcome'] ?? '').toString();
-                    final nextAction =
-                    (data['nextAction'] ?? '').toString();
-                    final contactName =
-                    (data['contactName'] ?? '').toString();
-                    final contactPhone =
-                    (data['contactPhone'] ?? '').toString();
-                    final contactEmail =
-                    (data['contactEmail'] ?? '').toString();
-                    final contactDesignation =
-                    (data['contactDesignation'] ?? '').toString();
+                          final followUpDate = _readDate(data['followUpDate']);
+                          final nextFollowUpDate = _readDate(
+                            data['nextFollowUpDate'],
+                          );
+                          final createdByName = (data['createdByName'] ?? '')
+                              .toString();
+                          final followUpMode = (data['followUpMode'] ?? '')
+                              .toString();
+                          final discussion = (data['discussion'] ?? '')
+                              .toString();
+                          final outcome = (data['outcome'] ?? '').toString();
+                          final nextAction = (data['nextAction'] ?? '')
+                              .toString();
+                          final contactName = (data['contactName'] ?? '')
+                              .toString();
+                          final contactPhone = (data['contactPhone'] ?? '')
+                              .toString();
+                          final contactEmail = (data['contactEmail'] ?? '')
+                              .toString();
+                          final contactDesignation =
+                              (data['contactDesignation'] ?? '').toString();
 
-                    final dueMeta =
-                    _buildDueMeta(nextFollowUpDate: nextFollowUpDate);
+                          final dueMeta = _buildDueMeta(
+                            nextFollowUpDate: nextFollowUpDate,
+                          );
 
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
+                          return Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(14),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      _MiniChip(
-                                        label: followUpMode.isEmpty
-                                            ? 'Follow-up'
-                                            : followUpMode,
-                                        background: Colors.blue.shade50,
-                                        foreground:
-                                        Colors.blue.shade800,
+                                      Expanded(
+                                        child: Wrap(
+                                          spacing: 8,
+                                          runSpacing: 8,
+                                          children: [
+                                            _MiniChip(
+                                              label: followUpMode.isEmpty
+                                                  ? 'Follow-up'
+                                                  : followUpMode,
+                                              background: Colors.blue.shade50,
+                                              foreground: Colors.blue.shade800,
+                                            ),
+                                            if (outcome.isNotEmpty)
+                                              _MiniChip(
+                                                label: outcome,
+                                                background:
+                                                    Colors.green.shade50,
+                                                foreground:
+                                                    Colors.green.shade800,
+                                              ),
+                                            if (followUpDate != null)
+                                              _MiniChip(
+                                                label: _formatDateTime(
+                                                  followUpDate,
+                                                ),
+                                                background:
+                                                    Colors.grey.shade100,
+                                                foreground:
+                                                    Colors.grey.shade800,
+                                              ),
+                                            if (dueMeta != null)
+                                              _MiniChip(
+                                                label: dueMeta.label,
+                                                background: dueMeta.background,
+                                                foreground: dueMeta.foreground,
+                                              ),
+                                          ],
+                                        ),
                                       ),
-                                      if (outcome.isNotEmpty)
-                                        _MiniChip(
-                                          label: outcome,
-                                          background:
-                                          Colors.green.shade50,
-                                          foreground:
-                                          Colors.green.shade800,
-                                        ),
-                                      if (followUpDate != null)
-                                        _MiniChip(
-                                          label:
-                                          _formatDateTime(followUpDate),
-                                          background:
-                                          Colors.grey.shade100,
-                                          foreground:
-                                          Colors.grey.shade800,
-                                        ),
-                                      if (dueMeta != null)
-                                        _MiniChip(
-                                          label: dueMeta.label,
-                                          background: dueMeta.background,
-                                          foreground: dueMeta.foreground,
-                                        ),
+                                      PopupMenuButton<String>(
+                                        onSelected: (value) {
+                                          if (value == 'delete') {
+                                            _deleteFollowUp(doc.id);
+                                          }
+                                        },
+                                        itemBuilder: (context) => const [
+                                          PopupMenuItem(
+                                            value: 'delete',
+                                            child: Text(
+                                              'Delete',
+                                              style: TextStyle(
+                                                color: Colors.red,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ],
                                   ),
-                                ),
-                                PopupMenuButton<String>(
-                                  onSelected: (value) {
-                                    if (value == 'delete') {
-                                      _deleteFollowUp(doc.id);
-                                    }
-                                  },
-                                  itemBuilder: (context) => const [
-                                    PopupMenuItem(
-                                      value: 'delete',
-                                      child: Text(
-                                        'Delete',
-                                        style:
-                                        TextStyle(color: Colors.red),
+                                  if (contactName.isNotEmpty ||
+                                      contactPhone.isNotEmpty ||
+                                      contactEmail.isNotEmpty ||
+                                      contactDesignation.isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Contact',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Wrap(
+                                      spacing: 12,
+                                      runSpacing: 6,
+                                      children: [
+                                        if (contactName.isNotEmpty)
+                                          _MetaText(
+                                            icon: Icons.person_outline,
+                                            text: contactName,
+                                          ),
+                                        if (contactDesignation.isNotEmpty)
+                                          _MetaText(
+                                            icon: Icons.badge_outlined,
+                                            text: contactDesignation,
+                                          ),
+                                        if (contactPhone.isNotEmpty)
+                                          _MetaText(
+                                            icon: Icons.phone_outlined,
+                                            text: contactPhone,
+                                          ),
+                                        if (contactEmail.isNotEmpty)
+                                          _MetaText(
+                                            icon: Icons.email_outlined,
+                                            text: contactEmail,
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                  if (discussion.isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Discussion',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      discussion,
+                                      style: const TextStyle(
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ],
-                                ),
-                              ],
-                            ),
-                            if (contactName.isNotEmpty ||
-                                contactPhone.isNotEmpty ||
-                                contactEmail.isNotEmpty ||
-                                contactDesignation.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              Text(
-                                'Contact',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Wrap(
-                                spacing: 12,
-                                runSpacing: 6,
-                                children: [
-                                  if (contactName.isNotEmpty)
-                                    _MetaText(
-                                      icon: Icons.person_outline,
-                                      text: contactName,
+                                  if (nextAction.isNotEmpty) ...[
+                                    const SizedBox(height: 12),
+                                    Text(
+                                      'Next Action',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
-                                  if (contactDesignation.isNotEmpty)
-                                    _MetaText(
-                                      icon: Icons.badge_outlined,
-                                      text: contactDesignation,
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      nextAction,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey.shade800,
+                                      ),
                                     ),
-                                  if (contactPhone.isNotEmpty)
-                                    _MetaText(
-                                      icon: Icons.phone_outlined,
-                                      text: contactPhone,
-                                    ),
-                                  if (contactEmail.isNotEmpty)
-                                    _MetaText(
-                                      icon: Icons.email_outlined,
-                                      text: contactEmail,
-                                    ),
+                                  ],
+                                  const SizedBox(height: 12),
+                                  Wrap(
+                                    spacing: 14,
+                                    runSpacing: 8,
+                                    children: [
+                                      if (createdByName.isNotEmpty)
+                                        _MetaText(
+                                          icon: Icons.badge_outlined,
+                                          text: 'By: $createdByName',
+                                        ),
+                                      if (nextFollowUpDate != null)
+                                        _MetaText(
+                                          icon: Icons.event_repeat_outlined,
+                                          text:
+                                              'Next: ${_formatDateOnly(nextFollowUpDate)}',
+                                        ),
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
-                            if (discussion.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              Text(
-                                'Discussion',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                discussion,
-                                style: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                            if (nextAction.isNotEmpty) ...[
-                              const SizedBox(height: 12),
-                              Text(
-                                'Next Action',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                nextAction,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey.shade800,
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 14,
-                              runSpacing: 8,
-                              children: [
-                                if (createdByName.isNotEmpty)
-                                  _MetaText(
-                                    icon: Icons.badge_outlined,
-                                    text: 'By: $createdByName',
-                                  ),
-                                if (nextFollowUpDate != null)
-                                  _MetaText(
-                                    icon: Icons.event_repeat_outlined,
-                                    text:
-                                    'Next: ${_formatDateOnly(nextFollowUpDate)}',
-                                  ),
-                              ],
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           );
@@ -1172,10 +1187,7 @@ class _MetaText extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  const _MetaText({
-    required this.icon,
-    required this.text,
-  });
+  const _MetaText({required this.icon, required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -1235,10 +1247,7 @@ class _MiniStatText extends StatelessWidget {
   final String label;
   final String value;
 
-  const _MiniStatText({
-    required this.label,
-    required this.value,
-  });
+  const _MiniStatText({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -1257,10 +1266,7 @@ class _EmptyFollowUpState extends StatelessWidget {
   final bool hasSearch;
   final VoidCallback onReset;
 
-  const _EmptyFollowUpState({
-    required this.hasSearch,
-    required this.onReset,
-  });
+  const _EmptyFollowUpState({required this.hasSearch, required this.onReset});
 
   @override
   Widget build(BuildContext context) {
@@ -1277,11 +1283,10 @@ class _EmptyFollowUpState extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              hasSearch ? 'No matching follow-ups found' : 'No follow-up history yet',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
+              hasSearch
+                  ? 'No matching follow-ups found'
+                  : 'No follow-up history yet',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 6),
@@ -1290,9 +1295,7 @@ class _EmptyFollowUpState extends StatelessWidget {
                   ? 'Try changing the search text or filters.'
                   : 'Add calls, meetings, visits and discussions for this customer.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey.shade700,
-              ),
+              style: TextStyle(color: Colors.grey.shade700),
             ),
             const SizedBox(height: 16),
             if (hasSearch)

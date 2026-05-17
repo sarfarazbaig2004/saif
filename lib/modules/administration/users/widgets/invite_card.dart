@@ -11,11 +11,7 @@ class InviteCard extends StatelessWidget {
   final InviteDoc doc;
   final Future<void> Function() onDelete;
 
-  const InviteCard({
-    super.key,
-    required this.doc,
-    required this.onDelete,
-  });
+  const InviteCard({super.key, required this.doc, required this.onDelete});
 
   bool _isExpired(Timestamp? expiresAt) {
     if (expiresAt == null) return false;
@@ -50,9 +46,9 @@ class InviteCard extends StatelessWidget {
 
     final createdAt = formatTimestamp(data['createdAt']);
 
-    final status = _normalizeStatus(data['status'].toString().isEmpty
-        ? 'pending'
-        : data['status'].toString());
+    final status = _normalizeStatus(
+      data['status'].toString().isEmpty ? 'pending' : data['status'].toString(),
+    );
     final expiresAt = data['expiresAt'] as Timestamp?;
     final isExpired = _isExpired(expiresAt);
 
@@ -78,10 +74,7 @@ class InviteCard extends StatelessWidget {
                   designation.isNotEmpty
                       ? formatDesignation(designation)
                       : (email.isEmpty ? '-' : email),
-                  style: const TextStyle(
-                    color: mutedTextColor,
-                    fontSize: 13,
-                  ),
+                  style: const TextStyle(color: mutedTextColor, fontSize: 13),
                 ),
                 if (email.isNotEmpty && designation.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -128,11 +121,7 @@ class InviteCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          _buildDeleteButton(
-            context,
-            status,
-            isExpired,
-          ),
+          _buildDeleteButton(context, status, isExpired),
         ],
       ),
     );
@@ -177,17 +166,11 @@ class InviteCard extends StatelessWidget {
         color: primaryColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: const Icon(
-        Icons.mail_outline,
-        color: primaryColor,
-      ),
+      child: const Icon(Icons.mail_outline, color: primaryColor),
     );
   }
 
-  Widget _buildHeader({
-    required String name,
-    required String role,
-  }) {
+  Widget _buildHeader({required String name, required String role}) {
     return Wrap(
       spacing: 8,
       runSpacing: 6,
@@ -212,10 +195,10 @@ class InviteCard extends StatelessWidget {
   }
 
   Widget _buildDeleteButton(
-      BuildContext context,
-      String status,
-      bool isExpired,
-      ) {
+    BuildContext context,
+    String status,
+    bool isExpired,
+  ) {
     final canCancel = status == 'pending' && !isExpired;
 
     return IconButton(
@@ -223,54 +206,49 @@ class InviteCard extends StatelessWidget {
       onPressed: !canCancel
           ? null
           : () async {
-        final confirm = await showDialog<bool>(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Cancel Invite'),
-            content: const Text(
-              'Are you sure you want to cancel this invite?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('No'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Yes'),
-              ),
-            ],
-          ),
-        );
-
-        if (confirm == true) {
-          try {
-            await onDelete();
-          } catch (e) {
-            if (!context.mounted) return;
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  e.toString().replaceFirst('Exception: ', ''),
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('Cancel Invite'),
+                  content: const Text(
+                    'Are you sure you want to cancel this invite?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('No'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Yes'),
+                    ),
+                  ],
                 ),
-                backgroundColor: dangerColor,
-              ),
-            );
-          }
-        }
-      },
+              );
+
+              if (confirm == true) {
+                try {
+                  await onDelete();
+                } catch (e) {
+                  if (!context.mounted) return;
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        e.toString().replaceFirst('Exception: ', ''),
+                      ),
+                      backgroundColor: dangerColor,
+                    ),
+                  );
+                }
+              }
+            },
       style: IconButton.styleFrom(
         backgroundColor: Colors.white,
         side: const BorderSide(color: cardBorderColor),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-      icon: Icon(
-        Icons.close,
-        color: canCancel ? dangerColor : mutedTextColor,
-      ),
+      icon: Icon(Icons.close, color: canCancel ? dangerColor : mutedTextColor),
     );
   }
 }

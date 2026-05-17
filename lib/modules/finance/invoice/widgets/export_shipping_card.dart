@@ -58,8 +58,12 @@ class ExportShippingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 2. DYNAMIC MODE LABEL LOGIC
-    final String vesselFlightLabel = modeOfTransport == 'AIR' ? 'Flight No.' : 'Vessel Name';
-    final String vesselFlightHint = modeOfTransport == 'AIR' ? 'e.g. EK 123' : 'e.g. MSC ALINA v.42';
+    final String vesselFlightLabel = modeOfTransport == 'AIR'
+        ? 'Flight No.'
+        : 'Vessel Name';
+    final String vesselFlightHint = modeOfTransport == 'AIR'
+        ? 'e.g. EK 123'
+        : 'e.g. MSC ALINA v.42';
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -79,7 +83,11 @@ class ExportShippingCard extends StatelessWidget {
                   color: zOrangeSoft,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.local_shipping_outlined, size: 20, color: zOrange),
+                child: const Icon(
+                  Icons.local_shipping_outlined,
+                  size: 20,
+                  color: zOrange,
+                ),
               ),
               const SizedBox(width: 12),
               const Text(
@@ -97,8 +105,12 @@ class ExportShippingCard extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final isDesktop = constraints.maxWidth > 600;
-              final halfWidth = isDesktop ? (constraints.maxWidth - 16) / 2 : constraints.maxWidth;
-              final thirdWidth = isDesktop ? (constraints.maxWidth - 32) / 3 : constraints.maxWidth;
+              final halfWidth = isDesktop
+                  ? (constraints.maxWidth - 16) / 2
+                  : constraints.maxWidth;
+              final thirdWidth = isDesktop
+                  ? (constraints.maxWidth - 32) / 3
+                  : constraints.maxWidth;
 
               return Wrap(
                 spacing: 16,
@@ -108,7 +120,12 @@ class ExportShippingCard extends StatelessWidget {
                     label: 'Mode of Transport',
                     value: modeOfTransport,
                     items: const ['SEA', 'AIR', 'ROAD', 'RAIL'],
-                    labels: const ['Sea / Ocean', 'Air Freight', 'Road Transport', 'Rail'],
+                    labels: const [
+                      'Sea / Ocean',
+                      'Air Freight',
+                      'Road Transport',
+                      'Rail',
+                    ],
                     onChanged: onModeChanged,
                     width: thirdWidth,
                   ),
@@ -132,13 +149,18 @@ class ExportShippingCard extends StatelessWidget {
                       return _buildDateField(
                         label: 'Shipping Bill Date',
                         date: shippingBillDate,
-                        onTap: hasShippingBill ? () => _pickDate(context) : null,
+                        onTap: hasShippingBill
+                            ? () => _pickDate(context)
+                            : null,
                         width: thirdWidth,
                         isDisabled: !hasShippingBill,
                       );
                     },
                   ),
-                  const SizedBox(width: double.infinity, height: 4), // Line break
+                  const SizedBox(
+                    width: double.infinity,
+                    height: 4,
+                  ), // Line break
                   _buildTextField(
                     label: 'Port of Loading',
                     controller: portOfLoadingCtrl,
@@ -159,7 +181,8 @@ class ExportShippingCard extends StatelessWidget {
                     width: halfWidth,
                     hint: 'e.g. India',
                     errorChecker: (val) {
-                      if (val.trim().isNotEmpty && val.trim().toLowerCase() != 'india') {
+                      if (val.trim().isNotEmpty &&
+                          val.trim().toLowerCase() != 'india') {
                         return 'Origin must be India';
                       }
                       return null;
@@ -171,7 +194,8 @@ class ExportShippingCard extends StatelessWidget {
                     width: halfWidth,
                     hint: 'e.g. United States',
                     errorChecker: (val) {
-                      if (val.trim().isNotEmpty && val.trim().toLowerCase() == 'india') {
+                      if (val.trim().isNotEmpty &&
+                          val.trim().toLowerCase() == 'india') {
                         return 'Destination cannot be India';
                       }
                       return null;
@@ -210,40 +234,50 @@ class ExportShippingCard extends StatelessWidget {
           const SizedBox(height: 8),
           // ValueListenableBuilder ensures real-time UI updates for errors without breaking standard form structure
           ValueListenableBuilder<TextEditingValue>(
-              valueListenable: controller,
-              builder: (context, value, child) {
-                return TextFormField(
-                  controller: controller,
-                  inputFormatters: isUpperCase ? [UpperCaseTextFormatter()] : [],
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: zText),
-                  decoration: InputDecoration(
-                    hintText: hint,
-                    hintStyle: const TextStyle(color: zMuted, fontWeight: FontWeight.w400),
-                    errorText: errorChecker?.call(value.text),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: zBorder),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: zBorder),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: zBlue, width: 1.5),
-                    ),
-                    errorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.red, width: 1.0),
-                    ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Colors.red, width: 1.5),
-                    ),
+            valueListenable: controller,
+            builder: (context, value, child) {
+              return TextFormField(
+                controller: controller,
+                inputFormatters: isUpperCase ? [UpperCaseTextFormatter()] : [],
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: zText,
+                ),
+                decoration: InputDecoration(
+                  hintText: hint,
+                  hintStyle: const TextStyle(
+                    color: zMuted,
+                    fontWeight: FontWeight.w400,
                   ),
-                );
-              }
+                  errorText: errorChecker?.call(value.text),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: zBorder),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: zBorder),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: zBlue, width: 1.5),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.red, width: 1.0),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Colors.red, width: 1.5),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -275,9 +309,16 @@ class ExportShippingCard extends StatelessWidget {
           DropdownButtonFormField<String>(
             initialValue: items.contains(value) ? value : null,
             icon: const Icon(Icons.keyboard_arrow_down, color: zMuted),
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: zText),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: zText,
+            ),
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 12,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: const BorderSide(color: zBorder),
@@ -331,7 +372,9 @@ class ExportShippingCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               decoration: BoxDecoration(
-                border: Border.all(color: isDisabled ? Colors.grey.shade300 : zBorder),
+                border: Border.all(
+                  color: isDisabled ? Colors.grey.shade300 : zBorder,
+                ),
                 borderRadius: BorderRadius.circular(8),
                 color: isDisabled ? Colors.grey.shade100 : Colors.white,
               ),
@@ -339,14 +382,22 @@ class ExportShippingCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    date != null && !isDisabled ? DateFormat('dd MMM yyyy').format(date) : 'Select Date',
+                    date != null && !isDisabled
+                        ? DateFormat('dd MMM yyyy').format(date)
+                        : 'Select Date',
                     style: TextStyle(
                       fontSize: 14,
-                      fontWeight: date != null && !isDisabled ? FontWeight.w600 : FontWeight.w400,
+                      fontWeight: date != null && !isDisabled
+                          ? FontWeight.w600
+                          : FontWeight.w400,
                       color: date != null && !isDisabled ? zText : zMuted,
                     ),
                   ),
-                  Icon(Icons.calendar_month_outlined, size: 18, color: isDisabled ? Colors.grey.shade400 : zMuted),
+                  Icon(
+                    Icons.calendar_month_outlined,
+                    size: 18,
+                    color: isDisabled ? Colors.grey.shade400 : zMuted,
+                  ),
                 ],
               ),
             ),
@@ -360,7 +411,10 @@ class ExportShippingCard extends StatelessWidget {
 // Custom Formatter for Uppercase
 class UpperCaseTextFormatter extends TextInputFormatter {
   @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     return TextEditingValue(
       text: newValue.text.toUpperCase(),
       selection: newValue.selection,

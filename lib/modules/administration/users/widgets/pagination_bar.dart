@@ -33,10 +33,7 @@ class PaginationBar extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(14),
@@ -109,9 +106,7 @@ class PaginationBar extends StatelessWidget {
 
           return Row(
             children: [
-              Expanded(
-                child: _buildSummaryText(visibleStart, visibleEnd),
-              ),
+              Expanded(child: _buildSummaryText(visibleStart, visibleEnd)),
               const SizedBox(width: 12),
               SizedBox(
                 width: 130,
@@ -170,10 +165,7 @@ class PaginationBar extends StatelessWidget {
 
   Widget _buildPageChip() {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -196,10 +188,7 @@ class PaginationBar extends StatelessWidget {
       filled: true,
       fillColor: Colors.white,
       labelText: 'Rows',
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 12,
-      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: cardBorderColor),
@@ -224,13 +213,8 @@ class PaginationBar extends StatelessWidget {
       foregroundColor: primaryColor,
       side: const BorderSide(color: cardBorderColor),
       backgroundColor: Colors.white,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 14,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 }

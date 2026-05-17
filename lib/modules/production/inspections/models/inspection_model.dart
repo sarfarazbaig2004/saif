@@ -95,19 +95,17 @@ class InspectionModel {
       projectCode: (data['projectCode'] ?? '').toString(),
       productName: (data['productName'] ?? '').toString(),
       inspectionDate: dateTimeFromValue(data['inspectionDate']),
-      dispatchCommitmentDate: dateTimeFromValue(
-        data['dispatchCommitmentDate'],
-      ),
+      dispatchCommitmentDate: dateTimeFromValue(data['dispatchCommitmentDate']),
       inspectedQty: doubleFromValue(data['inspectedQty']),
       approvedQty: doubleFromValue(data['approvedQty']),
       rejectedQty: doubleFromValue(data['rejectedQty']),
       rejectionReason: (data['rejectionReason'] ?? '').toString(),
       inspectorName: (data['inspectorName'] ?? '').toString(),
       clientInspectionRequired: data['clientInspectionRequired'] == true,
-      clientInspectionStatus:
-          (data['clientInspectionStatus'] ?? 'pending').toString(),
-      dispatchClearanceStatus:
-          (data['dispatchClearanceStatus'] ?? 'pending').toString(),
+      clientInspectionStatus: (data['clientInspectionStatus'] ?? 'pending')
+          .toString(),
+      dispatchClearanceStatus: (data['dispatchClearanceStatus'] ?? 'pending')
+          .toString(),
       delayReason: (data['delayReason'] ?? '').toString(),
       remarks: (data['remarks'] ?? '').toString(),
       createdBy: (data['createdBy'] ?? '').toString(),

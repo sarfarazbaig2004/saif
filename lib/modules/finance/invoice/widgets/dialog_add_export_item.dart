@@ -29,7 +29,17 @@ class _DialogAddExportItemState extends State<DialogAddExportItem> {
   final _rateController = TextEditingController();
 
   final List<String> _uomList = [
-    'NOS', 'KGS', 'MTRS', 'PCS', 'BOX', 'LTRS', 'DOZ', 'PACKS', 'SET', 'TONS', 'SQM'
+    'NOS',
+    'KGS',
+    'MTRS',
+    'PCS',
+    'BOX',
+    'LTRS',
+    'DOZ',
+    'PACKS',
+    'SET',
+    'TONS',
+    'SQM',
   ];
 
   String _selectedUnit = 'NOS';
@@ -120,7 +130,8 @@ class _DialogAddExportItemState extends State<DialogAddExportItem> {
         padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
-          child: SingleChildScrollView( // ✅ FIX OVERFLOW
+          child: SingleChildScrollView(
+            // ✅ FIX OVERFLOW
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -141,7 +152,7 @@ class _DialogAddExportItemState extends State<DialogAddExportItem> {
                     IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () => Navigator.pop(context),
-                    )
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -152,10 +163,11 @@ class _DialogAddExportItemState extends State<DialogAddExportItem> {
                   decoration: InputDecoration(
                     labelText: 'Product Name *',
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                   validator: (val) =>
-                  val == null || val.trim().isEmpty ? 'Required' : null,
+                      val == null || val.trim().isEmpty ? 'Required' : null,
                 ),
                 const SizedBox(height: 16),
 
@@ -166,7 +178,8 @@ class _DialogAddExportItemState extends State<DialogAddExportItem> {
                   decoration: InputDecoration(
                     labelText: 'Description of Goods',
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -180,7 +193,8 @@ class _DialogAddExportItemState extends State<DialogAddExportItem> {
                         decoration: InputDecoration(
                           labelText: 'HSN Code',
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ),
@@ -191,11 +205,13 @@ class _DialogAddExportItemState extends State<DialogAddExportItem> {
                         decoration: InputDecoration(
                           labelText: 'Unit / UOM *',
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                         items: _uomList
-                            .map((u) =>
-                            DropdownMenuItem(value: u, child: Text(u)))
+                            .map(
+                              (u) => DropdownMenuItem(value: u, child: Text(u)),
+                            )
                             .toList(),
                         onChanged: (val) =>
                             setState(() => _selectedUnit = val!),
@@ -212,14 +228,16 @@ class _DialogAddExportItemState extends State<DialogAddExportItem> {
                       child: TextFormField(
                         controller: _qtyController,
                         keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
                           labelText: 'Quantity *',
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                         validator: (val) =>
-                        val == null || double.tryParse(val) == null
+                            val == null || double.tryParse(val) == null
                             ? 'Invalid qty'
                             : null,
                       ),
@@ -229,15 +247,16 @@ class _DialogAddExportItemState extends State<DialogAddExportItem> {
                       child: TextFormField(
                         controller: _rateController,
                         keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true),
+                          decimal: true,
+                        ),
                         decoration: InputDecoration(
-                          labelText:
-                          'Price (${widget.selectedCurrency}) *',
+                          labelText: 'Price (${widget.selectedCurrency}) *',
                           border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                         validator: (val) =>
-                        val == null || double.tryParse(val) == null
+                            val == null || double.tryParse(val) == null
                             ? 'Invalid rate'
                             : null,
                       ),
@@ -259,7 +278,9 @@ class _DialogAddExportItemState extends State<DialogAddExportItem> {
                       const Text(
                         'Line Amount:',
                         style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Text(
                         '${widget.selectedCurrency} ${_calculatedAmount.toStringAsFixed(2)}',
@@ -283,18 +304,19 @@ class _DialogAddExportItemState extends State<DialogAddExportItem> {
                       backgroundColor: const Color(0xFF3B82F6),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8)),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     onPressed: _saveItem,
                     child: Text(
-                      widget.existingItem == null
-                          ? 'Add Item'
-                          : 'Update Item',
+                      widget.existingItem == null ? 'Add Item' : 'Update Item',
                       style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                )
+                ),
               ],
             ),
           ),

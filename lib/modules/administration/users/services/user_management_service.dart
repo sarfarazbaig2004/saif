@@ -203,7 +203,7 @@ class UserManagementService {
 
   bool _isSoftwareSuperAdminData(Map<String, dynamic> data) {
     return _normalizeRole(data['role']?.toString()) ==
-            UserRoles.softwareSuperAdmin;
+        UserRoles.softwareSuperAdmin;
   }
 
   void _assertNotSoftwareSuperAdminTarget(Map<String, dynamic> data) {
@@ -643,7 +643,9 @@ class UserManagementService {
     );
 
     try {
-      final callable = FirebaseFunctions.instance.httpsCallable('createCompanyUser');
+      final callable = FirebaseFunctions.instance.httpsCallable(
+        'createCompanyUser',
+      );
       final result = await callable.call({
         'email': email,
         'displayName': displayName,

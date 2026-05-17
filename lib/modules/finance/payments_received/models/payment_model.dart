@@ -70,42 +70,74 @@ class PaymentModel {
 
     return PaymentModel(
       id: documentId,
-      companyId: (data['companyId'] is String && data['companyId'].toString().trim().isNotEmpty)
-          ? data['companyId'].toString().trim() : '',
-      customerId: (data['customerId'] is String && data['customerId'].toString().trim().isNotEmpty)
-          ? data['customerId'].toString().trim() : '',
-      customerName: (data['customerName'] is String && data['customerName'].toString().trim().isNotEmpty)
-          ? data['customerName'].toString().trim() : 'Unknown Customer',
-      receiptNumber: (data['receiptNumber'] is String && data['receiptNumber'].toString().trim().isNotEmpty)
-          ? data['receiptNumber'].toString().trim() : 'N/A',
+      companyId:
+          (data['companyId'] is String &&
+              data['companyId'].toString().trim().isNotEmpty)
+          ? data['companyId'].toString().trim()
+          : '',
+      customerId:
+          (data['customerId'] is String &&
+              data['customerId'].toString().trim().isNotEmpty)
+          ? data['customerId'].toString().trim()
+          : '',
+      customerName:
+          (data['customerName'] is String &&
+              data['customerName'].toString().trim().isNotEmpty)
+          ? data['customerName'].toString().trim()
+          : 'Unknown Customer',
+      receiptNumber:
+          (data['receiptNumber'] is String &&
+              data['receiptNumber'].toString().trim().isNotEmpty)
+          ? data['receiptNumber'].toString().trim()
+          : 'N/A',
       paymentDate: (data['paymentDate'] is Timestamp)
-          ? (data['paymentDate'] as Timestamp).toDate() : DateTime.now(),
+          ? (data['paymentDate'] as Timestamp).toDate()
+          : DateTime.now(),
       totalAmount: _parseDouble(data['totalAmount']),
       allocatedAmount: _parseDouble(data['allocatedAmount']),
       advanceAmount: _parseDouble(data['advanceAmount']),
-      currency: (data['currency'] is String && data['currency'].toString().isNotEmpty)
-          ? data['currency'] : 'USD',
+      currency:
+          (data['currency'] is String && data['currency'].toString().isNotEmpty)
+          ? data['currency']
+          : 'USD',
       exchangeRate: parsedExchangeRate > 0 ? parsedExchangeRate : 1.0,
       amountInr: _parseDouble(data['amountInr']),
-      paymentMode: (data['paymentMode'] is String && data['paymentMode'].toString().trim().isNotEmpty)
-          ? data['paymentMode'].toString().trim() : '',
-      referenceNo: (data['referenceNo'] is String && data['referenceNo'].toString().trim().isNotEmpty)
-          ? data['referenceNo'].toString().trim() : '',
-      notes: (data['notes'] is String && data['notes'].toString().trim().isNotEmpty)
-          ? data['notes'].toString().trim() : '',
+      paymentMode:
+          (data['paymentMode'] is String &&
+              data['paymentMode'].toString().trim().isNotEmpty)
+          ? data['paymentMode'].toString().trim()
+          : '',
+      referenceNo:
+          (data['referenceNo'] is String &&
+              data['referenceNo'].toString().trim().isNotEmpty)
+          ? data['referenceNo'].toString().trim()
+          : '',
+      notes:
+          (data['notes'] is String &&
+              data['notes'].toString().trim().isNotEmpty)
+          ? data['notes'].toString().trim()
+          : '',
       paymentType: data['paymentType'] ?? 'AGAINST_INVOICE',
 
       // Safe Audit Trail Parsing
-      createdBy: (data['createdBy'] is String && data['createdBy'].toString().trim().isNotEmpty)
-          ? data['createdBy'].toString().trim() : '',
-      createdByName: (data['createdByName'] is String && data['createdByName'].toString().trim().isNotEmpty)
-          ? data['createdByName'].toString().trim() : '',
+      createdBy:
+          (data['createdBy'] is String &&
+              data['createdBy'].toString().trim().isNotEmpty)
+          ? data['createdBy'].toString().trim()
+          : '',
+      createdByName:
+          (data['createdByName'] is String &&
+              data['createdByName'].toString().trim().isNotEmpty)
+          ? data['createdByName'].toString().trim()
+          : '',
       createdAt: (data['createdAt'] is Timestamp)
-          ? (data['createdAt'] as Timestamp).toDate() : DateTime.now(),
+          ? (data['createdAt'] as Timestamp).toDate()
+          : DateTime.now(),
       updatedBy: data['updatedBy']?.toString().trim(),
       updatedByName: data['updatedByName']?.toString().trim(),
       updatedAt: data['updatedAt'] != null && data['updatedAt'] is Timestamp
-          ? (data['updatedAt'] as Timestamp).toDate() : null,
+          ? (data['updatedAt'] as Timestamp).toDate()
+          : null,
     );
   }
 

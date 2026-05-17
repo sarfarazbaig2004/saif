@@ -8,8 +8,8 @@ class TenantModuleService {
   TenantModuleService({
     FirebaseFirestore? firestore,
     Duration cacheTtl = const Duration(minutes: 5),
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _cacheTtl = cacheTtl;
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _cacheTtl = cacheTtl;
 
   final FirebaseFirestore _firestore;
   final Duration _cacheTtl;
@@ -92,7 +92,8 @@ class TenantModuleService {
 
         final nameWrong = data['name'] != moduleId;
         final labelMissing = (data['label'] ?? '').toString().trim().isEmpty;
-        final labelWrong = module != null && data['label'] != module.displayName;
+        final labelWrong =
+            module != null && data['label'] != module.displayName;
         final requiredDisabled =
             _requiredModuleIds.contains(moduleId) && data['enabled'] != true;
 
@@ -121,16 +122,12 @@ class TenantModuleService {
       for (final moduleId in metadataRepairModuleIds) {
         final module = ModuleRegistry.findById(moduleId);
 
-        transaction.set(
-          modulesRef.doc(moduleId),
-          {
-            'name': moduleId,
-            'label': module?.displayName ?? moduleId,
-            if (_requiredModuleIds.contains(moduleId)) 'enabled': true,
-            'updatedAt': FieldValue.serverTimestamp(),
-          },
-          SetOptions(merge: true),
-        );
+        transaction.set(modulesRef.doc(moduleId), {
+          'name': moduleId,
+          'label': module?.displayName ?? moduleId,
+          if (_requiredModuleIds.contains(moduleId)) 'enabled': true,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
       }
 
       return TenantModuleSeedResult(
@@ -164,16 +161,12 @@ class TenantModuleService {
     final safeEnabledModuleIds = _withRequiredModuleIds(enabledModuleIds);
 
     for (final module in ModuleRegistry.activeModules) {
-      batch.set(
-        modulesRef.doc(module.id),
-        {
-          'name': module.id,
-          'label': module.displayName,
-          'enabled': safeEnabledModuleIds.contains(module.id),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      batch.set(modulesRef.doc(module.id), {
+        'name': module.id,
+        'label': module.displayName,
+        'enabled': safeEnabledModuleIds.contains(module.id),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     }
 
     await batch.commit();
@@ -251,10 +244,7 @@ class TenantModuleService {
   }
 
   Set<String> _withRequiredModuleIds(Set<String> moduleIds) {
-    return {
-      ...moduleIds,
-      ..._requiredModuleIds,
-    };
+    return {...moduleIds, ..._requiredModuleIds};
   }
 
   Stream<List<TenantModuleAccess>> watchTenantModuleAccess(String tenantId) {

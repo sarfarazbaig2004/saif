@@ -24,14 +24,15 @@ class ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool disabled = onTap == null || isLoading;
 
-    final Color backgroundColor =
-    disabled ? Colors.grey.shade100 : color.withValues(alpha: 0.08);
+    final Color backgroundColor = disabled
+        ? Colors.grey.shade100
+        : color.withValues(alpha: 0.08);
 
-    final Color borderColor =
-    disabled ? Colors.grey.shade300 : color.withValues(alpha: 0.25);
+    final Color borderColor = disabled
+        ? Colors.grey.shade300
+        : color.withValues(alpha: 0.25);
 
-    final Color foregroundColor =
-    disabled ? Colors.grey : color;
+    final Color foregroundColor = disabled ? Colors.grey : color;
 
     return Material(
       color: Colors.transparent,
@@ -43,11 +44,9 @@ class ActionButton extends StatelessWidget {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           height: height,
-          padding: padding ??
-              const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
+          padding:
+              padding ??
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: backgroundColor,
             borderRadius: BorderRadius.circular(12),
@@ -67,11 +66,7 @@ class ActionButton extends StatelessWidget {
                   ),
                 )
               else
-                Icon(
-                  icon,
-                  size: 18,
-                  color: foregroundColor,
-                ),
+                Icon(icon, size: 18, color: foregroundColor),
               const SizedBox(width: 8),
               Text(
                 label,

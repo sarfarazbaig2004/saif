@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:QUIK/modules/service/complaints/screen_complaint_form.dart';
 
-
 class ComplaintListScreen extends StatelessWidget {
   const ComplaintListScreen({super.key});
 
@@ -25,9 +24,7 @@ class ComplaintListScreen extends StatelessWidget {
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => ComplaintFormScreen(),
-                  ),
+                  MaterialPageRoute(builder: (_) => ComplaintFormScreen()),
                 );
               },
               icon: const Icon(Icons.add),
@@ -64,10 +61,7 @@ class ComplaintListScreen extends StatelessWidget {
               SizedBox(height: 6),
               Text(
                 'Create your first complaint to start service tracking.',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF6B7280),
-                ),
+                style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
               ),
               SizedBox(height: 80),
             ],

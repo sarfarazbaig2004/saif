@@ -5,10 +5,8 @@ import 'package:QUIK/modules/production/inspections/models/inspection_model.dart
 import 'package:QUIK/modules/production/job_cards/models/job_card_model.dart';
 
 class InspectionRepository {
-  InspectionRepository({
-    FirebaseFirestore? firestore,
-    required this.tenantId,
-  }) : _firestore = firestore ?? FirebaseFirestore.instance;
+  InspectionRepository({FirebaseFirestore? firestore, required this.tenantId})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
   final String tenantId;
