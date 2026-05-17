@@ -69,7 +69,9 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
         r == 'ceo' ||
         r == 'superadmin' ||
         r == 'admin' ||
-        r == 'manager';
+        r == 'manager' ||
+        r == 'company_super_admin' ||
+        r == 'software_super_admin';
   }
 
   bool _hasCustomerPermission(
