@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
@@ -44,6 +46,12 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   String _customerGstNumber = '';
   bool _customerErrorVisible = false;
 
+  // PDF upload state
+  bool _isUploading = false;
+  String? _poDocumentUrl;
+  String? _poFileName;
+  DateTime? _uploadedAt;
+
   double get _basicValue =>
       _items.fold<double>(0, (acc, item) => acc + item.amount);
 
@@ -85,6 +93,96 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     } finally {
       setState(() => _isLoadingCustomers = false);
     }
+  }
+
+  Future<void> _pickAndUploadPdf() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+    if (file.bytes == null) return;
+
+    final fileName = file.name;
+    final storagePath = 'companies/${widget.companyId}/customer_pos/$fileName';
+
+    setState(() => _isUploading = true);
+    try {
+      final ref = FirebaseStorage.instance.ref(storagePath);
+      await ref.putData(
+        file.bytes!,
+        SettableMetadata(contentType: 'application/pdf'),
+      );
+      final url = await ref.getDownloadURL();
+      setState(() {
+        _poDocumentUrl = url;
+        _poFileName = fileName;
+        _uploadedAt = DateTime.now();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+    } finally {
+      setState(() => _isUploading = false);
+    }
+  }
+
+  Widget _pdfUploadWidget() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'PO Document (PDF)',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            if (_poFileName != null)
+              Row(
+                children: [
+                  const Icon(Icons.picture_as_pdf, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _poFileName!,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Remove',
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => setState(() {
+                      _poDocumentUrl = null;
+                      _poFileName = null;
+                      _uploadedAt = null;
+                    }),
+                  ),
+                ],
+              )
+            else
+              OutlinedButton.icon(
+                onPressed: _isUploading ? null : _pickAndUploadPdf,
+                icon: _isUploading
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.upload_file),
+                label: Text(_isUploading ? 'Uploading…' : 'Select PDF'),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showCustomerPicker() {
@@ -195,6 +293,9 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       ldClause: _ldClause.text.trim(),
       status: 'draft',
       items: _items,
+      poDocumentUrl: _poDocumentUrl,
+      poFileName: _poFileName,
+      uploadedAt: _uploadedAt,
     );
 
     try {
@@ -341,6 +442,8 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 12),
+            _pdfUploadWidget(),
             const SizedBox(height: 12),
             _field('Payment Terms', _paymentTerms),
             const SizedBox(height: 12),

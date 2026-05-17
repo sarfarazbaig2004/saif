@@ -25,6 +25,9 @@ class CustomerPoModel {
   final String ldClause;
   final String status;
   final String? poFileUrl;
+  final String? poDocumentUrl;
+  final String? poFileName;
+  final DateTime? uploadedAt;
   final List<CustomerPoItemRow> items;
 
   const CustomerPoModel({
@@ -52,6 +55,9 @@ class CustomerPoModel {
     this.customerAddress = '',
     this.customerGstNumber = '',
     this.poFileUrl,
+    this.poDocumentUrl,
+    this.poFileName,
+    this.uploadedAt,
     this.items = const [],
   });
 
@@ -81,6 +87,9 @@ class CustomerPoModel {
       'ldClause': ldClause,
       'status': status,
       'poFileUrl': poFileUrl,
+      'poDocumentUrl': poDocumentUrl,
+      'poFileName': poFileName,
+      'uploadedAt': uploadedAt?.toIso8601String(),
       'items': items.map((e) => e.toMap()).toList(),
     };
   }
