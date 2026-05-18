@@ -56,7 +56,7 @@ import 'package:QUIK/modules/reports/sales_report/sales_report_screen.dart';
 import 'package:QUIK/shell/shell_page.dart';
 import 'package:QUIK/shell/shell_sidebar.dart';
 
-class ZohoShell extends StatefulWidget {
+class QuikShell extends StatefulWidget {
   final String userEmail;
   final String userUid;
   final String companyId;
@@ -66,7 +66,7 @@ class ZohoShell extends StatefulWidget {
   final String? userDisplayName;
   final String? industry;
 
-  const ZohoShell({
+  const QuikShell({
     super.key,
     required this.userEmail,
     required this.userUid,
@@ -79,10 +79,10 @@ class ZohoShell extends StatefulWidget {
   });
 
   @override
-  State<ZohoShell> createState() => _ZohoShellState();
+  State<QuikShell> createState() => _QuikShellState();
 }
 
-class _ZohoShellState extends State<ZohoShell> {
+class _QuikShellState extends State<QuikShell> {
   ShellPage activePage = ShellPage.dashboard;
 
   String? _resolvedIndustry;

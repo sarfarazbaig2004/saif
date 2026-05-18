@@ -12,7 +12,7 @@ import 'package:QUIK/core/inventory/services/inventory_config_service.dart';
 import 'package:QUIK/core/modules/providers/module_access_provider.dart';
 import 'package:QUIK/core/modules/services/tenant_module_service.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
-import 'package:QUIK/shell/zoho_shell.dart';
+import 'package:QUIK/shell/quik_shell.dart';
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
@@ -219,7 +219,7 @@ class _UserProfileGateState extends State<_UserProfileGate> {
           tenantId: companyId,
           child: Builder(
             builder: (moduleContext) {
-              return ZohoShell(
+              return QuikShell(
                 userEmail: widget.firebaseUser.email ?? '',
                 userUid: widget.firebaseUser.uid,
                 companyId: companyId,
