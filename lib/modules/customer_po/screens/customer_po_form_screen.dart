@@ -7,11 +7,12 @@ import 'package:QUIK/modules/customer_po/screens/form_widgets/po_customer_picker
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_shell.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_loader.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_pdf_upload_service.dart';
-import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_save_service.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_controllers.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_tabs.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_draft_factory.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_helpers.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_orchestrator.dart';
+import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
@@ -184,46 +185,19 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   }
 
   Future<void> _save() async {
-    if (_customerId.isEmpty) {
-      setState(() => _customerErrorVisible = true);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a customer')));
-      return;
-    }
-
-    if (!_formKey.currentState!.validate()) return;
-
-    final po = _buildCustomerPo();
-
-    try {
-      await CustomerPoSaveService.save(
-        provider: _provider,
-        isEditMode: _isEditMode,
-        po: po,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Customer PO ${_isEditMode ? 'updated' : 'saved'} successfully',
-          ),
-        ),
-      );
-      Navigator.pop(context);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Failed to ${_isEditMode ? 'update' : 'save'} Customer PO: $e',
-          ),
-        ),
-      );
-    }
+    await CustomerPoFormOrchestrator.save(
+      context: context,
+      formKey: _formKey,
+      mounted: mounted,
+      isEditMode: _isEditMode,
+      provider: _provider,
+      customerId: _customerId,
+      showCustomerError: () => setState(() => _customerErrorVisible = true),
+      buildPo: _buildCustomerPo,
+    );
   }
 
-  _buildCustomerPo() {
+  CustomerPoModel _buildCustomerPo() {
     return CustomerPoFormDraftFactory.build(
       isEditMode: _isEditMode,
       existingId: _existingId,
