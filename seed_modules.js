@@ -11,17 +11,25 @@ const db = admin.firestore();
 const companyId = 'aman-infra';
 
 const modules = [
-  { id: 'administration', displayName: 'Administration', sortOrder: 10 },
+  { id: 'dashboard', displayName: 'Dashboard', sortOrder: 10 },
   { id: 'crm', displayName: 'CRM', sortOrder: 20 },
   { id: 'sales', displayName: 'Sales', sortOrder: 30 },
-  { id: 'purchase', displayName: 'Purchase', sortOrder: 40 },
-  { id: 'inventory', displayName: 'Inventory', sortOrder: 50 },
-  { id: 'production', displayName: 'Production', sortOrder: 60 },
-  { id: 'dispatch', displayName: 'Dispatch', sortOrder: 70 },
-  { id: 'finance', displayName: 'Finance', sortOrder: 80 },
-  { id: 'hr', displayName: 'HR', sortOrder: 90 },
-  { id: 'reports', displayName: 'Reports', sortOrder: 100 },
-  { id: 'settings', displayName: 'Settings', sortOrder: 110 },
+  { id: 'customer_po', displayName: 'Customer PO', sortOrder: 40 },
+  { id: 'projects_job_cards', displayName: 'Projects & Job Cards', sortOrder: 50 },
+  { id: 'planning_scheduling', displayName: 'Planning & Scheduling', sortOrder: 60 },
+  { id: 'engineering', displayName: 'Engineering', sortOrder: 70 },
+  { id: 'inventory_store', displayName: 'Inventory & Store', sortOrder: 80 },
+  { id: 'purchase', displayName: 'Purchase', sortOrder: 90 },
+  { id: 'production', displayName: 'Production', sortOrder: 100 },
+  { id: 'contractor_job_work', displayName: 'Contractor Job Work', sortOrder: 110 },
+  { id: 'galvanizing', displayName: 'Galvanizing', sortOrder: 120 },
+  { id: 'inspection_qa', displayName: 'Inspection / QA', sortOrder: 130 },
+  { id: 'dispatch', displayName: 'Dispatch', sortOrder: 140 },
+  { id: 'hr_admin', displayName: 'HR / Labour', sortOrder: 150 },
+  { id: 'finance', displayName: 'Finance', sortOrder: 160 },
+  { id: 'reports', displayName: 'Reports', sortOrder: 170 },
+  { id: 'administration', displayName: 'Administration', sortOrder: 180 },
+  { id: 'settings', displayName: 'Settings', sortOrder: 190 },
 ];
 
 async function seedModules() {
@@ -45,7 +53,12 @@ async function seedModules() {
   }
 
   await batch.commit();
-  console.log('Aman Infra modules seeded successfully');
+  console.log(`Seeded ${modules.length} Aman Infra modules successfully`);
 }
 
-seedModules().catch(console.error);
+seedModules()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
