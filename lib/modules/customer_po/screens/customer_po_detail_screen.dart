@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_section_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_customer_card.dart';
@@ -268,10 +267,6 @@ class CustomerPoDetailScreen extends StatelessWidget {
   // ── Document ──────────────────────────────────────────────────────────────────
 
   // ── Shared helpers ────────────────────────────────────────────────────────────
-
-  Widget _card({required Widget child, String? title}) {
-    return PoSectionCard(title: title, child: child);
-  }
 
   Widget _row2(Widget left, Widget right) {
     return Row(
