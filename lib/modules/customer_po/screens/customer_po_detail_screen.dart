@@ -10,6 +10,7 @@ import 'package:QUIK/modules/customer_po/screens/widgets/po_customer_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_project_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_financial_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_terms_card.dart';
+import 'package:QUIK/modules/customer_po/screens/widgets/po_document_card.dart';
 
 class CustomerPoDetailScreen extends StatelessWidget {
   final String companyId;
@@ -204,7 +205,12 @@ class CustomerPoDetailScreen extends StatelessWidget {
                   if (_fmt(d['poDocumentUrl']).isNotEmpty ||
                       _fmt(d['poFileName']).isNotEmpty) ...[
                     const SizedBox(height: 16),
-                    _documentCard(context, d),
+                    PoDocumentCard(
+                      data: d,
+                      formatValue: _fmt,
+                      formatDate: _formatDate,
+                      openUrl: _openUrl,
+                    ),
                   ],
                   const SizedBox(height: 32),
                 ],
@@ -502,57 +508,6 @@ class CustomerPoDetailScreen extends StatelessWidget {
   }
 
   // ── Document ──────────────────────────────────────────────────────────────────
-
-  Widget _documentCard(BuildContext context, Map<String, dynamic> d) {
-    final url = _fmt(d['poDocumentUrl']);
-    final fileName = _fmt(d['poFileName']);
-    final uploadedAt = _formatDate(d['uploadedAt']);
-
-    return _card(
-      title: 'PO Document',
-      child: Row(
-        children: [
-          const Icon(Icons.picture_as_pdf, color: Colors.red, size: 32),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fileName.isEmpty ? 'Attached Document' : fileName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (uploadedAt != '—')
-                  Text(
-                    'Uploaded: $uploadedAt',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          if (url.isNotEmpty)
-            FilledButton.icon(
-              onPressed: () => _openUrl(context, url),
-              icon: const Icon(Icons.open_in_new, size: 16),
-              label: const Text('Open'),
-            )
-          else
-            Text(
-              'No URL',
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-            ),
-        ],
-      ),
-    );
-  }
 
   // ── Shared helpers ────────────────────────────────────────────────────────────
 
