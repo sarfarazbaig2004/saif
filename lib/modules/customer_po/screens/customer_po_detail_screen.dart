@@ -11,6 +11,7 @@ import 'package:QUIK/modules/customer_po/screens/widgets/po_project_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_financial_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_terms_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_document_card.dart';
+import 'package:QUIK/modules/customer_po/screens/widgets/po_items_card.dart';
 
 class CustomerPoDetailScreen extends StatelessWidget {
   final String companyId;
@@ -187,7 +188,12 @@ class CustomerPoDetailScreen extends StatelessWidget {
                     labelValue: _labelValue,
                   ),
                   const SizedBox(height: 16),
-                  _itemsCard(items, currency),
+                  PoItemsCard(
+                    items: items,
+                    currency: currency,
+                    formatValue: _fmt,
+                    numberValue: _num,
+                  ),
                   const SizedBox(height: 16),
                   PoFinancialCard(
                     data: d,
@@ -348,147 +354,6 @@ class CustomerPoDetailScreen extends StatelessWidget {
   // ── Project ───────────────────────────────────────────────────────────────────
 
   // ── Items ─────────────────────────────────────────────────────────────────────
-
-  Widget _itemsCard(List<dynamic> items, NumberFormat currency) {
-    return _card(
-      title: 'PO Items',
-      child: items.isEmpty
-          ? const Text(
-              'No items recorded.',
-              style: TextStyle(color: Colors.grey),
-            )
-          : Column(
-              children: [
-                _itemsHeader(),
-                const SizedBox(height: 8),
-                ...items.asMap().entries.map(
-                  (entry) => _itemRow(entry.key, entry.value, currency),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    const Text(
-                      'Grand Total',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(width: 24),
-                    Text(
-                      '₹ ${currency.format(items.fold<double>(0, (acc, item) {
-                        final m = item as Map<String, dynamic>;
-                        return acc + _num(m['amount']);
-                      }))}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        color: Color(0xFF2563EB),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _itemsHeader() {
-    const style = TextStyle(
-      fontWeight: FontWeight.w700,
-      fontSize: 12,
-      color: Color(0xFF64748B),
-    );
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        children: [
-          Expanded(flex: 4, child: Text('Description', style: style)),
-          Expanded(
-            flex: 1,
-            child: Text('Qty', style: style, textAlign: TextAlign.center),
-          ),
-          Expanded(
-            flex: 1,
-            child: Text('Unit', style: style, textAlign: TextAlign.center),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text('Rate', style: style, textAlign: TextAlign.right),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text('Amount', style: style, textAlign: TextAlign.right),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _itemRow(int index, dynamic item, NumberFormat currency) {
-    final m = item as Map<String, dynamic>;
-    final isEven = index % 2 == 0;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      decoration: BoxDecoration(
-        color: isEven ? Colors.transparent : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 4,
-            child: Text(
-              _fmt(m['description']).isEmpty ? '—' : _fmt(m['description']),
-              style: const TextStyle(fontSize: 13),
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Text(
-              _num(
-                m['quantity'],
-              ).toStringAsFixed(_num(m['quantity']) % 1 == 0 ? 0 : 2),
-              style: const TextStyle(fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Text(
-              _fmt(m['unit']),
-              style: const TextStyle(fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              '₹ ${currency.format(_num(m['rate']))}',
-              style: const TextStyle(fontSize: 13),
-              textAlign: TextAlign.right,
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              '₹ ${currency.format(_num(m['amount']))}',
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-              textAlign: TextAlign.right,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ── Financial Summary ─────────────────────────────────────────────────────────
 
