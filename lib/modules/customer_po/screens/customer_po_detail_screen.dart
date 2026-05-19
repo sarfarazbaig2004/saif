@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
-import 'package:QUIK/modules/customer_po/screens/widgets/po_section_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_customer_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_project_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_financial_card.dart';
