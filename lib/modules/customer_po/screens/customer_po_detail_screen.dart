@@ -8,6 +8,7 @@ import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_section_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_customer_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_project_card.dart';
+import 'package:QUIK/modules/customer_po/screens/widgets/po_financial_card.dart';
 
 class CustomerPoDetailScreen extends StatelessWidget {
   final String companyId;
@@ -186,7 +187,11 @@ class CustomerPoDetailScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   _itemsCard(items, currency),
                   const SizedBox(height: 16),
-                  _financialCard(d, currency),
+                  PoFinancialCard(
+                    data: d,
+                    currency: currency,
+                    numberValue: _num,
+                  ),
                   if (_hasTerms(d)) ...[
                     const SizedBox(height: 16),
                     _termsCard(d),
@@ -475,46 +480,6 @@ class CustomerPoDetailScreen extends StatelessWidget {
   }
 
   // ── Financial Summary ─────────────────────────────────────────────────────────
-
-  Widget _financialCard(Map<String, dynamic> d, NumberFormat currency) {
-    return _card(
-      title: 'Financial Summary',
-      child: Column(
-        children: [
-          _finRow('Basic Value', '₹ ${currency.format(_num(d['basicValue']))}'),
-          const SizedBox(height: 8),
-          _finRow(
-            'GST (${_num(d['gstPercent']).toStringAsFixed(0)}%)',
-            '₹ ${currency.format(_num(d['gstAmount']))}',
-          ),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 10),
-            child: Divider(),
-          ),
-          _finRow(
-            'Total Value',
-            '₹ ${currency.format(_num(d['totalValue']))}',
-            bold: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _finRow(String label, String value, {bool bold = false}) {
-    final style = TextStyle(
-      fontWeight: bold ? FontWeight.w800 : FontWeight.w500,
-      fontSize: bold ? 16 : 14,
-      color: bold ? const Color(0xFF0F172A) : const Color(0xFF334155),
-    );
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: style),
-        Text(value, style: style),
-      ],
-    );
-  }
 
   // ── Terms ─────────────────────────────────────────────────────────────────────
 
