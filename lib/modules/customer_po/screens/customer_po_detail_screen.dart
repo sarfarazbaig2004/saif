@@ -9,6 +9,7 @@ import 'package:QUIK/modules/customer_po/screens/widgets/po_section_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_customer_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_project_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_financial_card.dart';
+import 'package:QUIK/modules/customer_po/screens/widgets/po_terms_card.dart';
 
 class CustomerPoDetailScreen extends StatelessWidget {
   final String companyId;
@@ -194,7 +195,11 @@ class CustomerPoDetailScreen extends StatelessWidget {
                   ),
                   if (_hasTerms(d)) ...[
                     const SizedBox(height: 16),
-                    _termsCard(d),
+                    PoTermsCard(
+                      data: d,
+                      formatValue: _fmt,
+                      labelValue: _labelValue,
+                    ),
                   ],
                   if (_fmt(d['poDocumentUrl']).isNotEmpty ||
                       _fmt(d['poFileName']).isNotEmpty) ...[
@@ -494,34 +499,6 @@ class CustomerPoDetailScreen extends StatelessWidget {
       if (_fmt(d[key]).isNotEmpty) return true;
     }
     return false;
-  }
-
-  Widget _termsCard(Map<String, dynamic> d) {
-    return _card(
-      title: 'Terms & Conditions',
-      child: Column(
-        children: [
-          if (_fmt(d['paymentTerms']).isNotEmpty)
-            _labelValue('Payment Terms', _fmt(d['paymentTerms'])),
-          if (_fmt(d['deliveryTerms']).isNotEmpty) ...[
-            const SizedBox(height: 10),
-            _labelValue('Delivery Terms', _fmt(d['deliveryTerms'])),
-          ],
-          if (_fmt(d['inspectionRequirement']).isNotEmpty) ...[
-            const SizedBox(height: 10),
-            _labelValue('Inspection', _fmt(d['inspectionRequirement'])),
-          ],
-          if (_fmt(d['warranty']).isNotEmpty) ...[
-            const SizedBox(height: 10),
-            _labelValue('Warranty', _fmt(d['warranty'])),
-          ],
-          if (_fmt(d['ldClause']).isNotEmpty) ...[
-            const SizedBox(height: 10),
-            _labelValue('LD Clause', _fmt(d['ldClause'])),
-          ],
-        ],
-      ),
-    );
   }
 
   // ── Document ──────────────────────────────────────────────────────────────────
