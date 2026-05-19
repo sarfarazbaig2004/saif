@@ -13,6 +13,7 @@ import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_pdf_u
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_save_service.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_controllers.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_tabs.dart';
+import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
@@ -195,39 +196,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
 
     if (!_formKey.currentState!.validate()) return;
 
-    final id = _isEditMode
-        ? _existingId
-        : DateTime.now().millisecondsSinceEpoch.toString();
-
-    final po = CustomerPoFormBuilder.build(
-      id: id,
-      companyId: widget.companyId,
-      poNumber: _controllers.poNumber.text.trim(),
-      poDate: _poDate,
-      customerId: _customerId,
-      customerName: _customerName,
-      customerEmail: _customerEmail,
-      customerMobile: _customerMobile,
-      customerAddress: _customerAddress,
-      customerGstNumber: _customerGstNumber,
-      projectName: _controllers.projectName.text.trim(),
-      siteLocation: _controllers.siteLocation.text.trim(),
-      subject: _controllers.subject.text.trim(),
-      basicValue: _basicValue,
-      gstPercent: double.tryParse(_controllers.gstPercent.text.trim()) ?? 0,
-      gstAmount: _gstAmount,
-      totalValue: _totalValue,
-      paymentTerms: _controllers.paymentTerms.text.trim(),
-      deliveryTerms: _controllers.deliveryTerms.text.trim(),
-      inspectionRequirement: _controllers.inspectionRequirement.text.trim(),
-      warranty: _controllers.warranty.text.trim(),
-      ldClause: _controllers.ldClause.text.trim(),
-      status: _isEditMode ? _existingStatus : 'Draft',
-      items: _items,
-      poDocumentUrl: _poDocumentUrl,
-      poFileName: _poFileName,
-      uploadedAt: _uploadedAt,
-    );
+    final po = _buildCustomerPo();
 
     try {
       await CustomerPoSaveService.save(
@@ -256,13 +225,47 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     }
   }
 
+  CustomerPoModel _buildCustomerPo() {
+    final id = _isEditMode
+        ? _existingId
+        : DateTime.now().millisecondsSinceEpoch.toString();
+
+    return CustomerPoFormBuilder.build(
+      id: id,
+      companyId: widget.companyId,
+      poNumber: _controllers.poNumber.text.trim(),
+      poDate: _poDate,
+      customerId: _customerId,
+      customerName: _customerName,
+      customerEmail: _customerEmail,
+      customerMobile: _customerMobile,
+      customerAddress: _customerAddress,
+      customerGstNumber: _customerGstNumber,
+      projectName: _controllers.projectName.text.trim(),
+      siteLocation: _controllers.siteLocation.text.trim(),
+      subject: _controllers.subject.text.trim(),
+      basicValue: _basicValue,
+      gstPercent: double.tryParse(_controllers.gstPercent.text.trim()) ?? 0,
+      gstAmount: _gstAmount,
+      totalValue: _totalValue,
+      paymentTerms: _controllers.paymentTerms.text.trim(),
+      deliveryTerms: _controllers.deliveryTerms.text.trim(),
+      inspectionRequirement: _controllers.inspectionRequirement.text.trim(),
+      warranty: _controllers.warranty.text.trim(),
+      ldClause: _controllers.ldClause.text.trim(),
+      status: _isEditMode ? _existingStatus : 'Draft',
+      items: _items,
+      poDocumentUrl: _poDocumentUrl,
+      poFileName: _poFileName,
+      uploadedAt: _uploadedAt,
+    );
+  }
+
   @override
   void dispose() {
     _controllers.dispose();
     super.dispose();
   }
-
-  // ── Field helpers ─────────────────────────────────────────────────────────────
 
   Widget _field(
     String label,
@@ -271,44 +274,39 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     bool readOnly = false,
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
-  }) {
-    return PoFormField(
-      label: label,
-      controller: controller,
-      requiredField: required,
-      readOnly: readOnly,
-      keyboardType: keyboardType,
-      maxLines: maxLines,
-    );
-  }
+  }) => PoFormField(
+    label: label,
+    controller: controller,
+    requiredField: required,
+    readOnly: readOnly,
+    keyboardType: keyboardType,
+    maxLines: maxLines,
+  );
 
-  Widget _summaryRow(String label, String value, {bool bold = false}) {
-    return PoSummaryRow(label: label, value: value, bold: bold);
-  }
+  Widget _summaryRow(String label, String value, {bool bold = false}) =>
+      PoSummaryRow(label: label, value: value, bold: bold);
 
   void _showCustomerPicker() {
     showDialog<void>(
       context: context,
       builder: (_) => PoCustomerPickerDialog(
         customers: _customers,
-        onSelected: (c) {
-          setState(() {
-            _customerId = c['id'] as String;
-            _customerName = c['name'] as String;
-            _customerEmail = c['email'] as String;
-            _customerMobile = c['mobile'] as String;
-            _customerAddress = c['address'] as String;
-            _customerGstNumber = c['gst'] as String;
-            _customerErrorVisible = false;
-          });
-        },
+        onSelected: _selectCustomer,
       ),
     );
   }
 
-  // ── Tab content builders ──────────────────────────────────────────────────────
-
-  // ── Build ─────────────────────────────────────────────────────────────────────
+  void _selectCustomer(Map<String, dynamic> c) {
+    setState(() {
+      _customerId = c['id'] as String;
+      _customerName = c['name'] as String;
+      _customerEmail = c['email'] as String;
+      _customerMobile = c['mobile'] as String;
+      _customerAddress = c['address'] as String;
+      _customerGstNumber = c['gst'] as String;
+      _customerErrorVisible = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
