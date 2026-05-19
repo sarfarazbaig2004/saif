@@ -7,6 +7,7 @@ import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_section_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_customer_card.dart';
+import 'package:QUIK/modules/customer_po/screens/widgets/po_project_card.dart';
 
 class CustomerPoDetailScreen extends StatelessWidget {
   final String companyId;
@@ -176,7 +177,12 @@ class CustomerPoDetailScreen extends StatelessWidget {
                     labelValue: _labelValue,
                   ),
                   const SizedBox(height: 16),
-                  _projectCard(d),
+                  PoProjectCard(
+                    data: d,
+                    formatValue: _fmt,
+                    row2: _row2,
+                    labelValue: _labelValue,
+                  ),
                   const SizedBox(height: 16),
                   _itemsCard(items, currency),
                   const SizedBox(height: 16),
@@ -324,24 +330,6 @@ class CustomerPoDetailScreen extends StatelessWidget {
   // ── Customer ─────────────────────────────────────────────────────────────────
 
   // ── Project ───────────────────────────────────────────────────────────────────
-
-  Widget _projectCard(Map<String, dynamic> d) {
-    return _card(
-      title: 'Project Details',
-      child: Column(
-        children: [
-          _row2(
-            _labelValue('Project Name', _fmt(d['projectName'])),
-            _labelValue('Site Location', _fmt(d['siteLocation'])),
-          ),
-          if (_fmt(d['subject']).isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _labelValue('Subject / Scope', _fmt(d['subject'])),
-          ],
-        ],
-      ),
-    );
-  }
 
   // ── Items ─────────────────────────────────────────────────────────────────────
 
