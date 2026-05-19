@@ -4,53 +4,43 @@ import 'package:intl/intl.dart';
 
 import 'package:QUIK/modules/customer_po/screens/customer_po_detail_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
+import 'package:QUIK/modules/customer_po/screens/widgets/customer_po_search_bar.dart';
+import 'package:QUIK/modules/customer_po/screens/widgets/customer_po_status_chip.dart';
 
-Color _poStatusColor(String status) {
-  switch (status.toLowerCase()) {
-    case 'submitted':
-      return Colors.blue.shade700;
-    case 'approved':
-      return Colors.green.shade700;
-    case 'rejected':
-      return Colors.red.shade700;
-    case 'in production':
-      return Colors.orange.shade800;
-    case 'partially dispatched':
-      return Colors.deepPurple.shade600;
-    case 'completed':
-      return Colors.teal.shade700;
-    case 'closed':
-      return Colors.blueGrey.shade700;
-    default:
-      return Colors.grey.shade600;
-  }
-}
-
-Color _poStatusBg(String status) {
-  switch (status.toLowerCase()) {
-    case 'submitted':
-      return Colors.blue.shade50;
-    case 'approved':
-      return Colors.green.shade50;
-    case 'rejected':
-      return Colors.red.shade50;
-    case 'in production':
-      return Colors.orange.shade50;
-    case 'partially dispatched':
-      return Colors.deepPurple.shade50;
-    case 'completed':
-      return Colors.teal.shade50;
-    case 'closed':
-      return Colors.blueGrey.shade50;
-    default:
-      return Colors.grey.shade100;
-  }
-}
-
-class CustomerPoListScreen extends StatelessWidget {
+class CustomerPoListScreen extends StatefulWidget {
   final String companyId;
 
   const CustomerPoListScreen({super.key, required this.companyId});
+
+  @override
+  State<CustomerPoListScreen> createState() => _CustomerPoListScreenState();
+}
+
+class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchText = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  bool _matchesSearch(Map<String, dynamic> data) {
+    final search = _searchText.trim().toLowerCase();
+    if (search.isEmpty) return true;
+
+    final values = [
+      data['poNumber'],
+      data['customerName'],
+      data['projectName'],
+      data['siteLocation'],
+      data['subject'],
+      data['status'],
+    ].map((value) => (value ?? '').toString().toLowerCase()).join(' ');
+
+    return values.contains(search);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +59,8 @@ class CustomerPoListScreen extends StatelessWidget {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => CustomerPoFormScreen(companyId: companyId),
+                  builder: (_) =>
+                      CustomerPoFormScreen(companyId: widget.companyId),
                 ),
               );
             },
@@ -82,7 +73,7 @@ class CustomerPoListScreen extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
             .collection('companies')
-            .doc(companyId)
+            .doc(widget.companyId)
             .collection('customer_pos')
             .orderBy('createdAt', descending: true)
             .snapshots(),
@@ -98,6 +89,9 @@ class CustomerPoListScreen extends StatelessWidget {
           }
 
           final docs = snapshot.data!.docs;
+          final filteredDocs = docs.where((doc) {
+            return _matchesSearch(doc.data());
+          }).toList();
 
           if (docs.isEmpty) {
             return const Center(
@@ -107,10 +101,18 @@ class CustomerPoListScreen extends StatelessWidget {
 
           return ListView.separated(
             padding: const EdgeInsets.all(16),
-            itemCount: docs.length,
+            itemCount: filteredDocs.length + 1,
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
-              final data = docs[index].data();
+              if (index == 0) {
+                return CustomerPoSearchBar(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() => _searchText = value),
+                );
+              }
+
+              final poDoc = filteredDocs[index - 1];
+              final data = poDoc.data();
 
               final poNumber = (data['poNumber'] ?? '').toString();
               final customerName = (data['customerName'] ?? '').toString();
@@ -126,8 +128,8 @@ class CustomerPoListScreen extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (_) => CustomerPoDetailScreen(
-                        companyId: companyId,
-                        docId: docs[index].id,
+                        companyId: widget.companyId,
+                        docId: poDoc.id,
                       ),
                     ),
                   ),
@@ -149,20 +151,7 @@ class CustomerPoListScreen extends StatelessWidget {
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                       const SizedBox(height: 4),
-                      Chip(
-                        label: Text(
-                          status,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: _poStatusColor(status),
-                          ),
-                        ),
-                        backgroundColor: _poStatusBg(status),
-                        visualDensity: VisualDensity.compact,
-                        side: BorderSide.none,
-                        padding: EdgeInsets.zero,
-                      ),
+                      CustomerPoStatusChip(status: status),
                     ],
                   ),
                 ),
