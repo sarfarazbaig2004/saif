@@ -93,12 +93,6 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
             return _matchesSearch(doc.data());
           }).toList();
 
-          if (docs.isEmpty) {
-            return const Center(
-              child: Text('No Customer PO found. Create your first PO.'),
-            );
-          }
-
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: filteredDocs.length + 1,
