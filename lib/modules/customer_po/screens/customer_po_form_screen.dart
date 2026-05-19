@@ -3,16 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/modules/customer_po/providers/customer_po_provider.dart';
 import 'package:QUIK/modules/customer_po/widgets/customer_po_item_row.dart';
-import 'package:QUIK/modules/customer_po/screens/form_widgets/po_project_split_tab.dart';
-import 'package:QUIK/modules/customer_po/screens/form_widgets/po_attachments_tab.dart';
-import 'package:QUIK/modules/customer_po/screens/form_widgets/po_terms_tab.dart';
-import 'package:QUIK/modules/customer_po/screens/form_widgets/po_commercial_tab.dart';
-import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_section_card.dart';
-import 'package:QUIK/modules/customer_po/screens/form_widgets/po_pdf_upload_card.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_customer_picker_dialog.dart';
-import 'package:QUIK/modules/customer_po/screens/form_widgets/po_overview_tab.dart';
-import 'package:QUIK/modules/customer_po/screens/form_widgets/po_engineering_tab.dart';
-import 'package:QUIK/modules/customer_po/screens/form_widgets/keep_alive_page.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_field.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_summary_row.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_shell.dart';
@@ -21,6 +12,7 @@ import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_pdf_upload_service.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_save_service.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_controllers.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_tabs.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
@@ -332,78 +324,34 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       isSaving: _provider.loading,
       onSave: _save,
       formKey: _formKey,
-      tabs: _buildTabs(),
+      body: PoFormTabs(
+        controllers: _controllers,
+        isEditMode: _isEditMode,
+        customerErrorVisible: _customerErrorVisible,
+        customerId: _customerId,
+        isLoadingCustomers: _isLoadingCustomers,
+        customerName: _customerName,
+        customerEmail: _customerEmail,
+        customerMobile: _customerMobile,
+        customerGstNumber: _customerGstNumber,
+        customerAddress: _customerAddress,
+        showCustomerPicker: _showCustomerPicker,
+        fieldBuilder: _field,
+        summaryRow: _summaryRow,
+        basicValue: _basicValue,
+        gstAmount: _gstAmount,
+        totalValue: _totalValue,
+        items: _items,
+        onItemsChanged: (items) => setState(() => _items = items),
+        poFileName: _poFileName,
+        isUploading: _isUploading,
+        pickAndUploadPdf: _pickAndUploadPdf,
+        removePdf: () => setState(() {
+          _poDocumentUrl = null;
+          _poFileName = null;
+          _uploadedAt = null;
+        }),
+      ),
     );
-  }
-
-  List<Widget> _buildTabs() {
-    return [
-      KeepAlivePage(
-        child: PoOverviewTab(
-          poNumber: _controllers.poNumber,
-          isEditMode: _isEditMode,
-          customerErrorVisible: _customerErrorVisible,
-          customerId: _customerId,
-          isLoadingCustomers: _isLoadingCustomers,
-          customerName: _customerName,
-          customerEmail: _customerEmail,
-          customerMobile: _customerMobile,
-          customerGstNumber: _customerGstNumber,
-          customerAddress: _customerAddress,
-          showCustomerPicker: _showCustomerPicker,
-          fieldBuilder: _field,
-        ),
-      ),
-      KeepAlivePage(
-        child: PoCommercialTab(
-          gstPercent: _controllers.gstPercent,
-          basicValue: _basicValue,
-          gstAmount: _gstAmount,
-          totalValue: _totalValue,
-          fieldBuilder: _field,
-          summaryRow: _summaryRow,
-          sectionCard: ({required title, required child}) =>
-              PoFormSectionCard(title: title, child: child),
-        ),
-      ),
-      KeepAlivePage(
-        child: PoProjectSplitTab(
-          projectName: _controllers.projectName,
-          siteLocation: _controllers.siteLocation,
-          subject: _controllers.subject,
-          fieldBuilder: _field,
-        ),
-      ),
-      KeepAlivePage(
-        child: PoEngineeringTab(
-          items: _items,
-          onChanged: (items) => setState(() => _items = items),
-        ),
-      ),
-      KeepAlivePage(
-        child: PoTermsTab(
-          paymentTerms: _controllers.paymentTerms,
-          deliveryTerms: _controllers.deliveryTerms,
-          inspectionRequirement: _controllers.inspectionRequirement,
-          warranty: _controllers.warranty,
-          ldClause: _controllers.ldClause,
-          fieldBuilder: _field,
-        ),
-      ),
-      KeepAlivePage(
-        child: PoAttachmentsTab(
-          pdfUploadWidget: PoPdfUploadCard(
-            fileName: _poFileName,
-            isUploading: _isUploading,
-            onPickPdf: _pickAndUploadPdf,
-            onRemovePdf: () => setState(() {
-              _poDocumentUrl = null;
-              _poFileName = null;
-              _uploadedAt = null;
-            }),
-          ),
-        ),
-      ),
-    ];
   }
 }

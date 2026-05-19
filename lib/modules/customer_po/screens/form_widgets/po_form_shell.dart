@@ -5,7 +5,7 @@ class PoFormShell extends StatelessWidget {
   final bool isSaving;
   final VoidCallback onSave;
   final GlobalKey<FormState> formKey;
-  final List<Widget> tabs;
+  final Widget body;
 
   const PoFormShell({
     super.key,
@@ -13,7 +13,7 @@ class PoFormShell extends StatelessWidget {
     required this.isSaving,
     required this.onSave,
     required this.formKey,
-    required this.tabs,
+    required this.body,
   });
 
   @override
@@ -45,10 +45,7 @@ class PoFormShell extends StatelessWidget {
             ],
           ),
         ),
-        body: Form(
-          key: formKey,
-          child: TabBarView(children: tabs),
-        ),
+        body: Form(key: formKey, child: body),
       ),
     );
   }
