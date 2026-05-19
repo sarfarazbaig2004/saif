@@ -238,18 +238,6 @@ class CustomerPoDetailScreen extends StatelessWidget {
     );
   }
 
-  // ── Header ──────────────────────────────────────────────────────────────────
-
-  // ── Customer ─────────────────────────────────────────────────────────────────
-
-  // ── Project ───────────────────────────────────────────────────────────────────
-
-  // ── Items ─────────────────────────────────────────────────────────────────────
-
-  // ── Financial Summary ─────────────────────────────────────────────────────────
-
-  // ── Terms ─────────────────────────────────────────────────────────────────────
-
   bool _hasTerms(Map<String, dynamic> d) {
     for (final key in [
       'paymentTerms',
@@ -262,10 +250,6 @@ class CustomerPoDetailScreen extends StatelessWidget {
     }
     return false;
   }
-
-  // ── Document ──────────────────────────────────────────────────────────────────
-
-  // ── Shared helpers ────────────────────────────────────────────────────────────
 
   Widget _row2(Widget left, Widget right) {
     return Row(
