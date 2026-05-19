@@ -14,6 +14,7 @@ import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_save_
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_controllers.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_tabs.dart';
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_draft.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
@@ -231,33 +232,35 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
         : DateTime.now().millisecondsSinceEpoch.toString();
 
     return CustomerPoFormBuilder.build(
-      id: id,
-      companyId: widget.companyId,
-      poNumber: _controllers.poNumber.text.trim(),
-      poDate: _poDate,
-      customerId: _customerId,
-      customerName: _customerName,
-      customerEmail: _customerEmail,
-      customerMobile: _customerMobile,
-      customerAddress: _customerAddress,
-      customerGstNumber: _customerGstNumber,
-      projectName: _controllers.projectName.text.trim(),
-      siteLocation: _controllers.siteLocation.text.trim(),
-      subject: _controllers.subject.text.trim(),
-      basicValue: _basicValue,
-      gstPercent: double.tryParse(_controllers.gstPercent.text.trim()) ?? 0,
-      gstAmount: _gstAmount,
-      totalValue: _totalValue,
-      paymentTerms: _controllers.paymentTerms.text.trim(),
-      deliveryTerms: _controllers.deliveryTerms.text.trim(),
-      inspectionRequirement: _controllers.inspectionRequirement.text.trim(),
-      warranty: _controllers.warranty.text.trim(),
-      ldClause: _controllers.ldClause.text.trim(),
-      status: _isEditMode ? _existingStatus : 'Draft',
-      items: _items,
-      poDocumentUrl: _poDocumentUrl,
-      poFileName: _poFileName,
-      uploadedAt: _uploadedAt,
+      CustomerPoFormDraft(
+        id: id,
+        companyId: widget.companyId,
+        poNumber: _controllers.poNumber.text.trim(),
+        poDate: _poDate,
+        customerId: _customerId,
+        customerName: _customerName,
+        customerEmail: _customerEmail,
+        customerMobile: _customerMobile,
+        customerAddress: _customerAddress,
+        customerGstNumber: _customerGstNumber,
+        projectName: _controllers.projectName.text.trim(),
+        siteLocation: _controllers.siteLocation.text.trim(),
+        subject: _controllers.subject.text.trim(),
+        basicValue: _basicValue,
+        gstPercent: double.tryParse(_controllers.gstPercent.text.trim()) ?? 0,
+        gstAmount: _gstAmount,
+        totalValue: _totalValue,
+        paymentTerms: _controllers.paymentTerms.text.trim(),
+        deliveryTerms: _controllers.deliveryTerms.text.trim(),
+        inspectionRequirement: _controllers.inspectionRequirement.text.trim(),
+        warranty: _controllers.warranty.text.trim(),
+        ldClause: _controllers.ldClause.text.trim(),
+        status: _isEditMode ? _existingStatus : 'Draft',
+        items: _items,
+        poDocumentUrl: _poDocumentUrl,
+        poFileName: _poFileName,
+        uploadedAt: _uploadedAt,
+      ),
     );
   }
 
