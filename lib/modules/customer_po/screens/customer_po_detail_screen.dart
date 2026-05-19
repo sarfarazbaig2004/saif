@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_customer_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_project_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_financial_card.dart';
@@ -11,6 +10,7 @@ import 'package:QUIK/modules/customer_po/screens/widgets/po_terms_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_document_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_items_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_header_card.dart';
+import 'package:QUIK/modules/customer_po/screens/widgets/customer_po_detail_actions.dart';
 
 class CustomerPoDetailScreen extends StatelessWidget {
   final String companyId;
@@ -127,21 +127,7 @@ class CustomerPoDetailScreen extends StatelessWidget {
           'Customer PO',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Edit PO',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => CustomerPoFormScreen(
-                  companyId: companyId,
-                  existingDocId: docId,
-                ),
-              ),
-            ),
-          ),
-        ],
+        actions: [CustomerPoDetailActions(companyId: companyId, docId: docId)],
       ),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
