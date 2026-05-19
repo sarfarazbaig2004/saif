@@ -20,6 +20,7 @@ import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_builder.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_pdf_upload_service.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_save_service.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_controllers.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
@@ -39,16 +40,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _provider = CustomerPoProvider();
 
-  final _poNumber = TextEditingController();
-  final _gstPercent = TextEditingController(text: '18');
-  final _projectName = TextEditingController();
-  final _siteLocation = TextEditingController();
-  final _subject = TextEditingController();
-  final _paymentTerms = TextEditingController();
-  final _deliveryTerms = TextEditingController();
-  final _inspectionRequirement = TextEditingController();
-  final _warranty = TextEditingController();
-  final _ldClause = TextEditingController();
+  final _controllers = CustomerPoFormControllers();
 
   DateTime _poDate = DateTime.now();
   List<CustomerPoItemRow> _items = [];
@@ -79,7 +71,9 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       _items.fold<double>(0, (acc, item) => acc + item.amount);
 
   double get _gstAmount =>
-      _basicValue * (double.tryParse(_gstPercent.text.trim()) ?? 0) / 100;
+      _basicValue *
+      (double.tryParse(_controllers.gstPercent.text.trim()) ?? 0) /
+      100;
 
   double get _totalValue => _basicValue + _gstAmount;
 
@@ -87,7 +81,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   void initState() {
     super.initState();
     _loadCustomers();
-    _gstPercent.addListener(() => setState(() {}));
+    _controllers.gstPercent.addListener(() => setState(() {}));
     if (_isEditMode) {
       _isLoadingExisting = true;
       _loadExistingData();
@@ -142,22 +136,22 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
         _existingId = data.id;
         _existingStatus = data.status;
         _poDate = data.poDate;
-        _poNumber.text = data.poNumber;
+        _controllers.poNumber.text = data.poNumber;
         _customerId = data.customerId;
         _customerName = data.customerName;
         _customerEmail = data.customerEmail;
         _customerMobile = data.customerMobile;
         _customerAddress = data.customerAddress;
         _customerGstNumber = data.customerGstNumber;
-        _projectName.text = data.projectName;
-        _siteLocation.text = data.siteLocation;
-        _subject.text = data.subject;
-        _gstPercent.text = data.gstPercent;
-        _paymentTerms.text = data.paymentTerms;
-        _deliveryTerms.text = data.deliveryTerms;
-        _inspectionRequirement.text = data.inspectionRequirement;
-        _warranty.text = data.warranty;
-        _ldClause.text = data.ldClause;
+        _controllers.projectName.text = data.projectName;
+        _controllers.siteLocation.text = data.siteLocation;
+        _controllers.subject.text = data.subject;
+        _controllers.gstPercent.text = data.gstPercent;
+        _controllers.paymentTerms.text = data.paymentTerms;
+        _controllers.deliveryTerms.text = data.deliveryTerms;
+        _controllers.inspectionRequirement.text = data.inspectionRequirement;
+        _controllers.warranty.text = data.warranty;
+        _controllers.ldClause.text = data.ldClause;
         _poDocumentUrl = data.poDocumentUrl;
         _poFileName = data.poFileName;
         _uploadedAt = data.uploadedAt;
@@ -216,7 +210,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     final po = CustomerPoFormBuilder.build(
       id: id,
       companyId: widget.companyId,
-      poNumber: _poNumber.text.trim(),
+      poNumber: _controllers.poNumber.text.trim(),
       poDate: _poDate,
       customerId: _customerId,
       customerName: _customerName,
@@ -224,18 +218,18 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       customerMobile: _customerMobile,
       customerAddress: _customerAddress,
       customerGstNumber: _customerGstNumber,
-      projectName: _projectName.text.trim(),
-      siteLocation: _siteLocation.text.trim(),
-      subject: _subject.text.trim(),
+      projectName: _controllers.projectName.text.trim(),
+      siteLocation: _controllers.siteLocation.text.trim(),
+      subject: _controllers.subject.text.trim(),
       basicValue: _basicValue,
-      gstPercent: double.tryParse(_gstPercent.text.trim()) ?? 0,
+      gstPercent: double.tryParse(_controllers.gstPercent.text.trim()) ?? 0,
       gstAmount: _gstAmount,
       totalValue: _totalValue,
-      paymentTerms: _paymentTerms.text.trim(),
-      deliveryTerms: _deliveryTerms.text.trim(),
-      inspectionRequirement: _inspectionRequirement.text.trim(),
-      warranty: _warranty.text.trim(),
-      ldClause: _ldClause.text.trim(),
+      paymentTerms: _controllers.paymentTerms.text.trim(),
+      deliveryTerms: _controllers.deliveryTerms.text.trim(),
+      inspectionRequirement: _controllers.inspectionRequirement.text.trim(),
+      warranty: _controllers.warranty.text.trim(),
+      ldClause: _controllers.ldClause.text.trim(),
       status: _isEditMode ? _existingStatus : 'Draft',
       items: _items,
       poDocumentUrl: _poDocumentUrl,
@@ -272,16 +266,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
 
   @override
   void dispose() {
-    _poNumber.dispose();
-    _gstPercent.dispose();
-    _projectName.dispose();
-    _siteLocation.dispose();
-    _subject.dispose();
-    _paymentTerms.dispose();
-    _deliveryTerms.dispose();
-    _inspectionRequirement.dispose();
-    _warranty.dispose();
-    _ldClause.dispose();
+    _controllers.dispose();
     super.dispose();
   }
 
@@ -347,74 +332,78 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       isSaving: _provider.loading,
       onSave: _save,
       formKey: _formKey,
-      tabs: [
-        KeepAlivePage(
-          child: PoOverviewTab(
-            poNumber: _poNumber,
-            isEditMode: _isEditMode,
-            customerErrorVisible: _customerErrorVisible,
-            customerId: _customerId,
-            isLoadingCustomers: _isLoadingCustomers,
-            customerName: _customerName,
-            customerEmail: _customerEmail,
-            customerMobile: _customerMobile,
-            customerGstNumber: _customerGstNumber,
-            customerAddress: _customerAddress,
-            showCustomerPicker: _showCustomerPicker,
-            fieldBuilder: _field,
-          ),
-        ),
-        KeepAlivePage(
-          child: PoCommercialTab(
-            gstPercent: _gstPercent,
-            basicValue: _basicValue,
-            gstAmount: _gstAmount,
-            totalValue: _totalValue,
-            fieldBuilder: _field,
-            summaryRow: _summaryRow,
-            sectionCard: ({required title, required child}) =>
-                PoFormSectionCard(title: title, child: child),
-          ),
-        ),
-        KeepAlivePage(
-          child: PoProjectSplitTab(
-            projectName: _projectName,
-            siteLocation: _siteLocation,
-            subject: _subject,
-            fieldBuilder: _field,
-          ),
-        ),
-        KeepAlivePage(
-          child: PoEngineeringTab(
-            items: _items,
-            onChanged: (items) => setState(() => _items = items),
-          ),
-        ),
-        KeepAlivePage(
-          child: PoTermsTab(
-            paymentTerms: _paymentTerms,
-            deliveryTerms: _deliveryTerms,
-            inspectionRequirement: _inspectionRequirement,
-            warranty: _warranty,
-            ldClause: _ldClause,
-            fieldBuilder: _field,
-          ),
-        ),
-        KeepAlivePage(
-          child: PoAttachmentsTab(
-            pdfUploadWidget: PoPdfUploadCard(
-              fileName: _poFileName,
-              isUploading: _isUploading,
-              onPickPdf: _pickAndUploadPdf,
-              onRemovePdf: () => setState(() {
-                _poDocumentUrl = null;
-                _poFileName = null;
-                _uploadedAt = null;
-              }),
-            ),
-          ),
-        ),
-      ],
+      tabs: _buildTabs(),
     );
+  }
+
+  List<Widget> _buildTabs() {
+    return [
+      KeepAlivePage(
+        child: PoOverviewTab(
+          poNumber: _controllers.poNumber,
+          isEditMode: _isEditMode,
+          customerErrorVisible: _customerErrorVisible,
+          customerId: _customerId,
+          isLoadingCustomers: _isLoadingCustomers,
+          customerName: _customerName,
+          customerEmail: _customerEmail,
+          customerMobile: _customerMobile,
+          customerGstNumber: _customerGstNumber,
+          customerAddress: _customerAddress,
+          showCustomerPicker: _showCustomerPicker,
+          fieldBuilder: _field,
+        ),
+      ),
+      KeepAlivePage(
+        child: PoCommercialTab(
+          gstPercent: _controllers.gstPercent,
+          basicValue: _basicValue,
+          gstAmount: _gstAmount,
+          totalValue: _totalValue,
+          fieldBuilder: _field,
+          summaryRow: _summaryRow,
+          sectionCard: ({required title, required child}) =>
+              PoFormSectionCard(title: title, child: child),
+        ),
+      ),
+      KeepAlivePage(
+        child: PoProjectSplitTab(
+          projectName: _controllers.projectName,
+          siteLocation: _controllers.siteLocation,
+          subject: _controllers.subject,
+          fieldBuilder: _field,
+        ),
+      ),
+      KeepAlivePage(
+        child: PoEngineeringTab(
+          items: _items,
+          onChanged: (items) => setState(() => _items = items),
+        ),
+      ),
+      KeepAlivePage(
+        child: PoTermsTab(
+          paymentTerms: _controllers.paymentTerms,
+          deliveryTerms: _controllers.deliveryTerms,
+          inspectionRequirement: _controllers.inspectionRequirement,
+          warranty: _controllers.warranty,
+          ldClause: _controllers.ldClause,
+          fieldBuilder: _field,
+        ),
+      ),
+      KeepAlivePage(
+        child: PoAttachmentsTab(
+          pdfUploadWidget: PoPdfUploadCard(
+            fileName: _poFileName,
+            isUploading: _isUploading,
+            onPickPdf: _pickAndUploadPdf,
+            onRemovePdf: () => setState(() {
+              _poDocumentUrl = null;
+              _poFileName = null;
+              _uploadedAt = null;
+            }),
+          ),
+        ),
+      ),
+    ];
   }
 }
