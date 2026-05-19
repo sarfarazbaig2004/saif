@@ -6,6 +6,7 @@ import 'package:QUIK/modules/customer_po/screens/customer_po_detail_screen.dart'
 import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/customer_po_search_bar.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/customer_po_status_chip.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_record_status_service.dart';
 
 class CustomerPoListScreen extends StatefulWidget {
   final String companyId;
@@ -89,8 +90,20 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
           }
 
           final docs = snapshot.data!.docs;
+          final seenKeys = <String>{};
           final filteredDocs = docs.where((doc) {
-            return _matchesSearch(doc.data());
+            final data = doc.data();
+            if (data['isDeleted'] == true) return false;
+            if (!_matchesSearch(data)) return false;
+
+            final key = [
+              data['customerId'] ?? '',
+              data['poNumber'] ?? '',
+            ].join('|');
+
+            if (seenKeys.contains(key)) return false;
+            seenKeys.add(key);
+            return true;
           }).toList();
 
           return ListView.separated(
@@ -136,16 +149,45 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        currency.format(totalValue),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            currency.format(totalValue),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 4),
+                          CustomerPoStatusChip(status: status),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      CustomerPoStatusChip(status: status),
+                      PopupMenuButton<String>(
+                        onSelected: (value) async {
+                          if (value != 'duplicate') return;
+
+                          await CustomerPoRecordStatusService.markAsDuplicate(
+                            companyId: widget.companyId,
+                            docId: poDoc.id,
+                            reason: 'Created twice by mistake',
+                          );
+
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Customer PO marked as duplicate'),
+                            ),
+                          );
+                        },
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(
+                            value: 'duplicate',
+                            child: Text('Mark as Duplicate'),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
