@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 import 'package:QUIK/modules/customer_po/providers/customer_po_provider.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_duplicate_service.dart';
 
 class CustomerPoFormOrchestrator {
   const CustomerPoFormOrchestrator._();
@@ -12,7 +13,10 @@ class CustomerPoFormOrchestrator {
     required bool mounted,
     required bool isEditMode,
     required CustomerPoProvider provider,
+    required String companyId,
     required String customerId,
+    required String poNumber,
+    required String? currentDocId,
     required VoidCallback showCustomerError,
     required CustomerPoModel Function() buildPo,
   }) async {
@@ -25,6 +29,25 @@ class CustomerPoFormOrchestrator {
     }
 
     if (!formKey.currentState!.validate()) return;
+
+    final duplicateId = await CustomerPoDuplicateService.findDuplicatePoId(
+      companyId: companyId,
+      customerId: customerId,
+      poNumber: poNumber,
+      currentDocId: currentDocId,
+    );
+
+    if (duplicateId != null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'This customer PO already exists. Open existing or create a revision.',
+          ),
+        ),
+      );
+      return;
+    }
 
     try {
       final po = buildPo();

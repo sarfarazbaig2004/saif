@@ -191,7 +191,10 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       mounted: mounted,
       isEditMode: _isEditMode,
       provider: _provider,
+      companyId: widget.companyId,
       customerId: _customerId,
+      poNumber: _controllers.poNumber.text.trim(),
+      currentDocId: _isEditMode ? _existingId : null,
       showCustomerError: () => setState(() => _customerErrorVisible = true),
       buildPo: _buildCustomerPo,
     );
