@@ -4,17 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:QUIK/modules/customer_po/providers/customer_po_provider.dart';
 import 'package:QUIK/modules/customer_po/widgets/customer_po_item_row.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_customer_picker_dialog.dart';
-import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_field.dart';
-import 'package:QUIK/modules/customer_po/screens/form_widgets/po_summary_row.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_shell.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_loader.dart';
-import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_builder.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_pdf_upload_service.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_save_service.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_controllers.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_tabs.dart';
-import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
-import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_draft.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_draft_factory.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_helpers.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
@@ -226,41 +223,27 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     }
   }
 
-  CustomerPoModel _buildCustomerPo() {
-    final id = _isEditMode
-        ? _existingId
-        : DateTime.now().millisecondsSinceEpoch.toString();
-
-    return CustomerPoFormBuilder.build(
-      CustomerPoFormDraft(
-        id: id,
-        companyId: widget.companyId,
-        poNumber: _controllers.poNumber.text.trim(),
-        poDate: _poDate,
-        customerId: _customerId,
-        customerName: _customerName,
-        customerEmail: _customerEmail,
-        customerMobile: _customerMobile,
-        customerAddress: _customerAddress,
-        customerGstNumber: _customerGstNumber,
-        projectName: _controllers.projectName.text.trim(),
-        siteLocation: _controllers.siteLocation.text.trim(),
-        subject: _controllers.subject.text.trim(),
-        basicValue: _basicValue,
-        gstPercent: double.tryParse(_controllers.gstPercent.text.trim()) ?? 0,
-        gstAmount: _gstAmount,
-        totalValue: _totalValue,
-        paymentTerms: _controllers.paymentTerms.text.trim(),
-        deliveryTerms: _controllers.deliveryTerms.text.trim(),
-        inspectionRequirement: _controllers.inspectionRequirement.text.trim(),
-        warranty: _controllers.warranty.text.trim(),
-        ldClause: _controllers.ldClause.text.trim(),
-        status: _isEditMode ? _existingStatus : 'Draft',
-        items: _items,
-        poDocumentUrl: _poDocumentUrl,
-        poFileName: _poFileName,
-        uploadedAt: _uploadedAt,
-      ),
+  _buildCustomerPo() {
+    return CustomerPoFormDraftFactory.build(
+      isEditMode: _isEditMode,
+      existingId: _existingId,
+      companyId: widget.companyId,
+      controllers: _controllers,
+      poDate: _poDate,
+      customerId: _customerId,
+      customerName: _customerName,
+      customerEmail: _customerEmail,
+      customerMobile: _customerMobile,
+      customerAddress: _customerAddress,
+      customerGstNumber: _customerGstNumber,
+      basicValue: _basicValue,
+      gstAmount: _gstAmount,
+      totalValue: _totalValue,
+      existingStatus: _existingStatus,
+      items: _items,
+      poDocumentUrl: _poDocumentUrl,
+      poFileName: _poFileName,
+      uploadedAt: _uploadedAt,
     );
   }
 
@@ -268,47 +251,6 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   void dispose() {
     _controllers.dispose();
     super.dispose();
-  }
-
-  Widget _field(
-    String label,
-    TextEditingController controller, {
-    bool required = false,
-    bool readOnly = false,
-    TextInputType keyboardType = TextInputType.text,
-    int maxLines = 1,
-  }) => PoFormField(
-    label: label,
-    controller: controller,
-    requiredField: required,
-    readOnly: readOnly,
-    keyboardType: keyboardType,
-    maxLines: maxLines,
-  );
-
-  Widget _summaryRow(String label, String value, {bool bold = false}) =>
-      PoSummaryRow(label: label, value: value, bold: bold);
-
-  void _showCustomerPicker() {
-    showDialog<void>(
-      context: context,
-      builder: (_) => PoCustomerPickerDialog(
-        customers: _customers,
-        onSelected: _selectCustomer,
-      ),
-    );
-  }
-
-  void _selectCustomer(Map<String, dynamic> c) {
-    setState(() {
-      _customerId = c['id'] as String;
-      _customerName = c['name'] as String;
-      _customerEmail = c['email'] as String;
-      _customerMobile = c['mobile'] as String;
-      _customerAddress = c['address'] as String;
-      _customerGstNumber = c['gst'] as String;
-      _customerErrorVisible = false;
-    });
   }
 
   @override
@@ -336,9 +278,23 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
         customerMobile: _customerMobile,
         customerGstNumber: _customerGstNumber,
         customerAddress: _customerAddress,
-        showCustomerPicker: _showCustomerPicker,
-        fieldBuilder: _field,
-        summaryRow: _summaryRow,
+        showCustomerPicker: () => showDialog<void>(
+          context: context,
+          builder: (_) => PoCustomerPickerDialog(
+            customers: _customers,
+            onSelected: (c) => setState(() {
+              _customerId = c['id'] as String;
+              _customerName = c['name'] as String;
+              _customerEmail = c['email'] as String;
+              _customerMobile = c['mobile'] as String;
+              _customerAddress = c['address'] as String;
+              _customerGstNumber = c['gst'] as String;
+              _customerErrorVisible = false;
+            }),
+          ),
+        ),
+        fieldBuilder: PoFormHelpers.field,
+        summaryRow: PoFormHelpers.summaryRow,
         basicValue: _basicValue,
         gstAmount: _gstAmount,
         totalValue: _totalValue,
