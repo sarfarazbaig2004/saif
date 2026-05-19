@@ -12,6 +12,7 @@ import 'package:QUIK/modules/customer_po/screens/widgets/po_financial_card.dart'
 import 'package:QUIK/modules/customer_po/screens/widgets/po_terms_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_document_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_items_card.dart';
+import 'package:QUIK/modules/customer_po/screens/widgets/po_header_card.dart';
 
 class CustomerPoDetailScreen extends StatelessWidget {
   final String companyId;
@@ -172,7 +173,18 @@ class CustomerPoDetailScreen extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.all(24),
                 children: [
-                  _headerCard(context, d, status, currency),
+                  PoHeaderCard(
+                    pageContext: context,
+                    data: d,
+                    status: status,
+                    currency: currency,
+                    formatValue: _fmt,
+                    formatDate: _formatDate,
+                    numberValue: _num,
+                    statusColor: _statusColor,
+                    statusBg: _statusBg,
+                    updateStatus: _updateStatus,
+                  ),
                   const SizedBox(height: 16),
                   PoCustomerCard(
                     data: d,
@@ -229,125 +241,6 @@ class CustomerPoDetailScreen extends StatelessWidget {
   }
 
   // ── Header ──────────────────────────────────────────────────────────────────
-
-  Widget _headerCard(
-    BuildContext context,
-    Map<String, dynamic> d,
-    String status,
-    NumberFormat currency,
-  ) {
-    return _card(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _fmt(d['poNumber']).isEmpty
-                      ? 'PO Number Missing'
-                      : _fmt(d['poNumber']),
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Date: ${_formatDate(d['poDate'])}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Created: ${_formatDate(d['createdAt'])}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              PopupMenuButton<String>(
-                tooltip: 'Change Status',
-                onSelected: (newStatus) => _updateStatus(context, newStatus),
-                itemBuilder: (_) => CustomerPoModel.statuses.map((s) {
-                  return PopupMenuItem<String>(
-                    value: s,
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: _statusColor(s),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(s),
-                      ],
-                    ),
-                  );
-                }).toList(),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _statusBg(status),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        status.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                          color: _statusColor(status),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Icon(
-                        Icons.arrow_drop_down,
-                        size: 16,
-                        color: _statusColor(status),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '₹ ${currency.format(_num(d['totalValue']))}',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF2563EB),
-                ),
-              ),
-              Text(
-                'Total Value',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 
   // ── Customer ─────────────────────────────────────────────────────────────────
 
