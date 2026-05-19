@@ -1,0 +1,66 @@
+import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
+import 'package:QUIK/modules/customer_po/widgets/customer_po_item_row.dart';
+
+class CustomerPoFormBuilder {
+  const CustomerPoFormBuilder._();
+
+  static CustomerPoModel build({
+    required String id,
+    required String companyId,
+    required String poNumber,
+    required DateTime poDate,
+    required String customerId,
+    required String customerName,
+    required String customerEmail,
+    required String customerMobile,
+    required String customerAddress,
+    required String customerGstNumber,
+    required String projectName,
+    required String siteLocation,
+    required String subject,
+    required double basicValue,
+    required double gstPercent,
+    required double gstAmount,
+    required double totalValue,
+    required String paymentTerms,
+    required String deliveryTerms,
+    required String inspectionRequirement,
+    required String warranty,
+    required String ldClause,
+    required String status,
+    required List<CustomerPoItemRow> items,
+    required String? poDocumentUrl,
+    required String? poFileName,
+    required DateTime? uploadedAt,
+  }) {
+    return CustomerPoModel(
+      id: id,
+      companyId: companyId,
+      poNumber: poNumber,
+      poDate: poDate,
+      customerId: customerId,
+      customerName: customerName,
+      customerEmail: customerEmail,
+      customerMobile: customerMobile,
+      customerAddress: customerAddress,
+      customerGstNumber: customerGstNumber,
+      projectName: projectName,
+      siteLocation: siteLocation,
+      subject: subject,
+      basicValue: basicValue,
+      gstPercent: gstPercent,
+      gstAmount: gstAmount,
+      totalValue: totalValue,
+      paymentTerms: paymentTerms,
+      deliveryTerms: deliveryTerms,
+      inspectionRequirement: inspectionRequirement,
+      warranty: warranty,
+      ldClause: ldClause,
+      status: status,
+      items: items,
+      poDocumentUrl: poDocumentUrl,
+      poFileName: poFileName,
+      uploadedAt: uploadedAt,
+    );
+  }
+}

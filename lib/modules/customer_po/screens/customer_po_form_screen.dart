@@ -1,12 +1,25 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
-import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 import 'package:QUIK/modules/customer_po/providers/customer_po_provider.dart';
 import 'package:QUIK/modules/customer_po/widgets/customer_po_item_row.dart';
-import 'package:QUIK/modules/customer_po/widgets/customer_po_items_table.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_project_split_tab.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_attachments_tab.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_terms_tab.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_commercial_tab.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_section_card.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_pdf_upload_card.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_customer_picker_dialog.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_overview_tab.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_engineering_tab.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/keep_alive_page.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_field.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_summary_row.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_shell.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_loader.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_builder.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_pdf_upload_service.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_save_service.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
@@ -118,70 +131,37 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
 
   Future<void> _loadExistingData() async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('customer_pos')
-          .doc(widget.existingDocId)
-          .get();
+      final data = await CustomerPoFormLoader.load(
+        companyId: widget.companyId,
+        existingDocId: widget.existingDocId,
+      );
 
-      if (!doc.exists || !mounted) return;
-      final d = doc.data()!;
-
-      final rawItems = (d['items'] as List<dynamic>?) ?? [];
-      final loadedItems = rawItems.map((item) {
-        final m = item as Map<String, dynamic>;
-        return CustomerPoItemRow(
-          description: (m['description'] ?? '').toString(),
-          quantity: (m['quantity'] is num)
-              ? (m['quantity'] as num).toDouble()
-              : 1.0,
-          unit: (m['unit'] ?? 'Nos').toString(),
-          rate: (m['rate'] is num) ? (m['rate'] as num).toDouble() : 0.0,
-        );
-      }).toList();
-
-      DateTime? uploadedAt;
-      final uploadedAtRaw = d['uploadedAt'];
-      if (uploadedAtRaw is Timestamp) {
-        uploadedAt = uploadedAtRaw.toDate();
-      } else if (uploadedAtRaw != null) {
-        uploadedAt = DateTime.tryParse(uploadedAtRaw.toString());
-      }
-
-      final poDateRaw = d['poDate'];
-      DateTime poDate = DateTime.now();
-      if (poDateRaw is Timestamp) {
-        poDate = poDateRaw.toDate();
-      } else if (poDateRaw != null) {
-        poDate = DateTime.tryParse(poDateRaw.toString()) ?? DateTime.now();
-      }
+      if (data == null || !mounted) return;
 
       setState(() {
-        _existingId = doc.id;
-        _existingStatus = (d['status'] ?? 'Draft').toString();
-        _poDate = poDate;
-        _poNumber.text = (d['poNumber'] ?? '').toString();
-        _customerId = (d['customerId'] ?? '').toString();
-        _customerName = (d['customerName'] ?? '').toString();
-        _customerEmail = (d['customerEmail'] ?? '').toString();
-        _customerMobile = (d['customerMobile'] ?? '').toString();
-        _customerAddress = (d['customerAddress'] ?? '').toString();
-        _customerGstNumber = (d['customerGstNumber'] ?? '').toString();
-        _projectName.text = (d['projectName'] ?? '').toString();
-        _siteLocation.text = (d['siteLocation'] ?? '').toString();
-        _subject.text = (d['subject'] ?? '').toString();
-        _gstPercent.text = (d['gstPercent'] ?? 18).toString();
-        _paymentTerms.text = (d['paymentTerms'] ?? '').toString();
-        _deliveryTerms.text = (d['deliveryTerms'] ?? '').toString();
-        _inspectionRequirement.text = (d['inspectionRequirement'] ?? '')
-            .toString();
-        _warranty.text = (d['warranty'] ?? '').toString();
-        _ldClause.text = (d['ldClause'] ?? '').toString();
-        _poDocumentUrl = d['poDocumentUrl'] as String?;
-        _poFileName = d['poFileName'] as String?;
-        _uploadedAt = uploadedAt;
-        _items = loadedItems;
+        _existingId = data.id;
+        _existingStatus = data.status;
+        _poDate = data.poDate;
+        _poNumber.text = data.poNumber;
+        _customerId = data.customerId;
+        _customerName = data.customerName;
+        _customerEmail = data.customerEmail;
+        _customerMobile = data.customerMobile;
+        _customerAddress = data.customerAddress;
+        _customerGstNumber = data.customerGstNumber;
+        _projectName.text = data.projectName;
+        _siteLocation.text = data.siteLocation;
+        _subject.text = data.subject;
+        _gstPercent.text = data.gstPercent;
+        _paymentTerms.text = data.paymentTerms;
+        _deliveryTerms.text = data.deliveryTerms;
+        _inspectionRequirement.text = data.inspectionRequirement;
+        _warranty.text = data.warranty;
+        _ldClause.text = data.ldClause;
+        _poDocumentUrl = data.poDocumentUrl;
+        _poFileName = data.poFileName;
+        _uploadedAt = data.uploadedAt;
+        _items = data.items;
         _isLoadingExisting = false;
       });
     } catch (e) {
@@ -194,31 +174,19 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   }
 
   Future<void> _pickAndUploadPdf() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-      withData: true,
-    );
-    if (result == null || result.files.isEmpty) return;
-
-    final file = result.files.first;
-    if (file.bytes == null) return;
-
-    final fileName = file.name;
-    final storagePath = 'companies/${widget.companyId}/customer_pos/$fileName';
-
     setState(() => _isUploading = true);
+
     try {
-      final ref = FirebaseStorage.instance.ref(storagePath);
-      await ref.putData(
-        file.bytes!,
-        SettableMetadata(contentType: 'application/pdf'),
+      final uploaded = await CustomerPoPdfUploadService.pickAndUpload(
+        companyId: widget.companyId,
       );
-      final url = await ref.getDownloadURL();
+
+      if (uploaded == null) return;
+
       setState(() {
-        _poDocumentUrl = url;
-        _poFileName = fileName;
-        _uploadedAt = DateTime.now();
+        _poDocumentUrl = uploaded.url;
+        _poFileName = uploaded.fileName;
+        _uploadedAt = uploaded.uploadedAt;
       });
     } catch (e) {
       if (!mounted) return;
@@ -245,7 +213,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
         ? _existingId
         : DateTime.now().millisecondsSinceEpoch.toString();
 
-    final po = CustomerPoModel(
+    final po = CustomerPoFormBuilder.build(
       id: id,
       companyId: widget.companyId,
       poNumber: _poNumber.text.trim(),
@@ -276,11 +244,11 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     );
 
     try {
-      if (_isEditMode) {
-        await _provider.updateCustomerPo(po);
-      } else {
-        await _provider.createCustomerPo(po);
-      }
+      await CustomerPoSaveService.save(
+        provider: _provider,
+        isEditMode: _isEditMode,
+        po: po,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -327,329 +295,41 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     TextInputType keyboardType = TextInputType.text,
     int maxLines = 1,
   }) {
-    return TextFormField(
+    return PoFormField(
+      label: label,
       controller: controller,
-      keyboardType: keyboardType,
+      requiredField: required,
       readOnly: readOnly,
+      keyboardType: keyboardType,
       maxLines: maxLines,
-      validator: required
-          ? (value) {
-              if (value == null || value.trim().isEmpty) {
-                return '$label is required';
-              }
-              return null;
-            }
-          : null,
-      decoration: InputDecoration(
-        labelText: label,
-        border: const OutlineInputBorder(),
-        filled: readOnly,
-        fillColor: readOnly ? Colors.grey.shade100 : null,
-      ),
     );
   }
 
   Widget _summaryRow(String label, String value, {bool bold = false}) {
-    final style = TextStyle(
-      fontWeight: bold ? FontWeight.w800 : FontWeight.normal,
-      fontSize: bold ? 16 : 14,
-    );
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: style),
-        Text(value, style: style),
-      ],
-    );
-  }
-
-  Widget _customerSelector() {
-    final hasError = _customerErrorVisible && _customerId.isEmpty;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: (_isLoadingCustomers || _isEditMode)
-              ? null
-              : _showCustomerPicker,
-          child: InputDecorator(
-            decoration: InputDecoration(
-              labelText: 'Customer *',
-              border: const OutlineInputBorder(),
-              errorText: hasError ? 'Please select a customer' : null,
-              filled: _isEditMode,
-              fillColor: _isEditMode ? Colors.grey.shade100 : null,
-              suffixIcon: _isEditMode
-                  ? null
-                  : _isLoadingCustomers
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : const Icon(Icons.arrow_drop_down),
-            ),
-            child: Text(
-              _customerName.isEmpty ? 'Select Customer' : _customerName,
-              style: TextStyle(
-                color: _customerName.isEmpty ? Colors.grey.shade600 : null,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Customer details are managed in CRM',
-          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-        ),
-      ],
-    );
-  }
-
-  Widget _pdfUploadWidget() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'PO Document (PDF)',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            if (_poFileName != null)
-              Row(
-                children: [
-                  const Icon(Icons.picture_as_pdf, color: Colors.red),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _poFileName!,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Remove',
-                    icon: const Icon(Icons.close, size: 18),
-                    onPressed: () => setState(() {
-                      _poDocumentUrl = null;
-                      _poFileName = null;
-                      _uploadedAt = null;
-                    }),
-                  ),
-                ],
-              )
-            else
-              OutlinedButton.icon(
-                onPressed: _isUploading ? null : _pickAndUploadPdf,
-                icon: _isUploading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.upload_file),
-                label: Text(_isUploading ? 'Uploading…' : 'Select PDF'),
-              ),
-          ],
-        ),
-      ),
-    );
+    return PoSummaryRow(label: label, value: value, bold: bold);
   }
 
   void _showCustomerPicker() {
-    String search = '';
     showDialog<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          final filtered = _customers.where((c) {
-            final name = (c['name'] as String).toLowerCase();
-            return search.isEmpty || name.contains(search.toLowerCase());
-          }).toList();
-
-          return AlertDialog(
-            title: const Text('Select Customer'),
-            content: SizedBox(
-              width: 420,
-              height: 420,
-              child: Column(
-                children: [
-                  TextField(
-                    autofocus: true,
-                    decoration: const InputDecoration(
-                      hintText: 'Search customer...',
-                      prefixIcon: Icon(Icons.search),
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
-                    onChanged: (v) => setDialogState(() => search = v),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: filtered.isEmpty
-                        ? const Center(child: Text('No customers found'))
-                        : ListView.builder(
-                            itemCount: filtered.length,
-                            itemBuilder: (_, i) {
-                              final c = filtered[i];
-                              return ListTile(
-                                title: Text(c['name'] as String),
-                                subtitle: (c['email'] as String).isNotEmpty
-                                    ? Text(c['email'] as String)
-                                    : null,
-                                onTap: () {
-                                  setState(() {
-                                    _customerId = c['id'] as String;
-                                    _customerName = c['name'] as String;
-                                    _customerEmail = c['email'] as String;
-                                    _customerMobile = c['mobile'] as String;
-                                    _customerAddress = c['address'] as String;
-                                    _customerGstNumber = c['gst'] as String;
-                                    _customerErrorVisible = false;
-                                  });
-                                  Navigator.pop(ctx);
-                                },
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
-              ),
-            ],
-          );
+      builder: (_) => PoCustomerPickerDialog(
+        customers: _customers,
+        onSelected: (c) {
+          setState(() {
+            _customerId = c['id'] as String;
+            _customerName = c['name'] as String;
+            _customerEmail = c['email'] as String;
+            _customerMobile = c['mobile'] as String;
+            _customerAddress = c['address'] as String;
+            _customerGstNumber = c['gst'] as String;
+            _customerErrorVisible = false;
+          });
         },
       ),
     );
   }
 
   // ── Tab content builders ──────────────────────────────────────────────────────
-
-  Widget _buildOverviewTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _field(
-          'Customer PO Number',
-          _poNumber,
-          required: true,
-          readOnly: _isEditMode,
-        ),
-        const SizedBox(height: 12),
-        _customerSelector(),
-        const SizedBox(height: 12),
-        // Customer detail preview (read-only, shown when customer is selected)
-        if (_customerName.isNotEmpty) ...[
-          _SectionCard(
-            title: 'Selected Customer',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_customerEmail.isNotEmpty)
-                  _DetailRow(label: 'Email', value: _customerEmail),
-                if (_customerMobile.isNotEmpty)
-                  _DetailRow(label: 'Mobile', value: _customerMobile),
-                if (_customerGstNumber.isNotEmpty)
-                  _DetailRow(label: 'GST', value: _customerGstNumber),
-                if (_customerAddress.isNotEmpty)
-                  _DetailRow(label: 'Address', value: _customerAddress),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildCommercialTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _field('GST %', _gstPercent, keyboardType: TextInputType.number),
-        const SizedBox(height: 16),
-        _SectionCard(
-          title: 'Financial Summary',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _summaryRow('Basic Value', '₹${_basicValue.toStringAsFixed(2)}'),
-              const SizedBox(height: 8),
-              _summaryRow(
-                'GST (${_gstPercent.text.trim()}%)',
-                '₹${_gstAmount.toStringAsFixed(2)}',
-              ),
-              const Divider(height: 20),
-              _summaryRow(
-                'Total Value',
-                '₹${_totalValue.toStringAsFixed(2)}',
-                bold: true,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProjectSplitTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _field('Project Name', _projectName),
-        const SizedBox(height: 12),
-        _field('Site Location', _siteLocation),
-        const SizedBox(height: 12),
-        _field('Subject / Scope', _subject, maxLines: 3),
-      ],
-    );
-  }
-
-  Widget _buildEngineeringTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        CustomerPoItemsTable(
-          initialItems: _items,
-          onChanged: (items) => setState(() => _items = items),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTermsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _field('Payment Terms', _paymentTerms, maxLines: 3),
-        const SizedBox(height: 12),
-        _field('Delivery Terms', _deliveryTerms, maxLines: 3),
-        const SizedBox(height: 12),
-        _field('Inspection Requirement', _inspectionRequirement, maxLines: 3),
-        const SizedBox(height: 12),
-        _field('Warranty', _warranty, maxLines: 2),
-        const SizedBox(height: 12),
-        _field('LD Clause', _ldClause, maxLines: 3),
-      ],
-    );
-  }
-
-  Widget _buildAttachmentsTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [_pdfUploadWidget()],
-    );
-  }
 
   // ── Build ─────────────────────────────────────────────────────────────────────
 
@@ -662,141 +342,79 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       );
     }
 
-    return DefaultTabController(
-      length: 6,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(_isEditMode ? 'Edit Customer PO' : 'Create Customer PO'),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: FilledButton(
-                onPressed: _provider.loading ? null : _save,
-                child: Text(_isEditMode ? 'Update' : 'Save'),
-              ),
-            ),
-          ],
-          bottom: const TabBar(
-            isScrollable: true,
-            tabAlignment: TabAlignment.start,
-            tabs: [
-              Tab(text: 'Overview'),
-              Tab(text: 'Commercial'),
-              Tab(text: 'Project Split'),
-              Tab(text: 'Engineering'),
-              Tab(text: 'Terms'),
-              Tab(text: 'Attachments'),
-            ],
+    return PoFormShell(
+      isEditMode: _isEditMode,
+      isSaving: _provider.loading,
+      onSave: _save,
+      formKey: _formKey,
+      tabs: [
+        KeepAlivePage(
+          child: PoOverviewTab(
+            poNumber: _poNumber,
+            isEditMode: _isEditMode,
+            customerErrorVisible: _customerErrorVisible,
+            customerId: _customerId,
+            isLoadingCustomers: _isLoadingCustomers,
+            customerName: _customerName,
+            customerEmail: _customerEmail,
+            customerMobile: _customerMobile,
+            customerGstNumber: _customerGstNumber,
+            customerAddress: _customerAddress,
+            showCustomerPicker: _showCustomerPicker,
+            fieldBuilder: _field,
           ),
         ),
-        body: Form(
-          key: _formKey,
-          child: TabBarView(
-            children: [
-              _KeepAlivePage(child: _buildOverviewTab()),
-              _KeepAlivePage(child: _buildCommercialTab()),
-              _KeepAlivePage(child: _buildProjectSplitTab()),
-              _KeepAlivePage(child: _buildEngineeringTab()),
-              _KeepAlivePage(child: _buildTermsTab()),
-              _KeepAlivePage(child: _buildAttachmentsTab()),
-            ],
+        KeepAlivePage(
+          child: PoCommercialTab(
+            gstPercent: _gstPercent,
+            basicValue: _basicValue,
+            gstAmount: _gstAmount,
+            totalValue: _totalValue,
+            fieldBuilder: _field,
+            summaryRow: _summaryRow,
+            sectionCard: ({required title, required child}) =>
+                PoFormSectionCard(title: title, child: child),
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ── Keep-alive tab wrapper ────────────────────────────────────────────────────
-
-class _KeepAlivePage extends StatefulWidget {
-  final Widget child;
-
-  const _KeepAlivePage({required this.child});
-
-  @override
-  State<_KeepAlivePage> createState() => _KeepAlivePageState();
-}
-
-class _KeepAlivePageState extends State<_KeepAlivePage>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
-  }
-}
-
-// ── Local display helpers ─────────────────────────────────────────────────────
-
-class _SectionCard extends StatelessWidget {
-  final String title;
-  final Widget child;
-
-  const _SectionCard({required this.title, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF64748B),
-                letterSpacing: 0.3,
-              ),
-            ),
-            const SizedBox(height: 12),
-            child,
-          ],
+        KeepAlivePage(
+          child: PoProjectSplitTab(
+            projectName: _projectName,
+            siteLocation: _siteLocation,
+            subject: _subject,
+            fieldBuilder: _field,
+          ),
         ),
-      ),
-    );
-  }
-}
-
-class _DetailRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _DetailRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 70,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF94A3B8),
-                fontWeight: FontWeight.w600,
-              ),
+        KeepAlivePage(
+          child: PoEngineeringTab(
+            items: _items,
+            onChanged: (items) => setState(() => _items = items),
+          ),
+        ),
+        KeepAlivePage(
+          child: PoTermsTab(
+            paymentTerms: _paymentTerms,
+            deliveryTerms: _deliveryTerms,
+            inspectionRequirement: _inspectionRequirement,
+            warranty: _warranty,
+            ldClause: _ldClause,
+            fieldBuilder: _field,
+          ),
+        ),
+        KeepAlivePage(
+          child: PoAttachmentsTab(
+            pdfUploadWidget: PoPdfUploadCard(
+              fileName: _poFileName,
+              isUploading: _isUploading,
+              onPickPdf: _pickAndUploadPdf,
+              onRemovePdf: () => setState(() {
+                _poDocumentUrl = null;
+                _poFileName = null;
+                _uploadedAt = null;
+              }),
             ),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
