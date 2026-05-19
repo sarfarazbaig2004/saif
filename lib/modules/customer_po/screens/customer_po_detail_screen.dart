@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
+import 'package:QUIK/modules/customer_po/screens/widgets/po_section_card.dart';
 
 class CustomerPoDetailScreen extends StatelessWidget {
   final String companyId;
@@ -643,40 +644,7 @@ class CustomerPoDetailScreen extends StatelessWidget {
   // ── Shared helpers ────────────────────────────────────────────────────────────
 
   Widget _card({required Widget child, String? title}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x06000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (title != null) ...[
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF64748B),
-                letterSpacing: 0.3,
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          child,
-        ],
-      ),
-    );
+    return PoSectionCard(title: title, child: child);
   }
 
   Widget _row2(Widget left, Widget right) {
