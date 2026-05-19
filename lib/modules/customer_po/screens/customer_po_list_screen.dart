@@ -131,6 +131,7 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
 
               return Card(
                 child: ListTile(
+                  isThreeLine: true,
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -184,7 +185,7 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                  'Customer PO marked as duplicate',
+                                  'Duplicate Customer PO deleted from active list',
                                 ),
                               ),
                             );
@@ -192,7 +193,7 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                           itemBuilder: (_) => const [
                             PopupMenuItem(
                               value: 'duplicate',
-                              child: Text('Mark as Duplicate'),
+                              child: Text('Delete Duplicate Entry'),
                             ),
                           ],
                         ),
