@@ -84,7 +84,7 @@ class PoHeaderCard extends StatelessWidget {
         PopupMenuButton<String>(
           tooltip: 'Change Status',
           onSelected: (newStatus) => updateStatus(pageContext, newStatus),
-          itemBuilder: (_) => CustomerPoModel.statuses.map((s) {
+          itemBuilder: (_) => CustomerPoModel.statusOptions.map((s) {
             return PopupMenuItem<String>(
               value: s,
               child: Row(
