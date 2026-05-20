@@ -10,6 +10,7 @@ import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/models/inquiry_model.dart';
 import 'package:QUIK/modules/crm/customers/screens_add_customer.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
+import 'package:QUIK/modules/sales/inquiries/controllers/add_inquiry_controllers.dart';
 
 class ScreensAddInquiry extends StatefulWidget {
   final String companyId;
@@ -73,30 +74,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   int _dealScore = 0;
   List<String> _tags = [];
 
-  // Controllers
-  final TextEditingController _subjectController = TextEditingController();
-  final TextEditingController _sourceRefController = TextEditingController();
-  final TextEditingController _expectedValueController =
-      TextEditingController();
-  final TextEditingController _budgetController = TextEditingController();
-  final TextEditingController _deliveryTimelineController =
-      TextEditingController();
-  final TextEditingController _projectSiteLocationController =
-      TextEditingController();
-  final TextEditingController _competitorController = TextEditingController();
-  final TextEditingController _decisionMakerController =
-      TextEditingController();
-  final TextEditingController _notesController = TextEditingController();
-  final TextEditingController _internalNotesController =
-      TextEditingController();
-  final TextEditingController _lastFollowUpNoteController =
-      TextEditingController();
-  final TextEditingController _linkedQuotationIdController =
-      TextEditingController();
-  final TextEditingController _lossReasonController = TextEditingController();
-  final TextEditingController _tagController = TextEditingController();
-  final TextEditingController _customerSearchController =
-      TextEditingController();
+  final AddInquiryControllers _controllers = AddInquiryControllers();
 
   // Structured Products (ERP Grade Inventory Connection)
   List<Map<String, dynamic>> _structuredProducts = [];
@@ -177,21 +155,21 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   void dispose() {
     _debounceTimer?.cancel();
     _scrollController.dispose();
-    _subjectController.dispose();
-    _sourceRefController.dispose();
-    _expectedValueController.dispose();
-    _budgetController.dispose();
-    _deliveryTimelineController.dispose();
-    _projectSiteLocationController.dispose();
-    _competitorController.dispose();
-    _decisionMakerController.dispose();
-    _notesController.dispose();
-    _internalNotesController.dispose();
-    _lastFollowUpNoteController.dispose();
-    _linkedQuotationIdController.dispose();
-    _lossReasonController.dispose();
-    _tagController.dispose();
-    _customerSearchController.dispose();
+    _controllers.subject.dispose();
+    _controllers.sourceRef.dispose();
+    _controllers.expectedValue.dispose();
+    _controllers.budget.dispose();
+    _controllers.deliveryTimeline.dispose();
+    _controllers.projectSiteLocation.dispose();
+    _controllers.competitor.dispose();
+    _controllers.decisionMaker.dispose();
+    _controllers.notes.dispose();
+    _controllers.internalNotes.dispose();
+    _controllers.lastFollowUpNote.dispose();
+    _controllers.linkedQuotationId.dispose();
+    _controllers.lossReason.dispose();
+    _controllers.tag.dispose();
+    _controllers.customerSearch.dispose();
     super.dispose();
   }
 
@@ -295,8 +273,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   }
 
   String _buildRequirementFingerprint(String subjectSearch) {
-    final location = _normalizeText(_projectSiteLocationController.text);
-    final deliveryTimeline = _normalizeText(_deliveryTimelineController.text);
+    final location = _normalizeText(_controllers.projectSiteLocation.text);
+    final deliveryTimeline = _normalizeText(_controllers.deliveryTimeline.text);
     return [
       subjectSearch,
       _buildProductFingerprint(),
@@ -349,7 +327,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         _nextFollowUpDate = null;
       }
       if (stage != 'Lost') {
-        _lossReasonController.clear();
+        _controllers.lossReason.clear();
       }
       _formMessage = null;
     });
@@ -360,19 +338,19 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     final iq = widget.existingInquiry;
     if (iq == null) return;
 
-    _subjectController.text = iq.subject;
-    _sourceRefController.text = iq.sourceReference;
+    _controllers.subject.text = iq.subject;
+    _controllers.sourceRef.text = iq.sourceReference;
 
     final expValStr = iq.expectedValue.toString();
     final expVal = double.tryParse(expValStr) ?? 0.0;
-    _expectedValueController.text = expVal > 0 ? expValStr : '';
+    _controllers.expectedValue.text = expVal > 0 ? expValStr : '';
 
-    _deliveryTimelineController.text = iq.deliveryTimeline;
-    _projectSiteLocationController.text = iq.location;
-    _notesController.text = iq.notes;
-    _internalNotesController.text = iq.internalNotes;
-    _lastFollowUpNoteController.text = iq.lastFollowUpNote;
-    _linkedQuotationIdController.text = iq.linkedQuotationId;
+    _controllers.deliveryTimeline.text = iq.deliveryTimeline;
+    _controllers.projectSiteLocation.text = iq.location;
+    _controllers.notes.text = iq.notes;
+    _controllers.internalNotes.text = iq.internalNotes;
+    _controllers.lastFollowUpNote.text = iq.lastFollowUpNote;
+    _controllers.linkedQuotationId.text = iq.linkedQuotationId;
 
     _selectedPriority = iq.priority.isNotEmpty ? iq.priority : 'Warm';
     _selectedSource = iq.source.isNotEmpty ? iq.source : null;
@@ -422,74 +400,78 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         _customerIndustrySnapshot = (data['customerIndustry'] ?? '').toString();
         _customerCitySnapshot = (data['customerCity'] ?? '').toString();
 
-        _subjectController.text =
-            _firstNonEmptyString([data['subject'], _subjectController.text]) ??
+        _controllers.subject.text =
+            _firstNonEmptyString([
+              data['subject'],
+              _controllers.subject.text,
+            ]) ??
             '';
-        _sourceRefController.text =
+        _controllers.sourceRef.text =
             _firstNonEmptyString([
               data['sourceReference'],
-              _sourceRefController.text,
+              _controllers.sourceRef.text,
             ]) ??
             '';
 
         if (data['expectedValue'] != null &&
             (double.tryParse(data['expectedValue'].toString()) ?? 0) > 0) {
-          _expectedValueController.text = data['expectedValue'].toString();
+          _controllers.expectedValue.text = data['expectedValue'].toString();
         }
 
-        _budgetController.text =
-            _firstNonEmptyString([data['budget'], _budgetController.text]) ??
+        _controllers.budget.text =
+            _firstNonEmptyString([data['budget'], _controllers.budget.text]) ??
             '';
-        _competitorController.text =
+        _controllers.competitor.text =
             _firstNonEmptyString([
               data['competitor'],
-              _competitorController.text,
+              _controllers.competitor.text,
             ]) ??
             '';
-        _decisionMakerController.text =
+        _controllers.decisionMaker.text =
             _firstNonEmptyString([
               data['decisionMaker'],
-              _decisionMakerController.text,
+              _controllers.decisionMaker.text,
             ]) ??
             '';
 
-        _deliveryTimelineController.text =
+        _controllers.deliveryTimeline.text =
             _firstNonEmptyString([
               data['deliveryTimeline'],
-              _deliveryTimelineController.text,
+              _controllers.deliveryTimeline.text,
             ]) ??
             '';
-        _projectSiteLocationController.text =
+        _controllers.projectSiteLocation.text =
             _firstNonEmptyString([
               data['projectSiteLocation'],
               data['location'],
-              _projectSiteLocationController.text,
+              _controllers.projectSiteLocation.text,
             ]) ??
             '';
-        _notesController.text =
-            _firstNonEmptyString([data['notes'], _notesController.text]) ?? '';
-        _internalNotesController.text =
+        _controllers.notes.text =
+            _firstNonEmptyString([data['notes'], _controllers.notes.text]) ??
+            '';
+        _controllers.internalNotes.text =
             _firstNonEmptyString([
               data['internalNotes'],
-              _internalNotesController.text,
+              _controllers.internalNotes.text,
             ]) ??
             '';
-        _lastFollowUpNoteController.text =
+        _controllers.lastFollowUpNote.text =
             _firstNonEmptyString([
               data['lastFollowUpNote'],
-              _lastFollowUpNoteController.text,
+              _controllers.lastFollowUpNote.text,
             ]) ??
             '';
-        _linkedQuotationIdController.text =
+        _controllers.linkedQuotationId.text =
             _firstNonEmptyString([
               data['linkedQuotationId'],
-              _linkedQuotationIdController.text,
+              _controllers.linkedQuotationId.text,
             ]) ??
             '';
-        _lossReasonController.text =
+        _controllers.lossReason.text =
             _firstNonEmptyString([
               data['lossReason'],
-              _lossReasonController.text,
+              _controllers.lossReason.text,
             ]) ??
             '';
 
@@ -549,7 +531,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
 
       if (_selectedCustomerId != null) {
         await _loadCustomerData(_selectedCustomerId!);
-        _customerSearchController.text = _customerNameSnapshot;
+        _controllers.customerSearch.text = _customerNameSnapshot;
         if (_selectedContactId != null) {
           await _loadContactData(_selectedCustomerId!, _selectedContactId!);
         }
@@ -567,7 +549,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   void _calculateDealScore() {
     int score = 0;
     double expectedVal =
-        double.tryParse(_expectedValueController.text.trim()) ?? 0;
+        double.tryParse(_controllers.expectedValue.text.trim()) ?? 0;
 
     if (expectedVal > 500000) {
       score += 25;
@@ -580,7 +562,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     if (_expectedClosureDate != null) {
       score += 15;
     }
-    if (_decisionMakerController.text.trim().isNotEmpty) {
+    if (_controllers.decisionMaker.text.trim().isNotEmpty) {
       score += 15;
     }
 
@@ -774,8 +756,9 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       }
     }
 
-    final expVal = double.tryParse(_expectedValueController.text.trim()) ?? 0.0;
-    if (_expectedValueController.text.trim().isNotEmpty && expVal <= 0) {
+    final expVal =
+        double.tryParse(_controllers.expectedValue.text.trim()) ?? 0.0;
+    if (_controllers.expectedValue.text.trim().isNotEmpty && expVal <= 0) {
       _showValidationMessage('Expected value must be greater than zero.');
       return false;
     }
@@ -813,7 +796,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     }
 
     if (_selectedStage == 'Won') {
-      if (_linkedQuotationIdController.text.trim().isEmpty) {
+      if (_controllers.linkedQuotationId.text.trim().isEmpty) {
         _showValidationMessage('Won inquiries must be linked to a quotation.');
         return false;
       }
@@ -825,7 +808,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       }
     }
 
-    if (_selectedStage == 'Lost' && _lossReasonController.text.trim().isEmpty) {
+    if (_selectedStage == 'Lost' &&
+        _controllers.lossReason.text.trim().isEmpty) {
       _showValidationMessage(
         'Please capture a loss reason before closing the inquiry as Lost.',
       );
@@ -862,11 +846,11 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             .trim();
     final assignedToRole = (assignedUserData['role'] ?? '').toString().trim();
 
-    final expText = _expectedValueController.text.trim();
+    final expText = _controllers.expectedValue.text.trim();
     final double? expectedValue = expText.isEmpty
         ? null
         : double.tryParse(expText);
-    final budgetRange = _parseBudgetRange(_budgetController.text.trim());
+    final budgetRange = _parseBudgetRange(_controllers.budget.text.trim());
 
     final now = DateTime.now();
     bool isOverdue = false;
@@ -901,7 +885,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
 
     int dealVelocityDays = now.difference(createdAtDate).inDays;
 
-    final subjectStr = _subjectController.text.trim();
+    final subjectStr = _controllers.subject.text.trim();
     final subjectSearch = subjectStr.toLowerCase().trim().replaceAll(
       RegExp(r'\s+'),
       ' ',
@@ -941,7 +925,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       'additionalContactIds': _additionalContactIds,
 
       'source': (_selectedSource ?? '').trim(),
-      'sourceReference': _sourceRefController.text.trim(),
+      'sourceReference': _controllers.sourceRef.text.trim(),
       'inquiryType': (_selectedType ?? '').trim(),
 
       'products': _structuredProducts,
@@ -949,13 +933,13 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       'totalQuantity': totalQuantity,
 
       'expectedValue': expectedValue ?? 0.0,
-      'budget': _budgetController.text.trim(),
+      'budget': _controllers.budget.text.trim(),
       'budgetMin': budgetRange['min'],
       'budgetMax': budgetRange['max'],
-      'competitor': _competitorController.text.trim(),
-      'decisionMaker': _decisionMakerController.text.trim(),
-      'deliveryTimeline': _deliveryTimelineController.text.trim(),
-      'projectSiteLocation': _projectSiteLocationController.text.trim(),
+      'competitor': _controllers.competitor.text.trim(),
+      'decisionMaker': _controllers.decisionMaker.text.trim(),
+      'deliveryTimeline': _controllers.deliveryTimeline.text.trim(),
+      'projectSiteLocation': _controllers.projectSiteLocation.text.trim(),
 
       'priority': _selectedPriority.trim(),
       'stage': _selectedStage.trim(),
@@ -979,15 +963,15 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           ? null
           : Timestamp.fromDate(_expectedClosureDate!),
       'isOverdue': isOverdue,
-      'lastFollowUpNote': _lastFollowUpNoteController.text.trim(),
-      'notes': _notesController.text.trim(),
-      'internalNotes': _internalNotesController.text.trim(),
-      'lossReason': _lossReasonController.text.trim(),
+      'lastFollowUpNote': _controllers.lastFollowUpNote.text.trim(),
+      'notes': _controllers.notes.text.trim(),
+      'internalNotes': _controllers.internalNotes.text.trim(),
+      'lossReason': _controllers.lossReason.text.trim(),
       'tags': _tags,
 
-      'linkedQuotationId': _linkedQuotationIdController.text.trim(),
+      'linkedQuotationId': _controllers.linkedQuotationId.text.trim(),
       'convertedToQuotationId': _selectedStage == 'Won'
-          ? _linkedQuotationIdController.text.trim()
+          ? _controllers.linkedQuotationId.text.trim()
           : '',
 
       'assignedToUid': assignedTo,
@@ -1028,11 +1012,11 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             if (_previousStage != _selectedStage) {
               actionDesc =
                   'Stage moved from $_previousStage to $_selectedStage.';
-            } else if (_lastFollowUpNoteController.text.isNotEmpty &&
-                _lastFollowUpNoteController.text !=
+            } else if (_controllers.lastFollowUpNote.text.isNotEmpty &&
+                _controllers.lastFollowUpNote.text !=
                     _existingRawData?['lastFollowUpNote']) {
               actionDesc =
-                  'Added follow-up: ${_lastFollowUpNoteController.text}';
+                  'Added follow-up: ${_controllers.lastFollowUpNote.text}';
             }
 
             existingLog.add({
@@ -1320,10 +1304,11 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         _selectedStage != 'Lost') {
       warnings.add('⚠ No follow-up scheduled');
     }
-    if (_decisionMakerController.text.trim().isEmpty) {
+    if (_controllers.decisionMaker.text.trim().isEmpty) {
       warnings.add('⚠ No decision maker identified');
     }
-    double expVal = double.tryParse(_expectedValueController.text.trim()) ?? 0;
+    double expVal =
+        double.tryParse(_controllers.expectedValue.text.trim()) ?? 0;
     if (expVal > 500000) {
       warnings.add('🔥 High value deal');
     }
@@ -1563,7 +1548,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                       _additionalContactIds.clear();
                       _formMessage = null;
                     });
-                    _customerSearchController.text =
+                    _controllers.customerSearch.text =
                         (doc.data()?['companyName'] ??
                                 doc.data()?['name'] ??
                                 '')
@@ -1574,9 +1559,9 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                       (context, controller, focusNode, onEditingComplete) {
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (!mounted) return;
-                          if (_customerSearchController.text.isNotEmpty &&
+                          if (_controllers.customerSearch.text.isNotEmpty &&
                               controller.text.isEmpty) {
-                            controller.text = _customerSearchController.text;
+                            controller.text = _controllers.customerSearch.text;
                           }
                         });
                         return TextFormField(
@@ -1590,7 +1575,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                           validator: (v) =>
                               _selectedCustomerId == null ? 'Required' : null,
                           onChanged: (value) {
-                            _customerSearchController.text = value;
+                            _controllers.customerSearch.text = value;
                             final normalizedInput = _normalizeText(value);
                             final normalizedSelected = _normalizeText(
                               _customerNameSnapshot,
@@ -1626,7 +1611,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                   if (result == true) {
                     setState(() {
                       _selectedCustomerId = null;
-                      _customerSearchController.clear();
+                      _controllers.customerSearch.clear();
                     });
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -1839,7 +1824,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-          controller: _subjectController,
+          controller: _controllers.subject,
           decoration: _dec(
             'Deal / Inquiry Subject *',
             hint: 'E.g. Requirement for 50 Laptops',
@@ -1887,7 +1872,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             },
           ),
           TextFormField(
-            controller: _sourceRefController,
+            controller: _controllers.sourceRef,
             decoration: _dec(
               'Source Reference',
               hint: 'E.g. Referral Name',
@@ -1908,7 +1893,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-          controller: _tagController,
+          controller: _controllers.tag,
           decoration: _dec(
             'Tags',
             hint: 'Type tag and press Enter',
@@ -1917,7 +1902,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           onFieldSubmitted: (val) {
             if (val.trim().isNotEmpty && !_tags.contains(val.trim())) {
               setState(() => _tags.add(val.trim()));
-              _tagController.clear();
+              _controllers.tag.clear();
             }
           },
         ),
@@ -2399,7 +2384,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           children: [
             Expanded(
               child: TextFormField(
-                controller: _expectedValueController,
+                controller: _controllers.expectedValue,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
@@ -2413,7 +2398,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             const SizedBox(width: 16),
             Expanded(
               child: TextFormField(
-                controller: _budgetController,
+                controller: _controllers.budget,
                 decoration: _dec(
                   'Customer Budget Range',
                   hint: 'E.g. 50k - 60k',
@@ -2456,7 +2441,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             const SizedBox(width: 16),
             Expanded(
               child: TextFormField(
-                controller: _competitorController,
+                controller: _controllers.competitor,
                 decoration: _dec(
                   'Known Competitors',
                   prefixIcon: const Icon(Icons.shield_outlined),
@@ -2470,7 +2455,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           children: [
             Expanded(
               child: TextFormField(
-                controller: _decisionMakerController,
+                controller: _controllers.decisionMaker,
                 decoration: _dec(
                   'Decision Maker Name / Info',
                   prefixIcon: const Icon(Icons.how_to_reg_outlined),
@@ -2481,7 +2466,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             const SizedBox(width: 16),
             Expanded(
               child: TextFormField(
-                controller: _projectSiteLocationController,
+                controller: _controllers.projectSiteLocation,
                 decoration: _dec(
                   'Project / Site Location',
                   hint: 'E.g. Mumbai Plant',
@@ -2606,7 +2591,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: _lastFollowUpNoteController,
+          controller: _controllers.lastFollowUpNote,
           maxLines: 2,
           decoration: _dec(
             'Latest Follow-up Remarks',
@@ -2617,7 +2602,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         if (_selectedStage == 'Lost') ...[
           const SizedBox(height: 16),
           TextFormField(
-            controller: _lossReasonController,
+            controller: _controllers.lossReason,
             maxLines: 2,
             decoration: _dec(
               'Loss Reason *',
@@ -2896,7 +2881,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-          controller: _linkedQuotationIdController,
+          controller: _controllers.linkedQuotationId,
           decoration: _dec(
             'Linked Quotation ID',
             hint: 'E.g. QT-2425-001 (Required for Won deals)',
@@ -2905,7 +2890,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: _notesController,
+          controller: _controllers.notes,
           maxLines: 3,
           decoration: _dec(
             'External Notes (Customer visible)',
@@ -2914,7 +2899,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: _internalNotesController,
+          controller: _controllers.internalNotes,
           maxLines: 2,
           decoration: _dec(
             'Internal Private Notes',
