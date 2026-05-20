@@ -18,18 +18,12 @@ class CustomerPoRepository {
     return _collection(companyId).doc(po.id).set(po.toMap());
   }
 
-  Future<void> createCustomerPo({
-    required String companyId,
-    required CustomerPoModel po,
-  }) {
-    return save(companyId: companyId, po: po);
+  Future<void> createCustomerPo(CustomerPoModel po) {
+    return save(companyId: po.companyId, po: po);
   }
 
-  Future<void> updateCustomerPo({
-    required String companyId,
-    required CustomerPoModel po,
-  }) {
-    return save(companyId: companyId, po: po);
+  Future<void> updateCustomerPo(CustomerPoModel po) {
+    return save(companyId: po.companyId, po: po);
   }
 
   Future<CustomerPoModel?> getById({
