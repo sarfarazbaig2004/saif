@@ -14,6 +14,7 @@ import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_helpers.da
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_orchestrator.dart';
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_amendment_handler.dart';
+import 'package:QUIK/modules/customer_po/screens/form_widgets/po_loading_screen.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
@@ -43,7 +44,6 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   String _existingStatus = 'Draft';
   String _existingId = '';
 
-  // Customer selector state
   bool _isLoadingCustomers = false;
   List<Map<String, dynamic>> _customers = [];
   String _customerId = '';
@@ -54,7 +54,6 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   String _customerGstNumber = '';
   bool _customerErrorVisible = false;
 
-  // PDF upload state
   bool _isUploading = false;
   String? _poDocumentUrl;
   String? _poFileName;
@@ -233,12 +232,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingExisting) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Edit Customer PO')),
-        body: const Center(child: CircularProgressIndicator()),
-      );
-    }
+    if (_isLoadingExisting) return const PoLoadingScreen();
 
     return PoFormShell(
       isEditMode: _isEditMode,
