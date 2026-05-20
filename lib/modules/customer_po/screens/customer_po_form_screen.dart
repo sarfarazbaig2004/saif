@@ -13,6 +13,7 @@ import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_helpers.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_orchestrator.dart';
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_amendment_handler.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
@@ -281,6 +282,15 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
         poDocumentUrl: _poDocumentUrl,
         isUploading: _isUploading,
         pickAndUploadPdf: _pickAndUploadPdf,
+        uploadAmendedPdf: !_isEditMode
+            ? null
+            : () => CustomerPoAmendmentHandler.uploadAmendedPo(
+                context: context,
+                companyId: widget.companyId,
+                docId: _existingId,
+                currentRevisionNo: 0,
+                currentPoDocumentUrl: _poDocumentUrl,
+              ),
         removePdf: () => setState(() {
           _poDocumentUrl = null;
           _poFileName = null;

@@ -255,7 +255,6 @@ class _TenantModuleBackfillGateState extends State<_TenantModuleBackfillGate> {
   final InventoryConfigService _inventoryConfigService =
       InventoryConfigService();
 
-  bool _ready = false;
   String? _initializedCompanyId;
 
   @override
@@ -269,7 +268,6 @@ class _TenantModuleBackfillGateState extends State<_TenantModuleBackfillGate> {
     super.didUpdateWidget(oldWidget);
 
     if (oldWidget.companyId != widget.companyId) {
-      _ready = false;
       _ensureBackfilled();
     }
   }
@@ -278,9 +276,7 @@ class _TenantModuleBackfillGateState extends State<_TenantModuleBackfillGate> {
     final companyId = widget.companyId.trim();
 
     if (companyId.isEmpty || _initializedCompanyId == companyId) {
-      if (mounted) {
-        setState(() => _ready = true);
-      }
+      if (mounted) {}
       return;
     }
 
@@ -304,16 +300,11 @@ class _TenantModuleBackfillGateState extends State<_TenantModuleBackfillGate> {
 
     setState(() {
       _initializedCompanyId = companyId;
-      _ready = true;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_ready) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
     return widget.child;
   }
 }

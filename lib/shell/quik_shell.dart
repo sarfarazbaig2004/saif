@@ -86,7 +86,6 @@ class _QuikShellState extends State<QuikShell> {
   ShellPage activePage = ShellPage.dashboard;
 
   String? _resolvedIndustry;
-  bool _isLoadingIndustry = true;
 
   // Live State tracked securely via Firestore streams
   String _currentRole = 'viewer';
@@ -100,9 +99,7 @@ class _QuikShellState extends State<QuikShell> {
 
     if (_resolvedIndustry == null || _resolvedIndustry!.isEmpty) {
       _fetchIndustry();
-    } else {
-      _isLoadingIndustry = false;
-    }
+    } else {}
   }
 
   Future<void> _fetchIndustry() async {
@@ -135,9 +132,7 @@ class _QuikShellState extends State<QuikShell> {
     }
 
     if (mounted) {
-      setState(() {
-        _isLoadingIndustry = false;
-      });
+      setState(() {});
     }
   }
 
@@ -961,13 +956,8 @@ class _QuikShellState extends State<QuikShell> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingIndustry) {
-      return const Scaffold(
-        backgroundColor: zCanvasBg,
-        body: Center(child: CircularProgressIndicator(color: zBlue)),
-      );
-    }
-
+    // Do not block ERP shell while industry/company metadata is loading.
+    // Shell must open first; industry-dependent data can hydrate later.
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
           .collection('companies')

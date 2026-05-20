@@ -44,6 +44,7 @@ class PoFormTabs extends StatelessWidget {
   final String? poDocumentUrl;
   final bool isUploading;
   final VoidCallback pickAndUploadPdf;
+  final VoidCallback? uploadAmendedPdf;
   final VoidCallback removePdf;
 
   const PoFormTabs({
@@ -70,6 +71,7 @@ class PoFormTabs extends StatelessWidget {
     required this.poDocumentUrl,
     required this.isUploading,
     required this.pickAndUploadPdf,
+    this.uploadAmendedPdf,
     required this.removePdf,
   });
 
@@ -132,6 +134,7 @@ class PoFormTabs extends StatelessWidget {
               fileName: poFileName,
               isUploading: isUploading,
               onPickPdf: pickAndUploadPdf,
+              onUploadAmendedPdf: uploadAmendedPdf,
               onOpenPdf: poDocumentUrl == null
                   ? null
                   : () => launchUrl(

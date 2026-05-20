@@ -4,6 +4,7 @@ class PoPdfUploadCard extends StatelessWidget {
   final String? fileName;
   final bool isUploading;
   final VoidCallback onPickPdf;
+  final VoidCallback? onUploadAmendedPdf;
   final VoidCallback onRemovePdf;
   final VoidCallback? onOpenPdf;
 
@@ -12,6 +13,7 @@ class PoPdfUploadCard extends StatelessWidget {
     required this.fileName,
     required this.isUploading,
     required this.onPickPdf,
+    this.onUploadAmendedPdf,
     required this.onRemovePdf,
     this.onOpenPdf,
   });
@@ -46,6 +48,12 @@ class PoPdfUploadCard extends StatelessWidget {
                       onPressed: onOpenPdf,
                       icon: const Icon(Icons.open_in_new, size: 16),
                       label: const Text('Open'),
+                    ),
+                  if (onUploadAmendedPdf != null)
+                    TextButton.icon(
+                      onPressed: isUploading ? null : onUploadAmendedPdf,
+                      icon: const Icon(Icons.upload_file, size: 16),
+                      label: const Text('Amend'),
                     ),
                   IconButton(
                     tooltip: 'Remove',
