@@ -51,7 +51,7 @@ class PoOverviewTab extends StatelessWidget {
           'Customer PO Number',
           poNumber,
           required: true,
-          readOnly: isEditMode,
+          readOnly: false,
         ),
         const SizedBox(height: 12),
         PoCustomerSelector(
