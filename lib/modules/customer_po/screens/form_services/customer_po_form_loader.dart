@@ -1,3 +1,4 @@
+import 'package:QUIK/modules/sales/shared/constants/sales_collections.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_data.dart';
@@ -13,7 +14,7 @@ class CustomerPoFormLoader {
     final doc = await FirebaseFirestore.instance
         .collection('companies')
         .doc(companyId)
-        .collection('customer_pos')
+        .collection(SalesCollections.customerPos)
         .doc(existingDocId)
         .get();
 
