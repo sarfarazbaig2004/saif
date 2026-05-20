@@ -89,11 +89,13 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          final docs = snapshot.data!.docs;
+          final docs = snapshot.data!.docs.where((doc) {
+            return doc.data()['isDeleted'] != true;
+          }).toList();
+
           final seenKeys = <String>{};
           final filteredDocs = docs.where((doc) {
             final data = doc.data();
-            if (data['isDeleted'] == true) return false;
             if (!_matchesSearch(data)) return false;
 
             final key = [
@@ -157,6 +159,7 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Column(
+                          mainAxisSize: MainAxisSize.min,
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
