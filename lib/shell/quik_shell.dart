@@ -1878,7 +1878,7 @@ class _QuikShellState extends State<QuikShell> {
             child: Row(
               children: const [
                 Expanded(
-                  child: _Panel(
+                  child: Panel(
                     title: 'Workspace Structure',
                     emptyText: 'AMAN Infra ERP modules are ready in sidebar',
                     emptyIcon: Icons.dashboard_customize_outlined,
@@ -1886,7 +1886,7 @@ class _QuikShellState extends State<QuikShell> {
                 ),
                 SizedBox(width: 8),
                 Expanded(
-                  child: _Panel(
+                  child: Panel(
                     title: 'Next Build Suggestion',
                     emptyText:
                         'Start with Follow-ups, Stock Summary and Vendors',
@@ -1992,7 +1992,7 @@ class _QuikShellState extends State<QuikShell> {
               child: Row(
                 children: const [
                   Expanded(
-                    child: _Panel(
+                    child: Panel(
                       title: 'My Open Tasks',
                       emptyText: 'No open tasks',
                       emptyIcon: Icons.task_alt,
@@ -2000,7 +2000,7 @@ class _QuikShellState extends State<QuikShell> {
                   ),
                   SizedBox(width: 8),
                   Expanded(
-                    child: _Panel(
+                    child: Panel(
                       title: 'My Meetings',
                       emptyText: 'No meetings scheduled',
                       emptyIcon: Icons.event_available,
@@ -2018,70 +2018,3 @@ class _QuikShellState extends State<QuikShell> {
 
 
 
-class _Panel extends StatelessWidget {
-  final String title;
-  final String emptyText;
-  final IconData emptyIcon;
-
-  const _Panel({
-    required this.title,
-    required this.emptyText,
-    required this.emptyIcon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: zBorder),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: zBorder)),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: zText,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(emptyIcon, color: zMuted, size: 24),
-                    const SizedBox(height: 6),
-                    Text(
-                      emptyText,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: zMuted,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
