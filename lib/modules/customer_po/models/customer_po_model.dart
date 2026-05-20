@@ -38,6 +38,11 @@ class CustomerPoModel {
   final String? poDocumentUrl;
   final String? poFileName;
   final DateTime? uploadedAt;
+  final int revisionNo;
+  final bool isAmended;
+  final String amendmentReason;
+  final String? previousPoDocumentUrl;
+  final DateTime? amendedAt;
   final List<CustomerPoItemRow> items;
 
   const CustomerPoModel({
@@ -68,6 +73,11 @@ class CustomerPoModel {
     this.poDocumentUrl,
     this.poFileName,
     this.uploadedAt,
+    this.revisionNo = 0,
+    this.isAmended = false,
+    this.amendmentReason = '',
+    this.previousPoDocumentUrl,
+    this.amendedAt,
     this.items = const [],
   });
 
@@ -100,6 +110,11 @@ class CustomerPoModel {
       'poDocumentUrl': poDocumentUrl,
       'poFileName': poFileName,
       'uploadedAt': uploadedAt?.toIso8601String(),
+      'revisionNo': revisionNo,
+      'isAmended': isAmended,
+      'amendmentReason': amendmentReason,
+      'previousPoDocumentUrl': previousPoDocumentUrl,
+      'amendedAt': amendedAt?.toIso8601String(),
       'items': items.map((e) => e.toMap()).toList(),
     };
   }

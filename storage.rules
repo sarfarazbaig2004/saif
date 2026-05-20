@@ -133,6 +133,11 @@ service firebase.storage {
         );
     }
 
+
+    match /companies/{tenantId}/customer_pos/{allPaths=**} {
+      allow read, write: if signedIn();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

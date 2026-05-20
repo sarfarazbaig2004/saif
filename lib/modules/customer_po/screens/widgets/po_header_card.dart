@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_section_card.dart';
+import 'package:QUIK/modules/customer_po/screens/widgets/po_revision_badge.dart';
 
 class PoHeaderCard extends StatelessWidget {
   final BuildContext pageContext;
@@ -56,6 +57,11 @@ class PoHeaderCard extends StatelessWidget {
             fontWeight: FontWeight.w900,
             color: Color(0xFF0F172A),
           ),
+        ),
+        const SizedBox(height: 6),
+        PoRevisionBadge(
+          revisionNo: numberValue(data['revisionNo']).toInt(),
+          isAmended: data['isAmended'] == true,
         ),
         const SizedBox(height: 6),
         Text(

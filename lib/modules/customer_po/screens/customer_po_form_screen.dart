@@ -278,6 +278,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
         items: _items,
         onItemsChanged: (items) => setState(() => _items = items),
         poFileName: _poFileName,
+        poDocumentUrl: _poDocumentUrl,
         isUploading: _isUploading,
         pickAndUploadPdf: _pickAndUploadPdf,
         removePdf: () => setState(() {

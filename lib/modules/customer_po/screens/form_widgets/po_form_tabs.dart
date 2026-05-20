@@ -11,6 +11,7 @@ import 'package:QUIK/modules/customer_po/screens/form_widgets/po_pdf_upload_card
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_project_split_tab.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_terms_tab.dart';
 import 'package:QUIK/modules/customer_po/widgets/customer_po_item_row.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PoFormTabs extends StatelessWidget {
   final CustomerPoFormControllers controllers;
@@ -40,6 +41,7 @@ class PoFormTabs extends StatelessWidget {
   final List<CustomerPoItemRow> items;
   final ValueChanged<List<CustomerPoItemRow>> onItemsChanged;
   final String? poFileName;
+  final String? poDocumentUrl;
   final bool isUploading;
   final VoidCallback pickAndUploadPdf;
   final VoidCallback removePdf;
@@ -65,6 +67,7 @@ class PoFormTabs extends StatelessWidget {
     required this.items,
     required this.onItemsChanged,
     required this.poFileName,
+    required this.poDocumentUrl,
     required this.isUploading,
     required this.pickAndUploadPdf,
     required this.removePdf,
@@ -129,6 +132,12 @@ class PoFormTabs extends StatelessWidget {
               fileName: poFileName,
               isUploading: isUploading,
               onPickPdf: pickAndUploadPdf,
+              onOpenPdf: poDocumentUrl == null
+                  ? null
+                  : () => launchUrl(
+                      Uri.parse(poDocumentUrl!),
+                      mode: LaunchMode.externalApplication,
+                    ),
               onRemovePdf: removePdf,
             ),
           ),
