@@ -43,7 +43,6 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   String _existingStatus = 'Draft';
   String _existingId = '';
 
-  // Customer selector state
   bool _isLoadingCustomers = false;
   List<Map<String, dynamic>> _customers = [];
   String _customerId = '';
@@ -54,7 +53,6 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   String _customerGstNumber = '';
   bool _customerErrorVisible = false;
 
-  // PDF upload state
   bool _isUploading = false;
   String? _poDocumentUrl;
   String? _poFileName;
