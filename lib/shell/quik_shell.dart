@@ -2,7 +2,7 @@ import 'package:QUIK/shell/sidebar_group.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'package:QUIK/shell/widgets/shell_common_widgets.dart';
 import 'package:QUIK/core/inventory/providers/inventory_config_provider.dart';
 import 'package:QUIK/core/modules/module_registry.dart';
 import 'package:QUIK/core/modules/providers/module_access_provider.dart';
@@ -1841,7 +1841,7 @@ class _QuikShellState extends State<QuikShell> {
           Row(
             children: const [
               Expanded(
-                child: _KpiBox(
+                child: KpiBox(
                   title: 'Sales Modules',
                   value: '6',
                   icon: Icons.trending_up_outlined,
@@ -1849,7 +1849,7 @@ class _QuikShellState extends State<QuikShell> {
               ),
               SizedBox(width: 8),
               Expanded(
-                child: _KpiBox(
+                child: KpiBox(
                   title: 'CRM Modules',
                   value: '4',
                   icon: Icons.people_outline,
@@ -1857,7 +1857,7 @@ class _QuikShellState extends State<QuikShell> {
               ),
               SizedBox(width: 8),
               Expanded(
-                child: _KpiBox(
+                child: KpiBox(
                   title: 'Inventory Modules',
                   value: '6',
                   icon: Icons.inventory_2_outlined,
@@ -1865,7 +1865,7 @@ class _QuikShellState extends State<QuikShell> {
               ),
               SizedBox(width: 8),
               Expanded(
-                child: _KpiBox(
+                child: KpiBox(
                   title: 'Reports',
                   value: '5',
                   icon: Icons.assessment_outlined,
@@ -1955,7 +1955,7 @@ class _QuikShellState extends State<QuikShell> {
             Row(
               children: [
                 Expanded(
-                  child: _KpiBox(
+                  child: KpiBox(
                     title: 'Open Deals',
                     value: '$openDeals',
                     icon: Icons.folder_open_outlined,
@@ -1963,7 +1963,7 @@ class _QuikShellState extends State<QuikShell> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _KpiBox(
+                  child: KpiBox(
                     title: 'Untouched',
                     value: '$untouched',
                     icon: Icons.mark_email_unread_outlined,
@@ -1971,7 +1971,7 @@ class _QuikShellState extends State<QuikShell> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _KpiBox(
+                  child: KpiBox(
                     title: 'Follow-ups Today',
                     value: '$followupsToday',
                     icon: Icons.event_repeat_outlined,
@@ -1979,7 +1979,7 @@ class _QuikShellState extends State<QuikShell> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _KpiBox(
+                  child: KpiBox(
                     title: 'My Inquiries',
                     value: '$total',
                     icon: Icons.insights_outlined,
@@ -2016,56 +2016,7 @@ class _QuikShellState extends State<QuikShell> {
   }
 }
 
-class _KpiBox extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
 
-  const _KpiBox({required this.title, required this.value, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 70,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: zBorder),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: zMuted),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: zMuted,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: zText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _Panel extends StatelessWidget {
   final String title;
