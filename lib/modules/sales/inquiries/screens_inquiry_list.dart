@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:QUIK/models/inquiry_model.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
+import 'package:QUIK/modules/sales/inquiries/helpers/inquiry_list_helpers.dart';
 import 'package:QUIK/modules/sales/inquiries/screens_add_inquiry.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
 
@@ -60,36 +61,16 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   }
 
   // --- DRY: Centralized Safe String Handling ---
-  String _getString(Map<String, dynamic>? data, String key) {
-    if (data == null || !data.containsKey(key)) return '';
-    return (data[key] ?? '').toString().trim();
-  }
+  String _getString(Map<String, dynamic>? data, String key) =>
+      InquiryListHelpers.getString(data, key);
 
   // --- DRY: Centralized Date Formatting ---
-  String _formatDate(DateTime date) {
-    final d = date.day.toString().padLeft(2, '0');
-    final m = date.month.toString().padLeft(2, '0');
-    final y = date.year.toString();
-    return '$d/$m/$y';
-  }
-
-  String _formatCompactDate(DateTime? date) {
-    if (date == null) return '-';
-    return _formatDate(date);
-  }
+  String _formatCompactDate(DateTime? date) =>
+      InquiryListHelpers.formatCompactDate(date);
 
   // --- DRY: Reusable Role Checking Logic ---
-  bool _isAdminOrManager(String role) {
-    final r = role.trim().toLowerCase();
-    return [
-      'admin',
-      'manager',
-      'owner',
-      'founder',
-      'ceo',
-      'superadmin',
-    ].contains(r);
-  }
+  bool _isAdminOrManager(String role) =>
+      InquiryListHelpers.isAdminOrManager(role);
 
   // --- FULL MULTI-TENANT PROFILE LOADER ---
   Future<Map<String, dynamic>?> _loadCurrentUserProfile(
