@@ -9,7 +9,7 @@ class KpiBox extends StatelessWidget {
   final String value;
   final IconData icon;
 
-  const KpiBox({required this.title, required this.value, required this.icon});
+  const KpiBox({super.key,required this.title, required this.value, required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +61,7 @@ class Panel extends StatelessWidget {
   final IconData emptyIcon;
 
   const Panel({
+    super.key,
     required this.title,
     required this.emptyText,
     required this.emptyIcon,
@@ -138,6 +139,62 @@ class Panel extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
+      ),
+    );
+  }
+
+  Widget overviewCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color tint,
+    required Color iconColor,
+  }) {
+    return Container(
+      height: 76,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: zBorder),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: tint,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 16, color: iconColor),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: zMuted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: zText,
+            ),
+          ),
+        ],
       ),
     );
   }

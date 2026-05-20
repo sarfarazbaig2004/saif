@@ -1446,7 +1446,7 @@ class _QuikShellState extends State<QuikShell> {
         Row(
           children: [
             Expanded(
-              child: _overviewCard(
+              child: overviewCard(
                 title: 'Module Status',
                 value: allowed
                     ? (implemented ? 'Ready to open' : 'Planned')
@@ -1466,7 +1466,7 @@ class _QuikShellState extends State<QuikShell> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _overviewCard(
+              child: overviewCard(
                 title: 'Action',
                 value: implemented ? 'Open module' : 'Coming soon',
                 icon: implemented
@@ -1478,7 +1478,7 @@ class _QuikShellState extends State<QuikShell> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _overviewCard(
+              child: overviewCard(
                 title: 'Department',
                 value: sectionName,
                 icon: Icons.apartment_outlined,
@@ -1665,61 +1665,6 @@ class _QuikShellState extends State<QuikShell> {
   }
 
 
-  Widget _overviewCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color tint,
-    required Color iconColor,
-  }) {
-    return Container(
-      height: 76,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: zBorder),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: tint,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: 16, color: iconColor),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: zMuted,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              color: zText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _quickPanel({
     required String title,
