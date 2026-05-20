@@ -1528,7 +1528,7 @@ class _QuikShellState extends State<QuikShell> {
                         runSpacing: 8,
                         children: _moduleTags(
                           page,
-                        ).map((e) => _moduleTag(e)).toList(),
+                        ).map((e) => moduleTag(e)).toList(),
                       ),
                       const Spacer(),
                     ],
@@ -1664,24 +1664,6 @@ class _QuikShellState extends State<QuikShell> {
     }
   }
 
-  Widget _moduleTag(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: zBorder),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: zText,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
 
   Widget _overviewCard({
     required String title,
