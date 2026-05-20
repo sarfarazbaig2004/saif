@@ -154,53 +154,57 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                   ),
                   trailing: SizedBox(
                     width: 150,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              currency.format(totalValue),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            CustomerPoStatusChip(status: status),
-                          ],
-                        ),
-                        const SizedBox(width: 6),
-                        PopupMenuButton<String>(
-                          onSelected: (value) async {
-                            if (value != 'duplicate') return;
-
-                            await CustomerPoRecordStatusService.markAsDuplicate(
-                              companyId: widget.companyId,
-                              docId: poDoc.id,
-                              reason: 'Created twice by mistake',
-                            );
-
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Duplicate Customer PO deleted from active list',
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                currency.format(totalValue),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                            );
-                          },
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(
-                              value: 'duplicate',
-                              child: Text('Delete Duplicate Entry'),
-                            ),
-                          ],
-                        ),
-                      ],
+                              const SizedBox(height: 4),
+                              CustomerPoStatusChip(status: status),
+                            ],
+                          ),
+                          const SizedBox(width: 6),
+                          PopupMenuButton<String>(
+                            onSelected: (value) async {
+                              if (value != 'duplicate') return;
+
+                              await CustomerPoRecordStatusService.markAsDuplicate(
+                                companyId: widget.companyId,
+                                docId: poDoc.id,
+                                reason: 'Created twice by mistake',
+                              );
+
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Duplicate Customer PO deleted from active list',
+                                  ),
+                                ),
+                              );
+                            },
+                            itemBuilder: (_) => const [
+                              PopupMenuItem(
+                                value: 'duplicate',
+                                child: Text('Delete Duplicate Entry'),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
