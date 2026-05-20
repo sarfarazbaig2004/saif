@@ -1,3 +1,4 @@
+import 'package:QUIK/modules/sales/shared/constants/sales_collections.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:QUIK/modules/sales/inquiries/models/inquiry_model.dart';
 
@@ -11,7 +12,7 @@ class SalesInquiryRepository {
     return _firestore
         .collection('companies')
         .doc(companyId)
-        .collection('sales_inquiries');
+        .collection(SalesCollections.inquiries);
   }
 
   Future<void> save({

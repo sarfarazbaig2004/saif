@@ -1,3 +1,4 @@
+import 'package:QUIK/modules/sales/shared/constants/sales_collections.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:QUIK/modules/sales/shared/models/sales_revision_model.dart';
@@ -12,7 +13,7 @@ class SalesRevisionRepository {
     return _db
         .collection('companies')
         .doc(companyId)
-        .collection('sales_revisions');
+        .collection(SalesCollections.revisions);
   }
 
   Future<void> save({

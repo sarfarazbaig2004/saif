@@ -1,3 +1,4 @@
+import 'package:QUIK/modules/sales/shared/constants/sales_collections.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 
@@ -11,7 +12,7 @@ class CustomerPoRepository {
     return _firestore
         .collection('companies')
         .doc(companyId)
-        .collection('customer_pos');
+        .collection(SalesCollections.customerPos);
   }
 
   Future<void> save({required String companyId, required CustomerPoModel po}) {

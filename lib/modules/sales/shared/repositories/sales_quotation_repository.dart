@@ -1,3 +1,4 @@
+import 'package:QUIK/modules/sales/shared/constants/sales_collections.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:QUIK/modules/sales/quotations/models/quotation_model.dart';
 
@@ -11,7 +12,7 @@ class SalesQuotationRepository {
     return _firestore
         .collection('companies')
         .doc(companyId)
-        .collection('sales_quotations');
+        .collection(SalesCollections.quotations);
   }
 
   Future<void> save({
