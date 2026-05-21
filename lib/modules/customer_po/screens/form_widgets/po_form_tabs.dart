@@ -83,6 +83,7 @@ class PoFormTabs extends StatelessWidget {
           child: PoOverviewTab(
             poNumber: controllers.poNumber,
             isEditMode: isEditMode,
+            status: 'Draft',
             customerErrorVisible: customerErrorVisible,
             customerId: customerId,
             isLoadingCustomers: isLoadingCustomers,

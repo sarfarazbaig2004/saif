@@ -6,6 +6,7 @@ import 'package:QUIK/modules/customer_po/screens/form_widgets/po_form_section_ca
 
 class PoOverviewTab extends StatelessWidget {
   final TextEditingController poNumber;
+  final String status;
   final bool isEditMode;
   final bool customerErrorVisible;
   final String customerId;
@@ -29,6 +30,7 @@ class PoOverviewTab extends StatelessWidget {
   const PoOverviewTab({
     super.key,
     required this.poNumber,
+    required this.status,
     required this.isEditMode,
     required this.customerErrorVisible,
     required this.customerId,
@@ -51,7 +53,7 @@ class PoOverviewTab extends StatelessWidget {
           'Customer PO Number',
           poNumber,
           required: true,
-          readOnly: false,
+          readOnly: status != 'Draft',
         ),
         const SizedBox(height: 12),
         PoCustomerSelector(
