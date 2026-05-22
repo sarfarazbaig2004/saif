@@ -72,6 +72,18 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
 
   bool get _isEdit => widget.existingDoc != null;
 
+  String _normalizeEmail(String value) {
+  return value.trim().toLowerCase();
+  }
+
+String _normalizePhone(String value) {
+  return value.replaceAll(RegExp(r'[^0-9]'), '').trim();
+  }
+
+String _normalizeGst(String value) {
+  return value.trim().toUpperCase().replaceAll(' ', '');
+  }
+
   String get _tenantId => widget.companyId.trim();
 
   CollectionReference<Map<String, dynamic>> get _customersCol =>
@@ -335,25 +347,87 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
           : (_industry ?? '').trim();
 
       final name = _companyController.text.trim();
-      final gst = _gstController.text.trim();
 
-      if (widget.existingDoc == null && gst.isNotEmpty) {
-        final dupSnap = await _customersCol
-            .where('companyName', isEqualTo: name)
-            .where('gst', isEqualTo: gst)
-            .limit(1)
-            .get();
+      final normalizedPhone = _normalizePhone(
+        _phoneController.text,
+      );
 
-        if (dupSnap.docs.isNotEmpty) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('This Company Name + GST already exists'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          setState(() => _isSaving = false);
-          return;
+      final normalizedEmail = _normalizeEmail(
+        _businessEmailController.text,
+      );
+
+      final normalizedGst = _normalizeGst(
+        _gstController.text,
+      );
+
+      if (widget.existingDoc == null) {
+        if (normalizedPhone.isNotEmpty) {
+          final phoneSnap = await _customersCol
+              .where('phone', isEqualTo: normalizedPhone)
+              .limit(1)
+              .get();
+
+          if (phoneSnap.docs.isNotEmpty) {
+            if (!mounted) return;
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Customer with this phone number already exists',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+
+            setState(() => _isSaving = false);
+            return;
+          }
+        }
+
+        if (normalizedEmail.isNotEmpty) {
+          final emailSnap = await _customersCol
+              .where('email', isEqualTo: normalizedEmail)
+              .limit(1)
+              .get();
+
+          if (emailSnap.docs.isNotEmpty) {
+            if (!mounted) return;
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Customer with this email already exists',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+
+            setState(() => _isSaving = false);
+            return;
+          }
+        }
+
+        if (normalizedGst.isNotEmpty) {
+          final gstSnap = await _customersCol
+              .where('gst', isEqualTo: normalizedGst)
+              .limit(1)
+              .get();
+
+          if (gstSnap.docs.isNotEmpty) {
+            if (!mounted) return;
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Customer with this GST already exists',
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+
+            setState(() => _isSaving = false);
+            return;
+          }
         }
       }
 
@@ -368,12 +442,12 @@ class _ScreensAddCustomerState extends State<ScreensAddCustomer> {
 
         'name': name,
         'companyName': name,
-        'phone': _phoneController.text.trim(),
-        'companyPhone': _phoneController.text.trim(),
+        'phone': normalizedPhone,
+        'companyPhone': normalizedPhone,
         'alternatePhone': _altPhoneController.text.trim(),
-        'email': _businessEmailController.text.trim(),
-        'businessEmail': _businessEmailController.text.trim(),
-        'gst': gst,
+        'email': normalizedEmail,
+        'businessEmail': normalizedEmail,
+        'gst': normalizedGst,
         'pan': _panController.text.trim(),
         'website': _websiteController.text.trim(),
 
