@@ -70,8 +70,13 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
       InquiryListHelpers.formatCompactDate(date);
 
   // --- DRY: Reusable Role Checking Logic ---
-  bool _isAdminOrManager(String role) =>
-      InquiryListHelpers.isAdminOrManager(role);
+  bool _isAdminOrManager(String role) {
+    final normalizedRole = role.trim().toLowerCase();
+    return InquiryListHelpers.isAdminOrManager(role) ||
+        normalizedRole == 'company_super_admin' ||
+        normalizedRole == 'super_admin' ||
+        normalizedRole == 'superadmin';
+  }
 
   // --- FULL MULTI-TENANT PROFILE LOADER ---
   Future<Map<String, dynamic>?> _loadCurrentUserProfile(
