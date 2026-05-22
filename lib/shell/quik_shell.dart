@@ -1217,9 +1217,6 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.salesMeetings:
         return const _SalesMeetingsWorkingPage();
 
-      case ShellPage.salesFollowUps:
-        return const _SalesFollowupsWorkingPage();
-
       case ShellPage.adminUsers:
         return Padding(
           padding: const EdgeInsets.all(10),
@@ -2215,7 +2212,7 @@ class _SalesFollowupsWorkingPageState
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: status,
+                        initialValue: status,
                         decoration: _decor('Status'),
                         items: ['Open', 'Done', 'Overdue']
                             .map(
@@ -2228,7 +2225,7 @@ class _SalesFollowupsWorkingPageState
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: priority,
+                        initialValue: priority,
                         decoration: _decor('Priority'),
                         items: ['Low', 'Medium', 'High', 'Urgent']
                             .map(
@@ -2475,7 +2472,7 @@ class _SalesTasksWorkingPageState extends State<_SalesTasksWorkingPage> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: status,
+                        initialValue: status,
                         decoration: _decor('Status'),
                         items: ['Open', 'In Progress', 'Done', 'Blocked']
                             .map(
@@ -2488,7 +2485,7 @@ class _SalesTasksWorkingPageState extends State<_SalesTasksWorkingPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: priority,
+                        initialValue: priority,
                         decoration: _decor('Priority'),
                         items: ['Low', 'Medium', 'High', 'Urgent']
                             .map(
@@ -2736,7 +2733,7 @@ class _SalesMeetingsWorkingPageState extends State<_SalesMeetingsWorkingPage> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: status,
+                        initialValue: status,
                         decoration: _decor('Status'),
                         items: ['Scheduled', 'Completed', 'Cancelled']
                             .map(
@@ -2749,7 +2746,7 @@ class _SalesMeetingsWorkingPageState extends State<_SalesMeetingsWorkingPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: mode,
+                        initialValue: mode,
                         decoration: _decor('Mode'),
                         items: ['Online', 'Office', 'Site Visit', 'Phone']
                             .map(
