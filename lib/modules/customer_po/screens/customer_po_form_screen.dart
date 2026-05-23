@@ -15,7 +15,6 @@ import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_amendment_handler.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_loading_screen.dart';
-import 'package:QUIK/modules/customer_po/screens/form_core/customer_po_form_state.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
