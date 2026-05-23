@@ -1,3 +1,4 @@
+import 'package:QUIK/modules/sales/shared/constants/sales_collections.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -75,7 +76,7 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
         stream: FirebaseFirestore.instance
             .collection('companies')
             .doc(widget.companyId)
-            .collection('customer_pos')
+            .collection(SalesCollections.customerPos)
             .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {

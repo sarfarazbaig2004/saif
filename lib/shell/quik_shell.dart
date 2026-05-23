@@ -803,6 +803,9 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.dispatchShipmentTracking:
       case ShellPage.dispatchDelivered:
       case ShellPage.salesQuotations:
+      case ShellPage.salesFollowUps:
+      case ShellPage.salesTasks:
+      case ShellPage.salesMeetings:
       case ShellPage.adminUsers:
       case ShellPage.adminModules:
       case ShellPage.adminInventoryProfile:
@@ -1204,6 +1207,15 @@ class _QuikShellState extends State<QuikShell> {
           padding: const EdgeInsets.all(10),
           child: SalesOrderListScreen(companyId: widget.companyId),
         );
+
+      case ShellPage.salesFollowUps:
+        return const _SalesFollowupsWorkingPage();
+
+      case ShellPage.salesTasks:
+        return const _SalesTasksWorkingPage();
+
+      case ShellPage.salesMeetings:
+        return const _SalesMeetingsWorkingPage();
 
       case ShellPage.adminUsers:
         return Padding(
@@ -2130,6 +2142,790 @@ class _Panel extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SalesFollowupsWorkingPage extends StatefulWidget {
+  const _SalesFollowupsWorkingPage();
+
+  @override
+  State<_SalesFollowupsWorkingPage> createState() =>
+      _SalesFollowupsWorkingPageState();
+}
+
+class _SalesFollowupsWorkingPageState
+    extends State<_SalesFollowupsWorkingPage> {
+  final _search = TextEditingController();
+  final List<Map<String, String>> _items = [
+    {
+      'customer': 'Sample Customer',
+      'subject': 'Quotation follow-up',
+      'owner': 'Sales Team',
+      'status': 'Open',
+      'priority': 'High',
+      'remarks': 'Call customer and confirm quotation approval.',
+    },
+  ];
+
+  String _status = 'All';
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, String>> get _filtered {
+    final q = _search.text.trim().toLowerCase();
+    return _items.where((e) {
+      final statusOk = _status == 'All' || e['status'] == _status;
+      final text = e.values.join(' ').toLowerCase();
+      return statusOk && (q.isEmpty || text.contains(q));
+    }).toList();
+  }
+
+  Future<void> _openForm([Map<String, String>? item]) async {
+    final customer = TextEditingController(text: item?['customer'] ?? '');
+    final subject = TextEditingController(text: item?['subject'] ?? '');
+    final owner = TextEditingController(text: item?['owner'] ?? '');
+    final remarks = TextEditingController(text: item?['remarks'] ?? '');
+    String status = item?['status'] ?? 'Open';
+    String priority = item?['priority'] ?? 'Medium';
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setLocal) => AlertDialog(
+          title: Text(item == null ? 'Add Follow-up' : 'Edit Follow-up'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _field(customer, 'Customer'),
+                _field(subject, 'Subject'),
+                _field(owner, 'Assigned To'),
+                _field(remarks, 'Remarks', lines: 3),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: status,
+                        decoration: _decor('Status'),
+                        items: ['Open', 'Done', 'Overdue']
+                            .map(
+                              (e) => DropdownMenuItem(value: e, child: Text(e)),
+                            )
+                            .toList(),
+                        onChanged: (v) => setLocal(() => status = v ?? status),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: priority,
+                        decoration: _decor('Priority'),
+                        items: ['Low', 'Medium', 'High', 'Urgent']
+                            .map(
+                              (e) => DropdownMenuItem(value: e, child: Text(e)),
+                            )
+                            .toList(),
+                        onChanged: (v) =>
+                            setLocal(() => priority = v ?? priority),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final data = {
+                  'customer': customer.text.trim(),
+                  'subject': subject.text.trim(),
+                  'owner': owner.text.trim(),
+                  'status': status,
+                  'priority': priority,
+                  'remarks': remarks.text.trim(),
+                };
+
+                setState(() {
+                  if (item == null) {
+                    _items.insert(0, data);
+                  } else {
+                    item
+                      ..clear()
+                      ..addAll(data);
+                  }
+                });
+
+                Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _decor(String label) => InputDecoration(
+    labelText: label,
+    filled: true,
+    fillColor: Colors.white,
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+  );
+
+  Widget _field(TextEditingController c, String label, {int lines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: c,
+        maxLines: lines,
+        decoration: _decor(label),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = _filtered;
+
+    return Scaffold(
+      backgroundColor: const Color(0xfff4f6fb),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Follow-ups',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Track customer calls, quotation reminders and next actions.',
+                        style: TextStyle(color: Color(0xff64748b)),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () => _openForm(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Follow-up'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _search,
+                    onChanged: (_) => setState(() {}),
+                    decoration: _decor('Search customer, subject, owner'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                DropdownButton<String>(
+                  value: _status,
+                  items: ['All', 'Open', 'Done', 'Overdue']
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _status = v ?? 'All'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: rows.isEmpty
+                  ? const Center(child: Text('No follow-ups found.'))
+                  : ListView.separated(
+                      itemCount: rows.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (_, i) => _card(rows[i]),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _card(Map<String, String> e) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(18),
+        leading: const CircleAvatar(child: Icon(Icons.call)),
+        title: Text(
+          e['subject'] ?? '-',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        subtitle: Text(
+          '${e['customer'] ?? '-'} • Assigned: ${e['owner'] ?? '-'}\n'
+          'Priority: ${e['priority'] ?? '-'}\n${e['remarks'] ?? ''}',
+        ),
+        trailing: Wrap(
+          spacing: 6,
+          children: [
+            Chip(label: Text(e['status'] ?? 'Open')),
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () => _openForm(e),
+            ),
+            IconButton(
+              icon: const Icon(Icons.check_circle_outline),
+              onPressed: () => setState(() => e['status'] = 'Done'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => setState(() => _items.remove(e)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SalesTasksWorkingPage extends StatefulWidget {
+  const _SalesTasksWorkingPage();
+
+  @override
+  State<_SalesTasksWorkingPage> createState() => _SalesTasksWorkingPageState();
+}
+
+class _SalesTasksWorkingPageState extends State<_SalesTasksWorkingPage> {
+  final _search = TextEditingController();
+  String _status = 'All';
+
+  final List<Map<String, String>> _items = [
+    {
+      'title': 'Prepare quotation follow-up',
+      'customer': 'Sample Customer',
+      'owner': 'Sales Team',
+      'status': 'Open',
+      'priority': 'High',
+      'remarks': 'Check quotation status and update next action.',
+    },
+  ];
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, String>> get _filtered {
+    final q = _search.text.trim().toLowerCase();
+    return _items.where((e) {
+      final statusOk = _status == 'All' || e['status'] == _status;
+      final text = e.values.join(' ').toLowerCase();
+      return statusOk && (q.isEmpty || text.contains(q));
+    }).toList();
+  }
+
+  Future<void> _openForm([Map<String, String>? item]) async {
+    final title = TextEditingController(text: item?['title'] ?? '');
+    final customer = TextEditingController(text: item?['customer'] ?? '');
+    final owner = TextEditingController(text: item?['owner'] ?? '');
+    final remarks = TextEditingController(text: item?['remarks'] ?? '');
+    String status = item?['status'] ?? 'Open';
+    String priority = item?['priority'] ?? 'Medium';
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setLocal) => AlertDialog(
+          title: Text(item == null ? 'Add Sales Task' : 'Edit Sales Task'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _field(title, 'Task Title'),
+                _field(customer, 'Customer / Project'),
+                _field(owner, 'Assigned To'),
+                _field(remarks, 'Remarks', lines: 3),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: status,
+                        decoration: _decor('Status'),
+                        items: ['Open', 'In Progress', 'Done', 'Blocked']
+                            .map(
+                              (e) => DropdownMenuItem(value: e, child: Text(e)),
+                            )
+                            .toList(),
+                        onChanged: (v) => setLocal(() => status = v ?? status),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: priority,
+                        decoration: _decor('Priority'),
+                        items: ['Low', 'Medium', 'High', 'Urgent']
+                            .map(
+                              (e) => DropdownMenuItem(value: e, child: Text(e)),
+                            )
+                            .toList(),
+                        onChanged: (v) =>
+                            setLocal(() => priority = v ?? priority),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final data = {
+                  'title': title.text.trim(),
+                  'customer': customer.text.trim(),
+                  'owner': owner.text.trim(),
+                  'status': status,
+                  'priority': priority,
+                  'remarks': remarks.text.trim(),
+                };
+
+                setState(() {
+                  if (item == null) {
+                    _items.insert(0, data);
+                  } else {
+                    item
+                      ..clear()
+                      ..addAll(data);
+                  }
+                });
+
+                Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _decor(String label) => InputDecoration(
+    labelText: label,
+    filled: true,
+    fillColor: Colors.white,
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+  );
+
+  Widget _field(TextEditingController c, String label, {int lines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: c,
+        maxLines: lines,
+        decoration: _decor(label),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = _filtered;
+
+    return Scaffold(
+      backgroundColor: const Color(0xfff4f6fb),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Tasks',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Manage sales tasks, assignments and pending actions.',
+                        style: TextStyle(color: Color(0xff64748b)),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () => _openForm(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Task'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _search,
+                    onChanged: (_) => setState(() {}),
+                    decoration: _decor('Search task, customer, owner, remarks'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                DropdownButton<String>(
+                  value: _status,
+                  items: ['All', 'Open', 'In Progress', 'Done', 'Blocked']
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _status = v ?? 'All'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: rows.isEmpty
+                  ? const Center(child: Text('No tasks found.'))
+                  : ListView.separated(
+                      itemCount: rows.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (_, i) => _card(rows[i]),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _card(Map<String, String> e) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(18),
+        leading: const CircleAvatar(child: Icon(Icons.task_alt)),
+        title: Text(
+          e['title'] ?? '-',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        subtitle: Text(
+          '${e['customer'] ?? '-'} • Assigned: ${e['owner'] ?? '-'}\n'
+          'Priority: ${e['priority'] ?? '-'}\n${e['remarks'] ?? ''}',
+        ),
+        trailing: Wrap(
+          spacing: 6,
+          children: [
+            Chip(label: Text(e['status'] ?? 'Open')),
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () => _openForm(e),
+            ),
+            IconButton(
+              icon: const Icon(Icons.check_circle_outline),
+              onPressed: () => setState(() => e['status'] = 'Done'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => setState(() => _items.remove(e)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SalesMeetingsWorkingPage extends StatefulWidget {
+  const _SalesMeetingsWorkingPage();
+
+  @override
+  State<_SalesMeetingsWorkingPage> createState() =>
+      _SalesMeetingsWorkingPageState();
+}
+
+class _SalesMeetingsWorkingPageState extends State<_SalesMeetingsWorkingPage> {
+  final _search = TextEditingController();
+  String _status = 'All';
+
+  final List<Map<String, String>> _items = [
+    {
+      'title': 'Customer discussion',
+      'customer': 'Sample Customer',
+      'owner': 'Sales Team',
+      'status': 'Scheduled',
+      'mode': 'Online',
+      'remarks': 'Discuss quotation, delivery date and commercial terms.',
+    },
+  ];
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  List<Map<String, String>> get _filtered {
+    final q = _search.text.trim().toLowerCase();
+    return _items.where((e) {
+      final statusOk = _status == 'All' || e['status'] == _status;
+      final text = e.values.join(' ').toLowerCase();
+      return statusOk && (q.isEmpty || text.contains(q));
+    }).toList();
+  }
+
+  Future<void> _openForm([Map<String, String>? item]) async {
+    final title = TextEditingController(text: item?['title'] ?? '');
+    final customer = TextEditingController(text: item?['customer'] ?? '');
+    final owner = TextEditingController(text: item?['owner'] ?? '');
+    final remarks = TextEditingController(text: item?['remarks'] ?? '');
+    String status = item?['status'] ?? 'Scheduled';
+    String mode = item?['mode'] ?? 'Online';
+
+    await showDialog<void>(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setLocal) => AlertDialog(
+          title: Text(item == null ? 'Add Meeting' : 'Edit Meeting'),
+          content: SizedBox(
+            width: 520,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _field(title, 'Meeting Title'),
+                _field(customer, 'Customer / Project'),
+                _field(owner, 'Owner'),
+                _field(remarks, 'Agenda / Remarks', lines: 3),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: status,
+                        decoration: _decor('Status'),
+                        items: ['Scheduled', 'Completed', 'Cancelled']
+                            .map(
+                              (e) => DropdownMenuItem(value: e, child: Text(e)),
+                            )
+                            .toList(),
+                        onChanged: (v) => setLocal(() => status = v ?? status),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        initialValue: mode,
+                        decoration: _decor('Mode'),
+                        items: ['Online', 'Office', 'Site Visit', 'Phone']
+                            .map(
+                              (e) => DropdownMenuItem(value: e, child: Text(e)),
+                            )
+                            .toList(),
+                        onChanged: (v) => setLocal(() => mode = v ?? mode),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () {
+                final data = {
+                  'title': title.text.trim(),
+                  'customer': customer.text.trim(),
+                  'owner': owner.text.trim(),
+                  'status': status,
+                  'mode': mode,
+                  'remarks': remarks.text.trim(),
+                };
+
+                setState(() {
+                  if (item == null) {
+                    _items.insert(0, data);
+                  } else {
+                    item
+                      ..clear()
+                      ..addAll(data);
+                  }
+                });
+
+                Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _decor(String label) => InputDecoration(
+    labelText: label,
+    filled: true,
+    fillColor: Colors.white,
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+  );
+
+  Widget _field(TextEditingController c, String label, {int lines = 1}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: c,
+        maxLines: lines,
+        decoration: _decor(label),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = _filtered;
+
+    return Scaffold(
+      backgroundColor: const Color(0xfff4f6fb),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Meetings',
+                        style: TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Plan customer meetings, site visits and commercial discussions.',
+                        style: TextStyle(color: Color(0xff64748b)),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () => _openForm(),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Meeting'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _search,
+                    onChanged: (_) => setState(() {}),
+                    decoration: _decor(
+                      'Search meeting, customer, owner, remarks',
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                DropdownButton<String>(
+                  value: _status,
+                  items: ['All', 'Scheduled', 'Completed', 'Cancelled']
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _status = v ?? 'All'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: rows.isEmpty
+                  ? const Center(child: Text('No meetings found.'))
+                  : ListView.separated(
+                      itemCount: rows.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (_, i) => _card(rows[i]),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _card(Map<String, String> e) {
+    return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(18),
+        leading: const CircleAvatar(child: Icon(Icons.groups)),
+        title: Text(
+          e['title'] ?? '-',
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+        subtitle: Text(
+          '${e['customer'] ?? '-'} • Owner: ${e['owner'] ?? '-'}\n'
+          'Mode: ${e['mode'] ?? '-'}\n${e['remarks'] ?? ''}',
+        ),
+        trailing: Wrap(
+          spacing: 6,
+          children: [
+            Chip(label: Text(e['status'] ?? 'Scheduled')),
+            IconButton(
+              icon: const Icon(Icons.edit),
+              onPressed: () => _openForm(e),
+            ),
+            IconButton(
+              icon: const Icon(Icons.check_circle_outline),
+              onPressed: () => setState(() => e['status'] = 'Completed'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () => setState(() => _items.remove(e)),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:QUIK/modules/sales/shared/enums/customer_po_status.dart';
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_draft.dart';
 
@@ -28,8 +29,8 @@ class CustomerPoFormBuilder {
       inspectionRequirement: draft.inspectionRequirement,
       warranty: draft.warranty,
       ldClause: draft.ldClause,
-      status: draft.status,
-      items: draft.items,
+      status: CustomerPoStatusX.fromValue(draft.status),
+      items: CustomerPoModel.itemRowsToModels(draft.items),
       poDocumentUrl: draft.poDocumentUrl,
       poFileName: draft.poFileName,
       uploadedAt: draft.uploadedAt,

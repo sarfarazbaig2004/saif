@@ -1,3 +1,4 @@
+import 'package:QUIK/modules/sales/shared/constants/sales_collections.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -83,7 +84,7 @@ class CustomerPoDetailScreen extends StatelessWidget {
       await FirebaseFirestore.instance
           .collection('companies')
           .doc(companyId)
-          .collection('customer_pos')
+          .collection(SalesCollections.customerPos)
           .doc(docId)
           .update({
             'status': newStatus,
@@ -133,7 +134,7 @@ class CustomerPoDetailScreen extends StatelessWidget {
         stream: FirebaseFirestore.instance
             .collection('companies')
             .doc(companyId)
-            .collection('customer_pos')
+            .collection(SalesCollections.customerPos)
             .doc(docId)
             .snapshots(),
         builder: (context, snapshot) {

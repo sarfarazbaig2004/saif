@@ -4,12 +4,22 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+
+import 'widgets/erp_product_search_dialog.dart';
 import 'package:intl/intl.dart';
 
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/models/inquiry_model.dart';
 import 'package:QUIK/modules/crm/customers/screens_add_customer.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
+import 'package:QUIK/modules/sales/inquiries/controllers/add_inquiry_controllers.dart';
+
+part 'widgets/add_inquiry_insights_section.dart';
+part 'widgets/add_inquiry_products_section.dart';
+part 'widgets/add_inquiry_product_detail_entry.dart';
+part 'widgets/add_inquiry_commercial_section.dart';
+part 'widgets/add_inquiry_followup_section.dart';
+part 'widgets/add_inquiry_activity_timeline.dart';
 
 class ScreensAddInquiry extends StatefulWidget {
   final String companyId;
@@ -73,30 +83,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   int _dealScore = 0;
   List<String> _tags = [];
 
-  // Controllers
-  final TextEditingController _subjectController = TextEditingController();
-  final TextEditingController _sourceRefController = TextEditingController();
-  final TextEditingController _expectedValueController =
-      TextEditingController();
-  final TextEditingController _budgetController = TextEditingController();
-  final TextEditingController _deliveryTimelineController =
-      TextEditingController();
-  final TextEditingController _projectSiteLocationController =
-      TextEditingController();
-  final TextEditingController _competitorController = TextEditingController();
-  final TextEditingController _decisionMakerController =
-      TextEditingController();
-  final TextEditingController _notesController = TextEditingController();
-  final TextEditingController _internalNotesController =
-      TextEditingController();
-  final TextEditingController _lastFollowUpNoteController =
-      TextEditingController();
-  final TextEditingController _linkedQuotationIdController =
-      TextEditingController();
-  final TextEditingController _lossReasonController = TextEditingController();
-  final TextEditingController _tagController = TextEditingController();
-  final TextEditingController _customerSearchController =
-      TextEditingController();
+  final AddInquiryControllers _controllers = AddInquiryControllers();
 
   // Structured Products (ERP Grade Inventory Connection)
   List<Map<String, dynamic>> _structuredProducts = [];
@@ -177,21 +164,21 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   void dispose() {
     _debounceTimer?.cancel();
     _scrollController.dispose();
-    _subjectController.dispose();
-    _sourceRefController.dispose();
-    _expectedValueController.dispose();
-    _budgetController.dispose();
-    _deliveryTimelineController.dispose();
-    _projectSiteLocationController.dispose();
-    _competitorController.dispose();
-    _decisionMakerController.dispose();
-    _notesController.dispose();
-    _internalNotesController.dispose();
-    _lastFollowUpNoteController.dispose();
-    _linkedQuotationIdController.dispose();
-    _lossReasonController.dispose();
-    _tagController.dispose();
-    _customerSearchController.dispose();
+    _controllers.subject.dispose();
+    _controllers.sourceRef.dispose();
+    _controllers.expectedValue.dispose();
+    _controllers.budget.dispose();
+    _controllers.deliveryTimeline.dispose();
+    _controllers.projectSiteLocation.dispose();
+    _controllers.competitor.dispose();
+    _controllers.decisionMaker.dispose();
+    _controllers.notes.dispose();
+    _controllers.internalNotes.dispose();
+    _controllers.lastFollowUpNote.dispose();
+    _controllers.linkedQuotationId.dispose();
+    _controllers.lossReason.dispose();
+    _controllers.tag.dispose();
+    _controllers.customerSearch.dispose();
     super.dispose();
   }
 
@@ -295,8 +282,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   }
 
   String _buildRequirementFingerprint(String subjectSearch) {
-    final location = _normalizeText(_projectSiteLocationController.text);
-    final deliveryTimeline = _normalizeText(_deliveryTimelineController.text);
+    final location = _normalizeText(_controllers.projectSiteLocation.text);
+    final deliveryTimeline = _normalizeText(_controllers.deliveryTimeline.text);
     return [
       subjectSearch,
       _buildProductFingerprint(),
@@ -349,7 +336,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         _nextFollowUpDate = null;
       }
       if (stage != 'Lost') {
-        _lossReasonController.clear();
+        _controllers.lossReason.clear();
       }
       _formMessage = null;
     });
@@ -360,19 +347,19 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     final iq = widget.existingInquiry;
     if (iq == null) return;
 
-    _subjectController.text = iq.subject;
-    _sourceRefController.text = iq.sourceReference;
+    _controllers.subject.text = iq.subject;
+    _controllers.sourceRef.text = iq.sourceReference;
 
     final expValStr = iq.expectedValue.toString();
     final expVal = double.tryParse(expValStr) ?? 0.0;
-    _expectedValueController.text = expVal > 0 ? expValStr : '';
+    _controllers.expectedValue.text = expVal > 0 ? expValStr : '';
 
-    _deliveryTimelineController.text = iq.deliveryTimeline;
-    _projectSiteLocationController.text = iq.location;
-    _notesController.text = iq.notes;
-    _internalNotesController.text = iq.internalNotes;
-    _lastFollowUpNoteController.text = iq.lastFollowUpNote;
-    _linkedQuotationIdController.text = iq.linkedQuotationId;
+    _controllers.deliveryTimeline.text = iq.deliveryTimeline;
+    _controllers.projectSiteLocation.text = iq.location;
+    _controllers.notes.text = iq.notes;
+    _controllers.internalNotes.text = iq.internalNotes;
+    _controllers.lastFollowUpNote.text = iq.lastFollowUpNote;
+    _controllers.linkedQuotationId.text = iq.linkedQuotationId;
 
     _selectedPriority = iq.priority.isNotEmpty ? iq.priority : 'Warm';
     _selectedSource = iq.source.isNotEmpty ? iq.source : null;
@@ -422,74 +409,78 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         _customerIndustrySnapshot = (data['customerIndustry'] ?? '').toString();
         _customerCitySnapshot = (data['customerCity'] ?? '').toString();
 
-        _subjectController.text =
-            _firstNonEmptyString([data['subject'], _subjectController.text]) ??
+        _controllers.subject.text =
+            _firstNonEmptyString([
+              data['subject'],
+              _controllers.subject.text,
+            ]) ??
             '';
-        _sourceRefController.text =
+        _controllers.sourceRef.text =
             _firstNonEmptyString([
               data['sourceReference'],
-              _sourceRefController.text,
+              _controllers.sourceRef.text,
             ]) ??
             '';
 
         if (data['expectedValue'] != null &&
             (double.tryParse(data['expectedValue'].toString()) ?? 0) > 0) {
-          _expectedValueController.text = data['expectedValue'].toString();
+          _controllers.expectedValue.text = data['expectedValue'].toString();
         }
 
-        _budgetController.text =
-            _firstNonEmptyString([data['budget'], _budgetController.text]) ??
+        _controllers.budget.text =
+            _firstNonEmptyString([data['budget'], _controllers.budget.text]) ??
             '';
-        _competitorController.text =
+        _controllers.competitor.text =
             _firstNonEmptyString([
               data['competitor'],
-              _competitorController.text,
+              _controllers.competitor.text,
             ]) ??
             '';
-        _decisionMakerController.text =
+        _controllers.decisionMaker.text =
             _firstNonEmptyString([
               data['decisionMaker'],
-              _decisionMakerController.text,
+              _controllers.decisionMaker.text,
             ]) ??
             '';
 
-        _deliveryTimelineController.text =
+        _controllers.deliveryTimeline.text =
             _firstNonEmptyString([
               data['deliveryTimeline'],
-              _deliveryTimelineController.text,
+              _controllers.deliveryTimeline.text,
             ]) ??
             '';
-        _projectSiteLocationController.text =
+        _controllers.projectSiteLocation.text =
             _firstNonEmptyString([
               data['projectSiteLocation'],
               data['location'],
-              _projectSiteLocationController.text,
+              _controllers.projectSiteLocation.text,
             ]) ??
             '';
-        _notesController.text =
-            _firstNonEmptyString([data['notes'], _notesController.text]) ?? '';
-        _internalNotesController.text =
+        _controllers.notes.text =
+            _firstNonEmptyString([data['notes'], _controllers.notes.text]) ??
+            '';
+        _controllers.internalNotes.text =
             _firstNonEmptyString([
               data['internalNotes'],
-              _internalNotesController.text,
+              _controllers.internalNotes.text,
             ]) ??
             '';
-        _lastFollowUpNoteController.text =
+        _controllers.lastFollowUpNote.text =
             _firstNonEmptyString([
               data['lastFollowUpNote'],
-              _lastFollowUpNoteController.text,
+              _controllers.lastFollowUpNote.text,
             ]) ??
             '';
-        _linkedQuotationIdController.text =
+        _controllers.linkedQuotationId.text =
             _firstNonEmptyString([
               data['linkedQuotationId'],
-              _linkedQuotationIdController.text,
+              _controllers.linkedQuotationId.text,
             ]) ??
             '';
-        _lossReasonController.text =
+        _controllers.lossReason.text =
             _firstNonEmptyString([
               data['lossReason'],
-              _lossReasonController.text,
+              _controllers.lossReason.text,
             ]) ??
             '';
 
@@ -549,7 +540,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
 
       if (_selectedCustomerId != null) {
         await _loadCustomerData(_selectedCustomerId!);
-        _customerSearchController.text = _customerNameSnapshot;
+        _controllers.customerSearch.text = _customerNameSnapshot;
         if (_selectedContactId != null) {
           await _loadContactData(_selectedCustomerId!, _selectedContactId!);
         }
@@ -567,7 +558,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   void _calculateDealScore() {
     int score = 0;
     double expectedVal =
-        double.tryParse(_expectedValueController.text.trim()) ?? 0;
+        double.tryParse(_controllers.expectedValue.text.trim()) ?? 0;
 
     if (expectedVal > 500000) {
       score += 25;
@@ -580,7 +571,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     if (_expectedClosureDate != null) {
       score += 15;
     }
-    if (_decisionMakerController.text.trim().isNotEmpty) {
+    if (_controllers.decisionMaker.text.trim().isNotEmpty) {
       score += 15;
     }
 
@@ -641,11 +632,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         if (q.isEmpty) {
           snap = await baseQuery.limit(30).get();
         } else {
-          snap = await baseQuery
-              .where('nameLowercase', isGreaterThanOrEqualTo: q)
-              .where('nameLowercase', isLessThanOrEqualTo: '$q\uf8ff')
-              .limit(30)
-              .get();
+          snap = await baseQuery.limit(30).get();
 
           if (snap.docs.isEmpty) {
             final fallbackSnap = await baseQuery.limit(50).get();
@@ -774,8 +761,9 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       }
     }
 
-    final expVal = double.tryParse(_expectedValueController.text.trim()) ?? 0.0;
-    if (_expectedValueController.text.trim().isNotEmpty && expVal <= 0) {
+    final expVal =
+        double.tryParse(_controllers.expectedValue.text.trim()) ?? 0.0;
+    if (_controllers.expectedValue.text.trim().isNotEmpty && expVal <= 0) {
       _showValidationMessage('Expected value must be greater than zero.');
       return false;
     }
@@ -813,7 +801,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     }
 
     if (_selectedStage == 'Won') {
-      if (_linkedQuotationIdController.text.trim().isEmpty) {
+      if (_controllers.linkedQuotationId.text.trim().isEmpty) {
         _showValidationMessage('Won inquiries must be linked to a quotation.');
         return false;
       }
@@ -825,7 +813,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       }
     }
 
-    if (_selectedStage == 'Lost' && _lossReasonController.text.trim().isEmpty) {
+    if (_selectedStage == 'Lost' &&
+        _controllers.lossReason.text.trim().isEmpty) {
       _showValidationMessage(
         'Please capture a loss reason before closing the inquiry as Lost.',
       );
@@ -862,11 +851,11 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             .trim();
     final assignedToRole = (assignedUserData['role'] ?? '').toString().trim();
 
-    final expText = _expectedValueController.text.trim();
+    final expText = _controllers.expectedValue.text.trim();
     final double? expectedValue = expText.isEmpty
         ? null
         : double.tryParse(expText);
-    final budgetRange = _parseBudgetRange(_budgetController.text.trim());
+    final budgetRange = _parseBudgetRange(_controllers.budget.text.trim());
 
     final now = DateTime.now();
     bool isOverdue = false;
@@ -901,7 +890,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
 
     int dealVelocityDays = now.difference(createdAtDate).inDays;
 
-    final subjectStr = _subjectController.text.trim();
+    final subjectStr = _controllers.subject.text.trim();
     final subjectSearch = subjectStr.toLowerCase().trim().replaceAll(
       RegExp(r'\s+'),
       ' ',
@@ -941,7 +930,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       'additionalContactIds': _additionalContactIds,
 
       'source': (_selectedSource ?? '').trim(),
-      'sourceReference': _sourceRefController.text.trim(),
+      'sourceReference': _controllers.sourceRef.text.trim(),
       'inquiryType': (_selectedType ?? '').trim(),
 
       'products': _structuredProducts,
@@ -949,13 +938,13 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       'totalQuantity': totalQuantity,
 
       'expectedValue': expectedValue ?? 0.0,
-      'budget': _budgetController.text.trim(),
+      'budget': _controllers.budget.text.trim(),
       'budgetMin': budgetRange['min'],
       'budgetMax': budgetRange['max'],
-      'competitor': _competitorController.text.trim(),
-      'decisionMaker': _decisionMakerController.text.trim(),
-      'deliveryTimeline': _deliveryTimelineController.text.trim(),
-      'projectSiteLocation': _projectSiteLocationController.text.trim(),
+      'competitor': _controllers.competitor.text.trim(),
+      'decisionMaker': _controllers.decisionMaker.text.trim(),
+      'deliveryTimeline': _controllers.deliveryTimeline.text.trim(),
+      'projectSiteLocation': _controllers.projectSiteLocation.text.trim(),
 
       'priority': _selectedPriority.trim(),
       'stage': _selectedStage.trim(),
@@ -979,15 +968,15 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           ? null
           : Timestamp.fromDate(_expectedClosureDate!),
       'isOverdue': isOverdue,
-      'lastFollowUpNote': _lastFollowUpNoteController.text.trim(),
-      'notes': _notesController.text.trim(),
-      'internalNotes': _internalNotesController.text.trim(),
-      'lossReason': _lossReasonController.text.trim(),
+      'lastFollowUpNote': _controllers.lastFollowUpNote.text.trim(),
+      'notes': _controllers.notes.text.trim(),
+      'internalNotes': _controllers.internalNotes.text.trim(),
+      'lossReason': _controllers.lossReason.text.trim(),
       'tags': _tags,
 
-      'linkedQuotationId': _linkedQuotationIdController.text.trim(),
+      'linkedQuotationId': _controllers.linkedQuotationId.text.trim(),
       'convertedToQuotationId': _selectedStage == 'Won'
-          ? _linkedQuotationIdController.text.trim()
+          ? _controllers.linkedQuotationId.text.trim()
           : '',
 
       'assignedToUid': assignedTo,
@@ -1028,11 +1017,11 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             if (_previousStage != _selectedStage) {
               actionDesc =
                   'Stage moved from $_previousStage to $_selectedStage.';
-            } else if (_lastFollowUpNoteController.text.isNotEmpty &&
-                _lastFollowUpNoteController.text !=
+            } else if (_controllers.lastFollowUpNote.text.isNotEmpty &&
+                _controllers.lastFollowUpNote.text !=
                     _existingRawData?['lastFollowUpNote']) {
               actionDesc =
-                  'Added follow-up: ${_lastFollowUpNoteController.text}';
+                  'Added follow-up: ${_controllers.lastFollowUpNote.text}';
             }
 
             existingLog.add({
@@ -1313,160 +1302,6 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     );
   }
 
-  Widget _buildSmartInsightsPanel() {
-    final warnings = <String>[];
-    if (_nextFollowUpDate == null &&
-        _selectedStage != 'Won' &&
-        _selectedStage != 'Lost') {
-      warnings.add('⚠ No follow-up scheduled');
-    }
-    if (_decisionMakerController.text.trim().isEmpty) {
-      warnings.add('⚠ No decision maker identified');
-    }
-    double expVal = double.tryParse(_expectedValueController.text.trim()) ?? 0;
-    if (expVal > 500000) {
-      warnings.add('🔥 High value deal');
-    }
-    if (_structuredProducts.isEmpty) {
-      warnings.add('⚠ No products linked');
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1E3A8A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1E3A8A).withValues(alpha: 0.3),
-            blurRadius: 15,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Deal Intelligence',
-                  style: TextStyle(
-                    color: Colors.blueAccent,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildInsightMetric(
-                      'Deal Score',
-                      '$_dealScore/100',
-                      Icons.score,
-                      _dealScore > 70
-                          ? Colors.greenAccent
-                          : (_dealScore > 40
-                                ? Colors.orangeAccent
-                                : Colors.redAccent),
-                    ),
-                    _buildInsightMetric(
-                      'Win Prob.',
-                      '${_probability.toInt()}%',
-                      Icons.trending_up,
-                      Colors.white,
-                    ),
-                    _buildInsightMetric(
-                      'Exp. Value',
-                      expVal > 0
-                          ? '₹${NumberFormat.compact().format(expVal)}'
-                          : 'TBD',
-                      Icons.currency_rupee,
-                      Colors.white,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (warnings.isNotEmpty) ...[
-            Container(
-              width: 1,
-              height: 60,
-              color: Colors.white24,
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-            ),
-            Expanded(
-              flex: 1,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: warnings
-                    .map(
-                      (w) => Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: Text(
-                          w,
-                          style: TextStyle(
-                            color: w.contains('🔥')
-                                ? Colors.orangeAccent
-                                : Colors.redAccent.shade100,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInsightMetric(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 14, color: Colors.grey.shade400),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 20,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSection({
     required String title,
     required IconData icon,
@@ -1563,7 +1398,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                       _additionalContactIds.clear();
                       _formMessage = null;
                     });
-                    _customerSearchController.text =
+                    _controllers.customerSearch.text =
                         (doc.data()?['companyName'] ??
                                 doc.data()?['name'] ??
                                 '')
@@ -1574,9 +1409,9 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                       (context, controller, focusNode, onEditingComplete) {
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           if (!mounted) return;
-                          if (_customerSearchController.text.isNotEmpty &&
+                          if (_controllers.customerSearch.text.isNotEmpty &&
                               controller.text.isEmpty) {
-                            controller.text = _customerSearchController.text;
+                            controller.text = _controllers.customerSearch.text;
                           }
                         });
                         return TextFormField(
@@ -1590,7 +1425,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                           validator: (v) =>
                               _selectedCustomerId == null ? 'Required' : null,
                           onChanged: (value) {
-                            _customerSearchController.text = value;
+                            _controllers.customerSearch.text = value;
                             final normalizedInput = _normalizeText(value);
                             final normalizedSelected = _normalizeText(
                               _customerNameSnapshot,
@@ -1626,7 +1461,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                   if (result == true) {
                     setState(() {
                       _selectedCustomerId = null;
-                      _customerSearchController.clear();
+                      _controllers.customerSearch.clear();
                     });
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -1839,7 +1674,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-          controller: _subjectController,
+          controller: _controllers.subject,
           decoration: _dec(
             'Deal / Inquiry Subject *',
             hint: 'E.g. Requirement for 50 Laptops',
@@ -1887,7 +1722,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             },
           ),
           TextFormField(
-            controller: _sourceRefController,
+            controller: _controllers.sourceRef,
             decoration: _dec(
               'Source Reference',
               hint: 'E.g. Referral Name',
@@ -1908,7 +1743,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-          controller: _tagController,
+          controller: _controllers.tag,
           decoration: _dec(
             'Tags',
             hint: 'Type tag and press Enter',
@@ -1917,7 +1752,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           onFieldSubmitted: (val) {
             if (val.trim().isNotEmpty && !_tags.contains(val.trim())) {
               setState(() => _tags.add(val.trim()));
-              _tagController.clear();
+              _controllers.tag.clear();
             }
           },
         ),
@@ -1945,358 +1780,6 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           ),
         ],
       ],
-    );
-  }
-
-  Widget _buildProductsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (_structuredProducts.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFFE2E8F0),
-                style: BorderStyle.solid,
-              ),
-            ),
-            child: const Column(
-              children: [
-                Icon(
-                  Icons.inventory_2_outlined,
-                  size: 32,
-                  color: Color(0xFF94A3B8),
-                ),
-                SizedBox(height: 12),
-                Text(
-                  'No products added yet.',
-                  style: TextStyle(
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                Text(
-                  'Click \'Add Product from Inventory\' to continue.',
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
-                ),
-              ],
-            ),
-          )
-        else
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _structuredProducts.length,
-            separatorBuilder: (c, i) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final item = _structuredProducts[index];
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFEFF6FF),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.widgets_outlined,
-                        color: Color(0xFF2563EB),
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            item['name'],
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Category: ${item['category'] ?? 'N/A'}  •  Unit: ${item['unit'] ?? 'Nos'}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF64748B),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          'Qty: ${item['quantity']}',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        Text(
-                          '₹${item['price'] ?? 0}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF10B981),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.edit_outlined,
-                        color: Color(0xFF64748B),
-                        size: 20,
-                      ),
-                      onPressed: () => _editProduct(index),
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Colors.redAccent,
-                        size: 20,
-                      ),
-                      onPressed: () {
-                        setState(() => _structuredProducts.removeAt(index));
-                        _calculateDealScore();
-                      },
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        const SizedBox(height: 16),
-        OutlinedButton.icon(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) {
-                return _ERPProductSearchDialog(
-                  companyId: widget.companyId,
-                  onProductSelected: (docData, docId) {
-                    Navigator.pop(context);
-                    _showProductDetailEntry(
-                      productId: docId,
-                      name:
-                          (docData['itemName'] ?? docData['name'] ?? 'Unknown')
-                              .toString(),
-                      sku: (docData['sku'] ?? docData['itemCode'] ?? '')
-                          .toString(),
-                      defaultPrice:
-                          double.tryParse(
-                            docData['sellingPrice']?.toString() ??
-                                docData['price']?.toString() ??
-                                '0',
-                          ) ??
-                          0.0,
-                      unit: (docData['unit'] ?? 'Nos').toString(),
-                      category: (docData['category'] ?? '').toString(),
-                      subCategory: (docData['subCategory'] ?? '').toString(),
-                      brand: (docData['brand'] ?? '').toString(),
-                      model: (docData['model'] ?? '').toString(),
-                      costPrice:
-                          double.tryParse(
-                            docData['costPrice']?.toString() ?? '0',
-                          ) ??
-                          0.0,
-                    );
-                  },
-                  onManualAdd: (String query) {
-                    Navigator.pop(context);
-                    _showProductDetailEntry(
-                      productId: 'manual',
-                      name: query,
-                      sku: '',
-                      defaultPrice: 0.0,
-                      unit: 'Nos',
-                      category: 'General',
-                      subCategory: '',
-                      brand: '',
-                      model: '',
-                      costPrice: 0.0,
-                    );
-                  },
-                );
-              },
-            );
-          },
-          icon: const Icon(Icons.add_shopping_cart, size: 18),
-          label: const Text('Add Product from Inventory'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFF2563EB),
-            side: const BorderSide(color: Color(0xFF2563EB), width: 1.5),
-            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showProductDetailEntry({
-    required String productId,
-    required String name,
-    required String sku,
-    required double defaultPrice,
-    required String unit,
-    required String category,
-    required String subCategory,
-    required String brand,
-    required String model,
-    required double costPrice,
-    int? editIndex,
-  }) {
-    final nameCtrl = TextEditingController(text: name);
-    final qtyCtrl = TextEditingController(
-      text: editIndex != null
-          ? _structuredProducts[editIndex]['quantity'].toString()
-          : '1',
-    );
-    final priceCtrl = TextEditingController(
-      text: editIndex != null
-          ? _structuredProducts[editIndex]['price'].toString()
-          : defaultPrice.toString(),
-    );
-    final unitCtrl = TextEditingController(
-      text: editIndex != null ? _structuredProducts[editIndex]['unit'] : unit,
-    );
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        title: Text(
-          editIndex != null ? 'Edit Product' : 'Add to Inquiry',
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameCtrl,
-                decoration: _dec('Product / Description *'),
-                enabled: productId == 'manual' || editIndex != null,
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: qtyCtrl,
-                      decoration: _dec('Quantity *'),
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: unitCtrl,
-                      decoration: _dec('Unit (e.g. Nos, Kg)'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: priceCtrl,
-                decoration: _dec('Expected Unit Price (₹)'),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (nameCtrl.text.trim().isEmpty || qtyCtrl.text.trim().isEmpty) {
-                return;
-              }
-
-              double sPrice = double.tryParse(priceCtrl.text.trim()) ?? 0.0;
-              double margin = sPrice - costPrice;
-
-              double parsedQty = double.tryParse(qtyCtrl.text.trim()) ?? 0.0;
-              if (parsedQty <= 0) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Quantity must be greater than 0.'),
-                  ),
-                );
-                return;
-              }
-
-              final productMap = {
-                'productId': productId,
-                'name': nameCtrl.text.trim(),
-                'sku': sku,
-                'quantity': parsedQty,
-                'unit': unitCtrl.text.trim(),
-                'price': sPrice,
-                'costPrice': costPrice,
-                'margin': margin,
-                'category': category,
-                'subCategory': subCategory,
-                'brand': brand,
-                'model': model,
-              };
-
-              setState(() {
-                if (editIndex != null) {
-                  _structuredProducts[editIndex] = productMap;
-                } else {
-                  _structuredProducts.add(productMap);
-                }
-              });
-              _calculateDealScore();
-              Navigator.pop(context);
-            },
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _editProduct(int index) {
-    final item = _structuredProducts[index];
-    _showProductDetailEntry(
-      productId: item['productId'] ?? 'manual',
-      name: item['name'],
-      sku: item['sku'] ?? '',
-      defaultPrice: double.tryParse(item['price'].toString()) ?? 0.0,
-      unit: item['unit'] ?? 'Nos',
-      category: item['category'] ?? 'General',
-      subCategory: item['subCategory'] ?? '',
-      brand: item['brand'] ?? '',
-      model: item['model'] ?? '',
-      costPrice: double.tryParse(item['costPrice']?.toString() ?? '0') ?? 0.0,
-      editIndex: index,
     );
   }
 
@@ -2371,438 +1854,6 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             ),
           );
         }).toList(),
-      ),
-    );
-  }
-
-  Widget _buildCommercialSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Pipeline Stage',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF64748B),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _buildPipelineIndicator(),
-        const SizedBox(height: 8),
-        const Text(
-          'Move one stage at a time. Mark as Won only after quotation confirmation, and capture a loss reason for Lost.',
-          style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: _expectedValueController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: _dec(
-                  'Expected Deal Value (₹)',
-                  prefixIcon: const Icon(Icons.monetization_on_outlined),
-                ),
-                onChanged: (v) => _calculateDealScore(),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: TextFormField(
-                controller: _budgetController,
-                decoration: _dec(
-                  'Customer Budget Range',
-                  hint: 'E.g. 50k - 60k',
-                  prefixIcon: const Icon(Icons.account_balance_wallet_outlined),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Win Probability: ${_probability.toInt()}%',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF475569),
-                    ),
-                  ),
-                  Slider(
-                    value: _probability,
-                    min: 0,
-                    max: 100,
-                    divisions: 10,
-                    activeColor: const Color(0xFF2563EB),
-                    inactiveColor: const Color(0xFFE2E8F0),
-                    onChanged: (v) {
-                      setState(() => _probability = v);
-                      _calculateDealScore();
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: TextFormField(
-                controller: _competitorController,
-                decoration: _dec(
-                  'Known Competitors',
-                  prefixIcon: const Icon(Icons.shield_outlined),
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: TextFormField(
-                controller: _decisionMakerController,
-                decoration: _dec(
-                  'Decision Maker Name / Info',
-                  prefixIcon: const Icon(Icons.how_to_reg_outlined),
-                ),
-                onChanged: (v) => _calculateDealScore(),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: TextFormField(
-                controller: _projectSiteLocationController,
-                decoration: _dec(
-                  'Project / Site Location',
-                  hint: 'E.g. Mumbai Plant',
-                  prefixIcon: const Icon(Icons.location_on_outlined),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFollowUpSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildResponsiveFields([
-          _buildDateSelector(
-            label: 'Next Follow-up Date *',
-            value: _nextFollowUpDate,
-            onTap: () async => await _pickDate(
-              initialValue: _nextFollowUpDate,
-              onPicked: (d) => setState(() {
-                _nextFollowUpDate = d;
-                _calculateDealScore();
-              }),
-            ),
-            onClear: () => setState(() {
-              _nextFollowUpDate = null;
-              _calculateDealScore();
-            }),
-          ),
-          DropdownButtonFormField<String>(
-            initialValue: _followUpType,
-            decoration: _dec(
-              'Follow-up Type',
-              prefixIcon: const Icon(Icons.event_outlined),
-            ),
-            items: [
-              'Call',
-              'Email',
-              'Visit',
-              'Meeting',
-              'WhatsApp',
-            ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-            onChanged: (v) => setState(() => _followUpType = v ?? 'Call'),
-          ),
-        ]),
-        const SizedBox(height: 16),
-        const Text(
-          'Priority Level',
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF64748B),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: ['Cold', 'Warm', 'Hot'].map((p) {
-            final isSelected = _selectedPriority == p;
-            final color = p == 'Hot'
-                ? Colors.red
-                : (p == 'Warm' ? Colors.orange : Colors.blue);
-            return Padding(
-              padding: const EdgeInsets.only(right: 12.0),
-              child: ChoiceChip(
-                label: Text(
-                  p,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.grey.shade700,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                selected: isSelected,
-                onSelected: (v) {
-                  if (v) {
-                    setState(() => _selectedPriority = p);
-                    _calculateDealScore();
-                  }
-                },
-                selectedColor: color,
-                backgroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: BorderSide(
-                    color: isSelected ? color : Colors.grey.shade300,
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-        if (_dealScore > 70 &&
-            _selectedPriority != 'Hot' &&
-            _suggestedPriority == 'Hot')
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Text(
-              '💡 High deal score! Consider marking as Hot.',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.orange.shade700,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        if (_dealScore < 40 &&
-            _selectedPriority != 'Cold' &&
-            _structuredProducts.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 8.0),
-            child: Text(
-              '💡 Low deal score. Consider marking as Cold until better qualified.',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.blue.shade700,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: _lastFollowUpNoteController,
-          maxLines: 2,
-          decoration: _dec(
-            'Latest Follow-up Remarks',
-            hint: 'E.g. Called client, asked for quote.',
-            prefixIcon: const Icon(Icons.history_edu),
-          ),
-        ),
-        if (_selectedStage == 'Lost') ...[
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _lossReasonController,
-            maxLines: 2,
-            decoration: _dec(
-              'Loss Reason *',
-              hint: 'E.g. Lost on price, competitor preference, no budget',
-              prefixIcon: const Icon(Icons.cancel_outlined),
-            ),
-            validator: (value) {
-              if (_selectedStage == 'Lost' &&
-                  (value == null || value.trim().isEmpty)) {
-                return 'Required for lost inquiries';
-              }
-              return null;
-            },
-          ),
-        ],
-        const SizedBox(height: 16),
-        _buildDateSelector(
-          label: 'Expected Closure Date',
-          value: _expectedClosureDate,
-          onTap: () async => await _pickDate(
-            initialValue: _expectedClosureDate,
-            onPicked: (d) {
-              setState(() {
-                _expectedClosureDate = d;
-                _calculateDealScore();
-              });
-            },
-          ),
-          onClear: () => setState(() {
-            _expectedClosureDate = null;
-            _calculateDealScore();
-          }),
-        ),
-        if (_isEditing && _existingRawData?['activityLog'] != null) ...[
-          const SizedBox(height: 24),
-          const Text(
-            'Activity Timeline',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 12),
-          _buildActivityTimeline(),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildActivityTimeline() {
-    List<dynamic> logs = _existingRawData?['activityLog'] ?? [];
-    if (logs.isEmpty) {
-      return const Text(
-        'No activity yet.',
-        style: TextStyle(color: Colors.grey),
-      );
-    }
-
-    logs.sort((a, b) {
-      final tA = a['timestamp'] as Timestamp?;
-      final tB = b['timestamp'] as Timestamp?;
-      if (tA == null || tB == null) return 0;
-      return tB.compareTo(tA);
-    });
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        children: [
-          ...logs.take(5).map((log) {
-            final time = log['timestamp'] as Timestamp?;
-            final dateStr = time != null
-                ? DateFormat('dd MMM yy, hh:mm a').format(time.toDate())
-                : '';
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4.0),
-                    child: Icon(
-                      Icons.circle,
-                      size: 8,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          log['action'] ?? 'Action',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: Color(0xFF1E293B),
-                          ),
-                        ),
-                        if (log['description'] != null)
-                          Text(
-                            log['description'],
-                            style: const TextStyle(
-                              color: Color(0xFF475569),
-                              fontSize: 12,
-                            ),
-                          ),
-                        Text(
-                          dateStr,
-                          style: const TextStyle(
-                            color: Color(0xFF94A3B8),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-          if (logs.length > 5)
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () {
-                  _showFullTimelineDialog(logs);
-                },
-                child: const Text('View All Activity'),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  void _showFullTimelineDialog(List<dynamic> logs) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Full Activity Timeline'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: logs.length,
-            itemBuilder: (ctx, i) {
-              final log = logs[i];
-              final time = log['timestamp'] as Timestamp?;
-              final dateStr = time != null
-                  ? DateFormat('dd MMM yy, hh:mm a').format(time.toDate())
-                  : '';
-              return ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(
-                  Icons.check_circle_outline,
-                  color: Color(0xFF2563EB),
-                ),
-                title: Text(
-                  log['action'] ?? 'Action',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (log['description'] != null) Text(log['description']),
-                    Text(
-                      dateStr,
-                      style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }
@@ -2896,7 +1947,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         TextFormField(
-          controller: _linkedQuotationIdController,
+          controller: _controllers.linkedQuotationId,
           decoration: _dec(
             'Linked Quotation ID',
             hint: 'E.g. QT-2425-001 (Required for Won deals)',
@@ -2905,7 +1956,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: _notesController,
+          controller: _controllers.notes,
           maxLines: 3,
           decoration: _dec(
             'External Notes (Customer visible)',
@@ -2914,7 +1965,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: _internalNotesController,
+          controller: _controllers.internalNotes,
           maxLines: 2,
           decoration: _dec(
             'Internal Private Notes',
@@ -3105,262 +2156,3 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
 // ---------------------------------------------------------
 // ENTERPRISE PAGINATED SEARCH DIALOG FOR INVENTORY
 // ---------------------------------------------------------
-class _ERPProductSearchDialog extends StatefulWidget {
-  final String companyId;
-  final Function(Map<String, dynamic> docData, String docId) onProductSelected;
-  final Function(String query) onManualAdd;
-
-  const _ERPProductSearchDialog({
-    required this.companyId,
-    required this.onProductSelected,
-    required this.onManualAdd,
-  });
-
-  @override
-  State<_ERPProductSearchDialog> createState() =>
-      _ERPProductSearchDialogState();
-}
-
-class _ERPProductSearchDialogState extends State<_ERPProductSearchDialog> {
-  final TextEditingController _searchCtrl = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-
-  List<DocumentSnapshot> _allItems = [];
-  List<DocumentSnapshot> _items = [];
-  bool _isLoading = false;
-  bool _hasMore = true;
-  String _currentQuery = '';
-  Timer? _debounce;
-  int _searchEpoch = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-    _fetchItems();
-  }
-
-  @override
-  void dispose() {
-    _searchCtrl.dispose();
-    _scrollController.dispose();
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_currentQuery.isNotEmpty) return;
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
-      _fetchItems(loadMore: true);
-    }
-  }
-
-  bool _matchesQuery(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    final q = _currentQuery.trim().toLowerCase();
-    if (q.isEmpty) return true;
-
-    final fields = [
-      data['itemName'],
-      data['name'],
-      data['category'],
-      data['subCategory'],
-      data['sku'],
-      data['itemCode'],
-      data['brand'],
-      data['model'],
-    ];
-
-    return fields.any(
-      (value) => (value ?? '').toString().toLowerCase().contains(q),
-    );
-  }
-
-  void _applyLocalFilter() {
-    final filtered = _currentQuery.isEmpty
-        ? List<DocumentSnapshot>.from(_allItems)
-        : _allItems.where(_matchesQuery).toList();
-
-    if (!mounted) return;
-    setState(() {
-      _items = filtered;
-    });
-  }
-
-  void _onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 400), () {
-      final q = query.toLowerCase().trim();
-      if (q != _currentQuery) {
-        setState(() {
-          _currentQuery = q;
-        });
-        _applyLocalFilter();
-        if (_currentQuery.isNotEmpty && _items.isEmpty && _hasMore) {
-          _fetchItems(loadMore: true);
-        }
-      }
-    });
-  }
-
-  Future<void> _fetchItems({bool loadMore = false}) async {
-    if (_isLoading || !_hasMore) return;
-    if (loadMore && _allItems.isEmpty) return;
-
-    final epoch = ++_searchEpoch;
-    setState(() => _isLoading = true);
-
-    try {
-      Query<Map<String, dynamic>> ref = FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('products')
-          .where('isActive', isEqualTo: true);
-
-      ref = ref.limit(80);
-
-      if (loadMore && _allItems.isNotEmpty) {
-        ref = ref.startAfterDocument(_allItems.last);
-      }
-
-      final snap = await ref.get();
-
-      if (epoch != _searchEpoch) return;
-
-      final fetchedDocs = snap.docs
-          .where((doc) => !_allItems.any((existing) => existing.id == doc.id))
-          .toList();
-
-      if (!mounted) return;
-      setState(() {
-        if (!loadMore) {
-          _allItems = fetchedDocs;
-        } else {
-          _allItems.addAll(fetchedDocs);
-        }
-        _hasMore = snap.docs.length == 80;
-        _items = _currentQuery.isEmpty
-            ? List<DocumentSnapshot>.from(_allItems)
-            : _allItems.where(_matchesQuery).toList();
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: Colors.white,
-      surfaceTintColor: Colors.white,
-      title: const Text(
-        'Select Product',
-        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
-      ),
-      content: SizedBox(
-        width: 600,
-        height: 500,
-        child: Column(
-          children: [
-            TextField(
-              controller: _searchCtrl,
-              decoration: InputDecoration(
-                labelText: 'Search by Name, Category or SKU...',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: const Color(0xFFF8FAFC),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onChanged: _onSearchChanged,
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _items.isEmpty && !_isLoading
-                  ? Center(
-                      child: Text(
-                        'No products found matching "$_currentQuery".\nYou can add manually below.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey.shade600),
-                      ),
-                    )
-                  : ListView.separated(
-                      controller: _scrollController,
-                      itemCount: _items.length + (_hasMore ? 1 : 0),
-                      separatorBuilder: (_, __) =>
-                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
-                      itemBuilder: (context, index) {
-                        if (index == _items.length) {
-                          return const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-
-                        final doc = _items[index];
-                        final data = doc.data() as Map<String, dynamic>;
-                        final name =
-                            (data['itemName'] ?? data['name'] ?? 'Unknown')
-                                .toString();
-                        final sku = (data['sku'] ?? data['itemCode'] ?? '')
-                            .toString();
-                        final price =
-                            double.tryParse(
-                              data['sellingPrice']?.toString() ??
-                                  data['price']?.toString() ??
-                                  '0',
-                            ) ??
-                            0.0;
-                        final category = (data['category'] ?? '').toString();
-
-                        return ListTile(
-                          leading: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade50,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.inventory_2,
-                              color: Colors.blue,
-                              size: 20,
-                            ),
-                          ),
-                          title: Text(
-                            name,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text('Cat: $category | SKU: $sku'),
-                          trailing: Text(
-                            '₹$price',
-                            style: const TextStyle(
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          onTap: () => widget.onProductSelected(data, doc.id),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        FilledButton.icon(
-          onPressed: () => widget.onManualAdd(_searchCtrl.text),
-          icon: const Icon(Icons.edit_note, size: 18),
-          label: const Text('Add Manually'),
-        ),
-      ],
-    );
-  }
-}

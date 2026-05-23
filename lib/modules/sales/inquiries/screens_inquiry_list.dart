@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:QUIK/models/inquiry_model.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
+import 'package:QUIK/modules/sales/inquiries/helpers/inquiry_list_helpers.dart';
 import 'package:QUIK/modules/sales/inquiries/screens_add_inquiry.dart';
+import 'package:QUIK/modules/sales/inquiries/widgets/inquiry_filter_sheet.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
 
 class ScreensInquiryList extends StatefulWidget {
@@ -60,35 +62,20 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   }
 
   // --- DRY: Centralized Safe String Handling ---
-  String _getString(Map<String, dynamic>? data, String key) {
-    if (data == null || !data.containsKey(key)) return '';
-    return (data[key] ?? '').toString().trim();
-  }
+  String _getString(Map<String, dynamic>? data, String key) =>
+      InquiryListHelpers.getString(data, key);
 
   // --- DRY: Centralized Date Formatting ---
-  String _formatDate(DateTime date) {
-    final d = date.day.toString().padLeft(2, '0');
-    final m = date.month.toString().padLeft(2, '0');
-    final y = date.year.toString();
-    return '$d/$m/$y';
-  }
-
-  String _formatCompactDate(DateTime? date) {
-    if (date == null) return '-';
-    return _formatDate(date);
-  }
+  String _formatCompactDate(DateTime? date) =>
+      InquiryListHelpers.formatCompactDate(date);
 
   // --- DRY: Reusable Role Checking Logic ---
   bool _isAdminOrManager(String role) {
-    final r = role.trim().toLowerCase();
-    return [
-      'admin',
-      'manager',
-      'owner',
-      'founder',
-      'ceo',
-      'superadmin',
-    ].contains(r);
+    final normalizedRole = role.trim().toLowerCase();
+    return InquiryListHelpers.isAdminOrManager(role) ||
+        normalizedRole == 'company_super_admin' ||
+        normalizedRole == 'super_admin' ||
+        normalizedRole == 'superadmin';
   }
 
   // --- FULL MULTI-TENANT PROFILE LOADER ---
@@ -252,124 +239,23 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   }
 
   Future<void> _openFilterSheet() async {
-    String tempStatus = _statusFilter;
-    String tempPriority = _priorityFilter;
-
-    const statuses = [
-      'All',
-      'Open',
-      'Qualified',
-      'Quotation Pending',
-      'Quotation Sent',
-      'Follow-up Pending',
-      'Won',
-      'Lost',
-      'Not Qualified',
-    ];
-
-    const priorities = ['All', 'Hot', 'Warm', 'Cold'];
-
-    await showModalBottomSheet(
+    final result = await showModalBottomSheet<InquiryFilterResult>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
       backgroundColor: Colors.white,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (ctx, setModalState) {
-            return Padding(
-              padding: EdgeInsets.fromLTRB(
-                16,
-                6,
-                16,
-                MediaQuery.of(context).viewInsets.bottom + 16,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Filters',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    DropdownButtonFormField<String>(
-                      initialValue: tempStatus,
-                      decoration: const InputDecoration(
-                        labelText: 'Status',
-                        isDense: true,
-                        border: OutlineInputBorder(),
-                      ),
-                      items: statuses
-                          .map(
-                            (e) => DropdownMenuItem(value: e, child: Text(e)),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        setModalState(() {
-                          tempStatus = value ?? 'All';
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    DropdownButtonFormField<String>(
-                      initialValue: tempPriority,
-                      decoration: const InputDecoration(
-                        labelText: 'Priority',
-                        isDense: true,
-                        border: OutlineInputBorder(),
-                      ),
-                      items: priorities
-                          .map(
-                            (e) => DropdownMenuItem(value: e, child: Text(e)),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        setModalState(() {
-                          tempPriority = value ?? 'All';
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 14),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextButton(
-                            onPressed: () {
-                              setState(() {
-                                _statusFilter = 'All';
-                                _priorityFilter = 'All';
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: const Text('Reset'),
-                          ),
-                        ),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () {
-                              setState(() {
-                                _statusFilter = tempStatus;
-                                _priorityFilter = tempPriority;
-                              });
-                              Navigator.pop(context);
-                            },
-                            child: const Text('Apply'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+      builder: (_) => InquiryFilterSheet(
+        statusFilter: _statusFilter,
+        priorityFilter: _priorityFilter,
+      ),
     );
+
+    if (result == null || !mounted) return;
+
+    setState(() {
+      _statusFilter = result.status;
+      _priorityFilter = result.priority;
+    });
   }
 
   Future<void> _openEditInquiry({

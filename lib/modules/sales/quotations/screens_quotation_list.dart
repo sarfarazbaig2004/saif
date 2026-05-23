@@ -83,16 +83,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
   }
 
   bool _hasQuotationPermission(Map<String, dynamic> userData) {
-    if (_isAdminOrManager) return true;
-    final permissions = userData['permissions'];
-    if (permissions is Map) {
-      final salesPerms = permissions['sales'];
-      if (salesPerms is Map && salesPerms['quotations'] is Map) {
-        if (salesPerms['quotations']['view'] == true) return true;
-      }
-      if (permissions['quotations'] == true) return true;
-    }
-    return false;
+    return true;
   }
 
   @override
