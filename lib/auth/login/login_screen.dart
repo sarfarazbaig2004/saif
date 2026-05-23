@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
+import 'package:QUIK/modules/administration/company/screen_join_company.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -455,6 +456,36 @@ class _LoginScreenState extends State<LoginScreen> {
                                                           FontWeight.w700,
                                                     ),
                                                   ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        SizedBox(
+                                          height: 44,
+                                          child: OutlinedButton(
+                                            style: OutlinedButton.styleFrom(
+                                              side: const BorderSide(
+                                                color: zBorder,
+                                              ),
+                                              foregroundColor: zBlue,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                              ),
+                                            ),
+                                            onPressed: () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const ScreenJoinCompany(),
+                                              ),
+                                            ),
+                                            child: const Text(
+                                              'Join Existing Workspace',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
                                           ),
                                         ),
                                         const SizedBox(height: 12),

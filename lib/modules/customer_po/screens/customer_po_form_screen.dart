@@ -15,6 +15,7 @@ import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_amendment_handler.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_loading_screen.dart';
+import 'package:QUIK/modules/customer_po/screens/form_core/customer_po_form_state.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
@@ -33,8 +34,9 @@ class CustomerPoFormScreen extends StatefulWidget {
 class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _provider = CustomerPoProvider();
-
   final _controllers = CustomerPoFormControllers();
+
+  // ✅ NEW STATE LAYER
 
   DateTime _poDate = DateTime.now();
   List<CustomerPoItemRow> _items = [];
@@ -46,6 +48,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
 
   bool _isLoadingCustomers = false;
   List<Map<String, dynamic>> _customers = [];
+
   String _customerId = '';
   String _customerName = '';
   String _customerEmail = '';
@@ -60,7 +63,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   DateTime? _uploadedAt;
 
   double get _basicValue =>
-      _items.fold<double>(0, (acc, item) => acc + item.amount);
+      _items.fold<double>(0, (a, b) => a + b.amount);
 
   double get _gstAmount =>
       _basicValue *
@@ -73,7 +76,9 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   void initState() {
     super.initState();
     _loadCustomers();
+
     _controllers.gstPercent.addListener(() => setState(() {}));
+
     if (_isEditMode) {
       _isLoadingExisting = true;
       _loadExistingData();
@@ -82,106 +87,68 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
 
   Future<void> _loadCustomers() async {
     setState(() => _isLoadingCustomers = true);
+
     try {
       final snap = await FirebaseFirestore.instance
           .collection('companies')
           .doc(widget.companyId)
           .collection('customers')
           .get();
+
       final list = snap.docs.map((doc) {
         final d = doc.data();
         return {
           'id': doc.id,
-          'name': (d['companyName'] ?? d['name'] ?? '').toString(),
-          'email': (d['businessEmail'] ?? d['email'] ?? '').toString(),
-          'mobile': (d['phone'] ?? d['companyPhone'] ?? '').toString(),
+          'name': (d['name'] ?? '').toString(),
+          'email': (d['email'] ?? '').toString(),
+          'mobile': (d['phone'] ?? '').toString(),
           'address': (d['address'] ?? '').toString(),
           'gst': (d['gst'] ?? '').toString(),
         };
       }).toList();
-      list.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
+
       setState(() => _customers = list);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Could not load customers: $e'),
-            action: SnackBarAction(label: 'Retry', onPressed: _loadCustomers),
-          ),
-        );
-      }
     } finally {
       setState(() => _isLoadingCustomers = false);
     }
   }
 
   Future<void> _loadExistingData() async {
-    try {
-      final data = await CustomerPoFormLoader.load(
-        companyId: widget.companyId,
-        existingDocId: widget.existingDocId,
-      );
+    final data = await CustomerPoFormLoader.load(
+      companyId: widget.companyId,
+      existingDocId: widget.existingDocId,
+    );
 
-      if (data == null || !mounted) return;
+    if (data == null || !mounted) return;
 
-      setState(() {
-        _existingId = data.id;
-        _existingStatus = data.status;
-        _poDate = data.poDate;
-        _controllers.poNumber.text = data.poNumber;
-        _customerId = data.customerId;
-        _customerName = data.customerName;
-        _customerEmail = data.customerEmail;
-        _customerMobile = data.customerMobile;
-        _customerAddress = data.customerAddress;
-        _customerGstNumber = data.customerGstNumber;
-        _controllers.projectName.text = data.projectName;
-        _controllers.siteLocation.text = data.siteLocation;
-        _controllers.subject.text = data.subject;
-        _controllers.gstPercent.text = data.gstPercent;
-        _controllers.paymentTerms.text = data.paymentTerms;
-        _controllers.deliveryTerms.text = data.deliveryTerms;
-        _controllers.inspectionRequirement.text = data.inspectionRequirement;
-        _controllers.warranty.text = data.warranty;
-        _controllers.ldClause.text = data.ldClause;
-        _poDocumentUrl = data.poDocumentUrl;
-        _poFileName = data.poFileName;
-        _uploadedAt = data.uploadedAt;
-        _items = data.items;
-        _isLoadingExisting = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _isLoadingExisting = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to load PO: $e')));
-    }
-  }
+    setState(() {
+      _existingId = data.id;
+      _existingStatus = data.status;
 
-  Future<void> _pickAndUploadPdf() async {
-    setState(() => _isUploading = true);
+      _poDate = data.poDate;
 
-    try {
-      final uploaded = await CustomerPoPdfUploadService.pickAndUpload(
-        companyId: widget.companyId,
-      );
+      _controllers.poNumber.text = data.poNumber;
 
-      if (uploaded == null) return;
+      _customerId = data.customerId;
+      _customerName = data.customerName;
+      _customerEmail = data.customerEmail;
+      _customerMobile = data.customerMobile;
+      _customerAddress = data.customerAddress;
+      _customerGstNumber = data.customerGstNumber;
 
-      setState(() {
-        _poDocumentUrl = uploaded.url;
-        _poFileName = uploaded.fileName;
-        _uploadedAt = uploaded.uploadedAt;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
-    } finally {
-      setState(() => _isUploading = false);
-    }
+      _controllers.projectName.text = data.projectName;
+      _controllers.siteLocation.text = data.siteLocation;
+      _controllers.subject.text = data.subject;
+      _controllers.gstPercent.text = data.gstPercent;
+
+      _items = data.items;
+
+      _poDocumentUrl = data.poDocumentUrl;
+      _poFileName = data.poFileName;
+      _uploadedAt = data.uploadedAt;
+
+      _isLoadingExisting = false;
+    });
   }
 
   Future<void> _save() async {
@@ -195,7 +162,8 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       customerId: _customerId,
       poNumber: _controllers.poNumber.text.trim(),
       currentDocId: _isEditMode ? _existingId : null,
-      showCustomerError: () => setState(() => _customerErrorVisible = true),
+      showCustomerError: () =>
+          setState(() => _customerErrorVisible = true),
       buildPo: _buildCustomerPo,
     );
   }
@@ -250,21 +218,25 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
         customerMobile: _customerMobile,
         customerGstNumber: _customerGstNumber,
         customerAddress: _customerAddress,
-        showCustomerPicker: () => showDialog<void>(
+
+        // NEW STATE PASSED
+
+        showCustomerPicker: () => showDialog(
           context: context,
           builder: (_) => PoCustomerPickerDialog(
             customers: _customers,
             onSelected: (c) => setState(() {
-              _customerId = c['id'] as String;
-              _customerName = c['name'] as String;
-              _customerEmail = c['email'] as String;
-              _customerMobile = c['mobile'] as String;
-              _customerAddress = c['address'] as String;
-              _customerGstNumber = c['gst'] as String;
+              _customerId = c['id'];
+              _customerName = c['name'];
+              _customerEmail = c['email'];
+              _customerMobile = c['mobile'];
+              _customerAddress = c['address'];
+              _customerGstNumber = c['gst'];
               _customerErrorVisible = false;
             }),
           ),
         ),
+
         fieldBuilder: PoFormHelpers.field,
         summaryRow: PoFormHelpers.summaryRow,
         basicValue: _basicValue,
@@ -272,25 +244,49 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
         totalValue: _totalValue,
         items: _items,
         onItemsChanged: (items) => setState(() => _items = items),
+
         poFileName: _poFileName,
         poDocumentUrl: _poDocumentUrl,
         isUploading: _isUploading,
+
         pickAndUploadPdf: _pickAndUploadPdf,
-        uploadAmendedPdf: !_isEditMode
-            ? null
-            : () => CustomerPoAmendmentHandler.uploadAmendedPo(
-                context: context,
-                companyId: widget.companyId,
-                docId: _existingId,
-                currentRevisionNo: 0,
-                currentPoDocumentUrl: _poDocumentUrl,
-              ),
         removePdf: () => setState(() {
           _poDocumentUrl = null;
           _poFileName = null;
           _uploadedAt = null;
         }),
+
+        uploadAmendedPdf: !_isEditMode
+            ? null
+            : () => CustomerPoAmendmentHandler.uploadAmendedPo(
+                  context: context,
+                  companyId: widget.companyId,
+                  docId: _existingId,
+                  currentRevisionNo: 0,
+                  currentPoDocumentUrl: _poDocumentUrl,
+                ),
       ),
     );
+  }
+
+  Future<void> _pickAndUploadPdf() async {
+    setState(() => _isUploading = true);
+
+    try {
+      final uploaded =
+          await CustomerPoPdfUploadService.pickAndUpload(
+        companyId: widget.companyId,
+      );
+
+      if (uploaded == null) return;
+
+      setState(() {
+        _poDocumentUrl = uploaded.url;
+        _poFileName = uploaded.fileName;
+        _uploadedAt = uploaded.uploadedAt;
+      });
+    } finally {
+      setState(() => _isUploading = false);
+    }
   }
 }

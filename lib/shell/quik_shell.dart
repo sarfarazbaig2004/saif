@@ -10,6 +10,7 @@ import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/administration/inventory/screen_inventory_profile_settings.dart';
 import 'package:QUIK/modules/administration/compliance/screens/compliance_legal_screen.dart';
 import 'package:QUIK/modules/administration/modules/screen_company_modules.dart';
+import 'package:QUIK/modules/administration/join_requests/join_requests_screen.dart';
 import 'package:QUIK/modules/administration/users/screen_user_management.dart';
 import 'package:QUIK/modules/crm/customers/screens_customer_list.dart';
 import 'package:QUIK/modules/dashboard/dashboard_screen.dart';
@@ -388,6 +389,8 @@ class _QuikShellState extends State<QuikShell> {
         return _hasPermission('administration', 'branches');
       case ShellPage.adminAuditLogs:
         return _hasPermission('administration', 'auditLogs');
+      case ShellPage.adminJoinRequests:
+        return isAdminOrManager;
     }
   }
 
@@ -540,6 +543,7 @@ class _QuikShellState extends State<QuikShell> {
             ShellPage.adminModules,
             ShellPage.adminInventoryProfile,
             ShellPage.adminComplianceLegal,
+            ShellPage.adminJoinRequests,
           ],
         ),
       ];
@@ -697,6 +701,7 @@ class _QuikShellState extends State<QuikShell> {
           ShellPage.adminCompanyProfile,
           ShellPage.adminBranches,
           ShellPage.adminAuditLogs,
+          ShellPage.adminJoinRequests,
         ],
       ),
     ];
@@ -829,6 +834,7 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.productionEntries:
       case ShellPage.hrHome:
       case ShellPage.reportsSales:
+      case ShellPage.adminJoinRequests:
         return true;
       default:
         return false;
@@ -1253,6 +1259,12 @@ class _QuikShellState extends State<QuikShell> {
             currentUserEmail: widget.userEmail,
             currentRole: _currentRole,
           ),
+        );
+
+      case ShellPage.adminJoinRequests:
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: JoinRequestsScreen(companyId: widget.companyId),
         );
 
       case ShellPage.financeProforma:

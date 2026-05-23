@@ -98,6 +98,7 @@ enum ShellPage {
   adminCompanyProfile,
   adminBranches,
   adminAuditLogs,
+  adminJoinRequests,
 
   // Settings
   settingsGeneral,
@@ -255,6 +256,8 @@ extension ShellPageX on ShellPage {
         return 'Branches';
       case ShellPage.adminAuditLogs:
         return 'Audit Logs';
+      case ShellPage.adminJoinRequests:
+        return 'Join Requests';
 
       case ShellPage.settingsGeneral:
         return 'Settings';
@@ -404,6 +407,8 @@ extension ShellPageX on ShellPage {
         return Icons.account_tree_outlined;
       case ShellPage.adminAuditLogs:
         return Icons.fact_check_outlined;
+      case ShellPage.adminJoinRequests:
+        return Icons.how_to_reg_outlined;
       case ShellPage.settingsGeneral:
         return Icons.settings_outlined;
     }
