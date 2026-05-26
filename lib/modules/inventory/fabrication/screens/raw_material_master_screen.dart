@@ -48,7 +48,7 @@ class _RawMaterialMasterScreenState extends State<RawMaterialMasterScreen> {
     }
 
     return StreamBuilder<List<RawMaterialModel>>(
-      stream: _repository.watchRawMaterials(),
+      stream: _repository.watchRawMaterials(activeOnly:true),
       builder: (context, snapshot) {
         final materials = (snapshot.data ?? const <RawMaterialModel>[])
             .where(_matches)
