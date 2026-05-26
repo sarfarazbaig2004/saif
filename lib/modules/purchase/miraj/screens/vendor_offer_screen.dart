@@ -136,11 +136,11 @@ class _MirajVendorOfferFormScreenState
       .doc(widget.tenantId)
       .collection('vendor_offers');
 
-  CollectionReference<Map<String, dynamic>> get _productsRef =>
+  CollectionReference<Map<String, dynamic>> get _rawMaterialsRef =>
       FirebaseFirestore.instance
           .collection('companies')
           .doc(widget.tenantId)
-          .collection('products');
+          .collection('raw_materials');
 
   CollectionReference<Map<String, dynamic>> get _vendorsRef => FirebaseFirestore
       .instance
@@ -359,21 +359,26 @@ class _MirajVendorOfferFormScreenState
   }
 
   Future<void> _addLine() async {
-    final product = await showDialog<_SelectedProduct>(
-      context: context,
-      builder: (_) => _ProductPickerDialog(productsRef: _productsRef),
+  final material = await showDialog<_SelectedRawMaterial>(
+    context: context,
+    builder: (_) => _RawMaterialPickerDialog(
+      rawMaterialsRef: _rawMaterialsRef,
+    ),
+  );
+
+  if (material == null) return;
+
+  setState(() {
+    _lines.add(
+      _VendorOfferLineInput(
+        productId: material.id,
+        productName: material.materialCode,
+        uom: material.uom,
+        addToProductCost: false,
+      )..descriptionController.text =
+          '${material.description} • ${material.grade}',
     );
-    if (product == null) return;
-    setState(() {
-      _lines.add(
-        _VendorOfferLineInput(
-          productId: product.id,
-          productName: product.name,
-          uom: product.uom,
-          addToProductCost: product.useVendorOfferForCosting,
-        ),
-      );
-    });
+  });
   }
 
   Future<void> _save() async {
@@ -1001,8 +1006,8 @@ class _OfferLineEditor extends StatelessWidget {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: line.addToProductCost,
-            title: const Text('Add this offer rate to product cost'),
-            subtitle: const Text('Applied when the offer is converted to PO'),
+            title: const Text('Update raw material purchase rate'),
+            subtitle: const Text('Applied when converting this offer into Purchase Order'),
             onChanged: (value) {
               line.addToProductCost = value;
               onChanged();
@@ -1056,52 +1061,71 @@ class _VendorOfferLineInput {
   }
 }
 
-class _ProductPickerDialog extends StatelessWidget {
-  final CollectionReference<Map<String, dynamic>> productsRef;
+class _RawMaterialPickerDialog extends StatelessWidget {
+  final CollectionReference<Map<String, dynamic>> rawMaterialsRef;
 
-  const _ProductPickerDialog({required this.productsRef});
+  const _RawMaterialPickerDialog({
+    required this.rawMaterialsRef,
+  });
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Select Product'),
+      title: const Text('Select Raw Material'),
       content: SizedBox(
-        width: 520,
-        height: 420,
+        width: 600,
+        height: 500,
         child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: productsRef.orderBy('nameLower').snapshots(),
+          stream: rawMaterialsRef.snapshots(),
           builder: (context, snapshot) {
-            final docs = (snapshot.data?.docs ?? [])
-                .where((doc) => doc.data()['isDeleted'] != true)
-                .toList();
-            if (snapshot.connectionState == ConnectionState.waiting &&
+            final docs = snapshot.data?.docs ?? [];
+
+            if (snapshot.connectionState ==
+                    ConnectionState.waiting &&
                 !snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(
+                child: CircularProgressIndicator(),
+              );
             }
+
             if (docs.isEmpty) {
-              return const Center(child: Text('No products found'));
+              return const Center(
+                child: Text('No raw materials found'),
+              );
             }
+
             return ListView.separated(
               itemCount: docs.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+              separatorBuilder: (_, __) =>
+                  const Divider(height: 1),
               itemBuilder: (context, index) {
                 final doc = docs[index];
                 final data = doc.data();
-                final product = _SelectedProduct(
+
+                final material = _SelectedRawMaterial(
                   id: doc.id,
-                  name: (data['name'] ?? '').toString(),
-                  uom: (data['uom'] ?? 'Nos').toString(),
-                  useVendorOfferForCosting:
-                      data['useVendorOfferForCosting'] == true,
+                  materialCode:
+                      (data['materialCode'] ?? '').toString(),
+                  description:
+                      (data['description'] ?? '').toString(),
+                  grade:
+                      (data['grade'] ?? '').toString(),
+                  uom:
+                      (data['uom'] ?? 'KG').toString(),
                 );
+
                 return ListTile(
-                  leading: const Icon(Icons.inventory_2_outlined),
-                  title: Text(product.name),
-                  subtitle: Text('UOM: ${product.uom}'),
-                  trailing: product.useVendorOfferForCosting
-                      ? const Icon(Icons.price_check_outlined)
-                      : null,
-                  onTap: () => Navigator.pop(context, product),
+                  leading: const Icon(
+                    Icons.inventory_2_outlined,
+                  ),
+                  title: Text(material.materialCode),
+                  subtitle: Text(
+                    '${material.description} • ${material.grade}',
+                  ),
+                  trailing: Text(material.uom),
+                  onTap: () {
+                    Navigator.pop(context, material);
+                  },
                 );
               },
             );
@@ -1118,17 +1142,19 @@ class _ProductPickerDialog extends StatelessWidget {
   }
 }
 
-class _SelectedProduct {
+class _SelectedRawMaterial {
   final String id;
-  final String name;
+  final String materialCode;
+  final String description;
+  final String grade;
   final String uom;
-  final bool useVendorOfferForCosting;
 
-  const _SelectedProduct({
+  const _SelectedRawMaterial({
     required this.id,
-    required this.name,
+    required this.materialCode,
+    required this.description,
+    required this.grade,
     required this.uom,
-    required this.useVendorOfferForCosting,
   });
 }
 
