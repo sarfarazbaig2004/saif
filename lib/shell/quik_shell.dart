@@ -374,6 +374,8 @@ class _QuikShellState extends State<QuikShell> {
       // Administration
       case ShellPage.adminUsers:
         return _hasPermission('administration', 'users');
+      case ShellPage.adminJoinRequests:
+        return true;
       case ShellPage.adminRoles:
         return _hasPermission('administration', 'rolesPermissions');
       case ShellPage.adminModules:
@@ -1664,9 +1666,6 @@ class _QuikShellState extends State<QuikShell> {
     }
   }
 
-
-
-
   // ignore: unused_element
   Widget _homeDashboardLive() {
     DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
@@ -1874,6 +1873,3 @@ class _QuikShellState extends State<QuikShell> {
     );
   }
 }
-
-
-
