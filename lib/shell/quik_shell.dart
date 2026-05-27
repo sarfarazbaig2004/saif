@@ -11,6 +11,7 @@ import 'package:QUIK/modules/administration/inventory/screen_inventory_profile_s
 import 'package:QUIK/modules/administration/compliance/screens/compliance_legal_screen.dart';
 import 'package:QUIK/modules/administration/modules/screen_company_modules.dart';
 import 'package:QUIK/modules/administration/users/screen_user_management.dart';
+import 'package:QUIK/modules/administration/join_requests/join_requests_screen.dart';
 import 'package:QUIK/modules/crm/customers/screens_customer_list.dart';
 import 'package:QUIK/modules/dashboard/dashboard_screen.dart';
 import 'package:QUIK/modules/dispatch/screens/dispatch_list_screen.dart';
@@ -1214,6 +1215,12 @@ class _QuikShellState extends State<QuikShell> {
             companyId: widget.companyId,
             currentUid: widget.userUid,
           ),
+        );
+
+      case ShellPage.adminJoinRequests:
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: JoinRequestsScreen(companyId: widget.companyId),
         );
 
       case ShellPage.adminModules:
