@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 
+import 'package:QUIK/core/theme/app_theme.dart';
+
 class SalesBarChart extends StatelessWidget {
   final Map<int, double> monthlySales;
 
@@ -23,7 +25,7 @@ class SalesBarChart extends StatelessWidget {
           barRods: [
             BarChartRodData(
               toY: val,
-              color: const Color(0xFF3B82F6),
+              color: zAccent,
               width: 16,
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(4),

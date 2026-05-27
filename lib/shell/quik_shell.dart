@@ -878,7 +878,7 @@ class _QuikShellState extends State<QuikShell> {
     return 'Welcome ${_resolvedEmployeeName()}';
   }
 
-  Widget _buildTopHeader() {
+  Widget _buildTopHeader({VoidCallback? onOpenMenu}) {
     return Container(
       constraints: const BoxConstraints(minHeight: 48),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -888,6 +888,14 @@ class _QuikShellState extends State<QuikShell> {
       ),
       child: Row(
         children: [
+          if (onOpenMenu != null) ...[
+            IconButton(
+              tooltip: 'Open navigation',
+              onPressed: onOpenMenu,
+              icon: const Icon(Icons.menu, color: zText, size: 20),
+            ),
+            const SizedBox(width: 4),
+          ],
           Expanded(
             child: Text(
               _activeSectionTitle(),
@@ -1006,31 +1014,75 @@ class _QuikShellState extends State<QuikShell> {
           }
         });
 
-        return Scaffold(
-          backgroundColor: zCanvasBg,
-          body: Row(
-            children: [
-              ShellSidebar(
-                activePage: activePage,
-                sidebarGroups: _currentSidebarGroups,
-                canInquiries: canInquiries,
-                companyId: widget.companyId,
-                userUid: widget.userUid,
-                currentRole: _currentRole,
-                showSettings: _isModuleEnabled(ModuleIds.settings),
-                onSelectPage: _selectPage,
-                onLogout: _logout,
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    _buildTopHeader(),
-                    Expanded(child: _buildActiveBody()),
-                  ],
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isCompactShell = constraints.maxWidth < 900;
+
+            if (isCompactShell) {
+              return Scaffold(
+                backgroundColor: zCanvasBg,
+                drawer: Drawer(
+                  width: 282,
+                  backgroundColor: zIconRail,
+                  child: ShellSidebar(
+                    width: 282,
+                    activePage: activePage,
+                    sidebarGroups: _currentSidebarGroups,
+                    canInquiries: canInquiries,
+                    companyId: widget.companyId,
+                    userUid: widget.userUid,
+                    currentRole: _currentRole,
+                    showSettings: _isModuleEnabled(ModuleIds.settings),
+                    onSelectPage: (page) {
+                      Navigator.of(context).maybePop();
+                      _selectPage(page);
+                    },
+                    onLogout: _logout,
+                  ),
                 ),
+                body: Builder(
+                  builder: (scaffoldContext) {
+                    return Column(
+                      children: [
+                        _buildTopHeader(
+                          onOpenMenu: () =>
+                              Scaffold.of(scaffoldContext).openDrawer(),
+                        ),
+                        Expanded(child: _buildActiveBody()),
+                      ],
+                    );
+                  },
+                ),
+              );
+            }
+
+            return Scaffold(
+              backgroundColor: zCanvasBg,
+              body: Row(
+                children: [
+                  ShellSidebar(
+                    activePage: activePage,
+                    sidebarGroups: _currentSidebarGroups,
+                    canInquiries: canInquiries,
+                    companyId: widget.companyId,
+                    userUid: widget.userUid,
+                    currentRole: _currentRole,
+                    showSettings: _isModuleEnabled(ModuleIds.settings),
+                    onSelectPage: _selectPage,
+                    onLogout: _logout,
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _buildTopHeader(),
+                        Expanded(child: _buildActiveBody()),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

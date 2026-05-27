@@ -12,6 +12,7 @@ class ShellSidebar extends StatefulWidget {
   final String userUid;
   final String currentRole;
   final bool showSettings;
+  final double width;
   final void Function(ShellPage) onSelectPage;
   final VoidCallback onLogout;
 
@@ -24,6 +25,7 @@ class ShellSidebar extends StatefulWidget {
     required this.userUid,
     required this.currentRole,
     required this.showSettings,
+    this.width = 240,
     required this.onSelectPage,
     required this.onLogout,
   });
@@ -42,36 +44,100 @@ class _ShellSidebarState extends State<ShellSidebar> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 240,
+      width: widget.width,
       color: zIconRail,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    kAppName,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 15,
-                      letterSpacing: 0.2,
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: zAccent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text(
+                          'Q',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              kAppName,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 15,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Aman Infra Developer',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white54,
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    kAppTagline,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      height: 1.4,
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.10),
+                      ),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Client Workspace',
+                          style: TextStyle(
+                            color: Colors.white54,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          kAppTagline,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -148,43 +214,11 @@ class _ShellSidebarState extends State<ShellSidebar> {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+      child: _SidebarNavTile(
+        icon: Icons.dashboard_outlined,
+        label: 'Dashboard',
+        selected: selected,
         onTap: () => widget.onSelectPage(ShellPage.dashboard),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            color: selected
-                ? Colors.white.withValues(alpha: 0.10)
-                : Colors.transparent,
-            border: Border.all(
-              color: selected
-                  ? Colors.white.withValues(alpha: 0.16)
-                  : Colors.transparent,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.dashboard_outlined,
-                size: 18,
-                color: selected ? Colors.white : Colors.white70,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Dashboard',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: selected ? Colors.white : Colors.white70,
-                    fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -194,43 +228,11 @@ class _ShellSidebarState extends State<ShellSidebar> {
 
     return Padding(
       padding: const EdgeInsets.only(top: 2),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+      child: _SidebarNavTile(
+        icon: Icons.settings_outlined,
+        label: 'Settings',
+        selected: selected,
         onTap: () => widget.onSelectPage(ShellPage.settingsGeneral),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            color: selected
-                ? Colors.white.withValues(alpha: 0.10)
-                : Colors.transparent,
-            border: Border.all(
-              color: selected
-                  ? Colors.white.withValues(alpha: 0.16)
-                  : Colors.transparent,
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.settings_outlined,
-                size: 18,
-                color: selected ? Colors.white : Colors.white70,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Settings',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: selected ? Colors.white : Colors.white70,
-                    fontWeight: selected ? FontWeight.w900 : FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -255,8 +257,17 @@ class _ShellSidebarState extends State<ShellSidebar> {
         ),
         child: Column(
           children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(10),
+            _SidebarNavTile(
+              icon: group.icon,
+              label: group.title,
+              selected: hasActiveChild,
+              trailing: Icon(
+                expanded
+                    ? Icons.keyboard_arrow_down
+                    : Icons.keyboard_arrow_right,
+                color: Colors.white60,
+                size: 16,
+              ),
               onTap: () {
                 setState(() {
                   if (expanded) {
@@ -266,41 +277,6 @@ class _ShellSidebarState extends State<ShellSidebar> {
                   }
                 });
               },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      group.icon,
-                      size: 18,
-                      color: hasActiveChild ? Colors.white : Colors.white70,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        group.title,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: hasActiveChild ? Colors.white : Colors.white70,
-                          fontWeight: hasActiveChild
-                              ? FontWeight.w900
-                              : FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Icon(
-                      expanded
-                          ? Icons.keyboard_arrow_down
-                          : Icons.keyboard_arrow_right,
-                      color: Colors.white60,
-                      size: 16,
-                    ),
-                  ],
-                ),
-              ),
             ),
             AnimatedCrossFade(
               duration: const Duration(milliseconds: 180),
@@ -332,45 +308,15 @@ class _ShellSidebarState extends State<ShellSidebar> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 1),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+      child: _SidebarNavTile(
+        icon: page.icon,
+        label: page.label,
+        selected: selected,
+        dense: true,
+        trailing: page == ShellPage.salesInquiries && widget.canInquiries
+            ? _inquiryBadge(selected: selected)
+            : null,
         onTap: () => widget.onSelectPage(page),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected
-                ? Colors.white
-                : Colors.white.withValues(alpha: 0.03),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.05),
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                page.icon,
-                size: 16,
-                color: selected ? zBlue : Colors.white70,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  page.label,
-                  style: TextStyle(
-                    color: selected ? zText : Colors.white70,
-                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                    fontSize: 11.5,
-                  ),
-                ),
-              ),
-              if (page == ShellPage.salesInquiries && widget.canInquiries)
-                _inquiryBadge(selected: selected),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -406,6 +352,107 @@ class _ShellSidebarState extends State<ShellSidebar> {
           ),
         );
       },
+    );
+  }
+}
+
+class _SidebarNavTile extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final bool dense;
+  final Widget? trailing;
+  final VoidCallback onTap;
+
+  const _SidebarNavTile({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.dense = false,
+    this.trailing,
+  });
+
+  @override
+  State<_SidebarNavTile> createState() => _SidebarNavTileState();
+}
+
+class _SidebarNavTileState extends State<_SidebarNavTile> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = widget.selected;
+    final dense = widget.dense;
+    final bg = selected
+        ? (dense ? Colors.white : Colors.white.withValues(alpha: 0.11))
+        : (_hovered
+              ? Colors.white.withValues(alpha: 0.08)
+              : (dense
+                    ? Colors.white.withValues(alpha: 0.025)
+                    : Colors.transparent));
+    final fg = selected && dense ? zText : Colors.white;
+    final muted = selected ? fg : Colors.white70;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(dense ? 8 : 10),
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOutCubic,
+          transform: Matrix4.translationValues(
+            _hovered && !selected ? 2 : 0,
+            0,
+            0,
+          ),
+          padding: EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: dense ? 6 : 7,
+          ),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(dense ? 8 : 10),
+            border: Border.all(
+              color: selected
+                  ? (dense
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.16))
+                  : Colors.white.withValues(alpha: _hovered ? 0.08 : 0.0),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                widget.icon,
+                size: dense ? 15.5 : 18,
+                color: selected && dense ? zBlue : muted,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  widget.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: muted,
+                    fontWeight: selected
+                        ? (dense ? FontWeight.w800 : FontWeight.w900)
+                        : FontWeight.w600,
+                    fontSize: dense ? 11.2 : 12,
+                  ),
+                ),
+              ),
+              if (widget.trailing != null) ...[
+                const SizedBox(width: 6),
+                widget.trailing!,
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

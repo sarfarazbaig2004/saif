@@ -2,19 +2,22 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/app/aman_app_config.dart';
 
-const Color zTealTop = Color(0xFF0F6A6C);
-const Color zDarkBar = Color(0xFF1E293B);
+const Color zPrimary = Color(0xFF0F172A);
+const Color zAccent = Color(0xFFF97316);
+const Color zAppBg = Color(0xFFF8FAFC);
+const Color zTealTop = zAccent;
+const Color zDarkBar = zPrimary;
 const Color zIconRail = Color(0xFF0F172A);
 const Color zSidebarBg = Color(0xFFF8FAFC);
-const Color zCanvasBg = Color(0xFFF3F6FB);
+const Color zCanvasBg = zAppBg;
 const Color zBorder = Color(0xFFE2E8F0);
-const Color zText = Color(0xFF0F172A);
+const Color zText = zPrimary;
 const Color zMuted = Color(0xFF64748B);
 
-const Color zBlue = Color(0xFF2563EB);
-const Color zBlueDark = Color(0xFF1D4ED8);
-const Color zBlueDeep = Color(0xFF1E40AF);
-const Color zBlueSoft = Color(0xFFEFF6FF);
+const Color zBlue = zAccent;
+const Color zBlueDark = Color(0xFFEA580C);
+const Color zBlueDeep = Color(0xFFC2410C);
+const Color zBlueSoft = Color(0xFFFFF7ED);
 
 const Color zSuccess = Color(0xFF16A34A);
 const Color zSuccessSoft = Color(0xFFDCFCE7);
@@ -31,10 +34,10 @@ const Color zDangerSoft = Color(0xFFFEE2E2);
 const Color zInfo = Color(0xFF0EA5E9);
 const Color zInfoSoft = Color(0xFFE0F2FE);
 
-const Color zWarning = Color(0xFFD97706);
+const Color zWarning = Color(0xFFF59E0B);
 const Color zWarningSoft = Color(0xFFFFEDD5);
 
-const Color zLoginBg = Color(0xFFF5F8FE);
+const Color zLoginBg = zAppBg;
 const Color zSurface = Colors.white;
 const Color zSurfaceSoft = Color(0xFFF8FAFC);
 
@@ -77,10 +80,10 @@ MaterialColor createMaterialColor(Color color) {
 
 ThemeData buildQuikTheme() {
   final colorScheme = ColorScheme.fromSeed(
-    seedColor: zBlue,
+    seedColor: zPrimary,
     brightness: Brightness.light,
-    primary: zBlue,
-    secondary: zTealTop,
+    primary: zPrimary,
+    secondary: zAccent,
     surface: zSurface,
     error: zDanger,
   );
@@ -89,7 +92,7 @@ ThemeData buildQuikTheme() {
     useMaterial3: true,
     brightness: Brightness.light,
     scaffoldBackgroundColor: zCanvasBg,
-    primarySwatch: createMaterialColor(zBlue),
+    primarySwatch: createMaterialColor(zPrimary),
     colorScheme: colorScheme,
     fontFamily: 'Inter',
   );

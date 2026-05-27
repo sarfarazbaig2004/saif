@@ -3,7 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:QUIK/core/app/aman_app_config.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/dashboard/dashboard_charts.dart';
 import 'package:QUIK/modules/dashboard/dashboard_service.dart';
 import 'package:QUIK/modules/dashboard/dashboard_widgets.dart';
@@ -102,7 +104,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final tenantId = _activeTenantId.toLowerCase();
 
     if (tenantId == 'aman-infra' || tenantId.contains('aman')) {
-      return 'AMAN Infra Developer ERP Workspace';
+      return AmanAppConfig.workspaceName;
     }
 
     final cleanName = widget.userName.trim();
@@ -120,7 +122,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: zAppBg,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -166,19 +168,48 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Welcome $_workspaceDisplayName',
-          style: const TextStyle(
-            fontSize: 26,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
-            letterSpacing: -0.5,
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: zBorder),
           ),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Here is your live business overview.',
-          style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: zBlueSoft,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.apartment_rounded, color: zAccent),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _workspaceDisplayName,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: zText,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'QUIK ERP operational overview for production, finance, inventory, purchase and team activity.',
+                      style: TextStyle(fontSize: 14, color: zMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -222,7 +253,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   title: 'Total Revenue',
                   value: formatter.format(data.totalRevenue),
                   icon: Icons.account_balance_wallet_outlined,
-                  color: const Color(0xFF3B82F6),
+                  color: zAccent,
                   trendText: 'Live Data',
                   isPositive: true,
                 ),

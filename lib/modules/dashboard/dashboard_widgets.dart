@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/theme/app_theme.dart';
+
 /// -----------------------------------------------------------------
 /// 1. DASHBOARD CARD
 /// Reusable container wrapper with a consistent standard ERP styling.
@@ -22,11 +24,11 @@ class DashboardCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: zBorder),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+            color: zText.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -44,7 +46,7 @@ class DashboardCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
-                  color: Color(0xFF1E293B),
+                  color: zText,
                 ),
               ),
               if (trailing != null) trailing!,
@@ -115,11 +117,11 @@ class KpiCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: zBorder),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.02),
+            color: zText.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -137,7 +139,7 @@ class KpiCard extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF64748B),
+                    color: zMuted,
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -146,10 +148,10 @@ class KpiCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: zBlueSoft,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(icon, size: 18, color: color),
+                child: Icon(icon, size: 18, color: zAccent),
               ),
             ],
           ),
@@ -159,7 +161,7 @@ class KpiCard extends StatelessWidget {
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF0F172A),
+              color: zText,
               letterSpacing: -0.5,
             ),
           ),
@@ -217,7 +219,7 @@ class ActionCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 28, color: const Color(0xFF3B82F6)),
+              Icon(icon, size: 28, color: zAccent),
               const SizedBox(height: 12),
               Text(
                 label,
