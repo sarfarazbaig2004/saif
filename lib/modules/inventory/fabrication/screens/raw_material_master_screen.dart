@@ -48,7 +48,7 @@ class _RawMaterialMasterScreenState extends State<RawMaterialMasterScreen> {
     }
 
     return StreamBuilder<List<RawMaterialModel>>(
-      stream: _repository.watchRawMaterials(),
+      stream: _repository.watchRawMaterials(activeOnly:true),
       builder: (context, snapshot) {
         final materials = (snapshot.data ?? const <RawMaterialModel>[])
             .where(_matches)
@@ -211,73 +211,76 @@ class _RawMaterialTable extends StatelessWidget {
       child: Scrollbar(
         thumbVisibility: true,
         child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columnSpacing: 18,
-            columns: const [
-              DataColumn(label: Text('Material Code')),
-              DataColumn(label: Text('Description / Thickness')),
-              DataColumn(label: Text('Grade / IS')),
-              DataColumn(label: Text('Length')),
-              DataColumn(label: Text('Unit Weight')),
-              DataColumn(label: Text('UOM')),
-              DataColumn(label: Text('Category')),
-              DataColumn(label: Text('Product Family')),
-              DataColumn(label: Text('Reorder Level')),
-              DataColumn(label: Text('Remarks')),
-              DataColumn(label: Text('')),
-            ],
-            rows: materials
-                .map(
-                  (material) => DataRow(
-                    cells: [
-                      DataCell(Text(material.materialCode)),
-                      DataCell(
-                        SizedBox(
-                          width: 260,
-                          child: Text(
-                            material.descriptionThickness,
-                            overflow: TextOverflow.ellipsis,
+          scrollDirection: Axis.vertical,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columnSpacing: 18,
+              columns: const [
+                DataColumn(label: Text('Material Code')),
+                DataColumn(label: Text('Description / Thickness')),
+                DataColumn(label: Text('Grade / IS')),
+                DataColumn(label: Text('Length')),
+                DataColumn(label: Text('Unit Weight')),
+                DataColumn(label: Text('UOM')),
+                DataColumn(label: Text('Category')),
+                DataColumn(label: Text('Product Family')),
+                DataColumn(label: Text('Reorder Level')),
+                DataColumn(label: Text('Remarks')),
+                DataColumn(label: Text('')),
+              ],
+              rows: materials
+                  .map(
+                    (material) => DataRow(
+                      cells: [
+                        DataCell(Text(material.materialCode)),
+                        DataCell(
+                          SizedBox(
+                            width: 260,
+                            child: Text(
+                              material.descriptionThickness,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
-                      ),
-                      DataCell(Text(material.gradeIs)),
-                      DataCell(Text(_number(material.length))),
-                      DataCell(Text(_number(material.unitWeight))),
-                      DataCell(Text(material.uom)),
-                      DataCell(Text(material.category)),
-                      DataCell(Text(material.productFamily)),
-                      DataCell(Text(_number(material.reorderLevel))),
-                      DataCell(
-                        SizedBox(
-                          width: 220,
-                          child: Text(
-                            material.remarks,
-                            overflow: TextOverflow.ellipsis,
+                        DataCell(Text(material.gradeIs)),
+                        DataCell(Text(_number(material.length))),
+                        DataCell(Text(_number(material.unitWeight))),
+                        DataCell(Text(material.uom)),
+                        DataCell(Text(material.category)),
+                        DataCell(Text(material.productFamily)),
+                        DataCell(Text(_number(material.reorderLevel))),
+                        DataCell(
+                          SizedBox(
+                            width: 220,
+                            child: Text(
+                              material.remarks,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
-                      ),
-                      DataCell(
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              tooltip: 'Edit',
-                              onPressed: () => onEdit(material),
-                              icon: const Icon(Icons.edit_outlined),
-                            ),
-                            IconButton(
-                              tooltip: 'Delete',
-                              onPressed: () => onDelete(material),
-                              icon: const Icon(Icons.delete_outline),
-                            ),
-                          ],
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: 'Edit',
+                                onPressed: () => onEdit(material),
+                                icon: const Icon(Icons.edit_outlined),
+                              ),
+                              IconButton(
+                                tooltip: 'Delete',
+                                onPressed: () => onDelete(material),
+                                icon: const Icon(Icons.delete_outline),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                )
-                .toList(growable: false),
+                      ],
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
           ),
         ),
       ),

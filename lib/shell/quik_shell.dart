@@ -2,7 +2,7 @@ import 'package:QUIK/shell/sidebar_group.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
+import 'package:QUIK/shell/widgets/shell_common_widgets.dart';
 import 'package:QUIK/core/inventory/providers/inventory_config_provider.dart';
 import 'package:QUIK/core/modules/module_registry.dart';
 import 'package:QUIK/core/modules/providers/module_access_provider.dart';
@@ -10,7 +10,6 @@ import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/administration/inventory/screen_inventory_profile_settings.dart';
 import 'package:QUIK/modules/administration/compliance/screens/compliance_legal_screen.dart';
 import 'package:QUIK/modules/administration/modules/screen_company_modules.dart';
-import 'package:QUIK/modules/administration/join_requests/join_requests_screen.dart';
 import 'package:QUIK/modules/administration/users/screen_user_management.dart';
 import 'package:QUIK/modules/crm/customers/screens_customer_list.dart';
 import 'package:QUIK/modules/dashboard/dashboard_screen.dart';
@@ -389,8 +388,6 @@ class _QuikShellState extends State<QuikShell> {
         return _hasPermission('administration', 'branches');
       case ShellPage.adminAuditLogs:
         return _hasPermission('administration', 'auditLogs');
-      case ShellPage.adminJoinRequests:
-        return isAdminOrManager;
     }
   }
 
@@ -543,7 +540,6 @@ class _QuikShellState extends State<QuikShell> {
             ShellPage.adminModules,
             ShellPage.adminInventoryProfile,
             ShellPage.adminComplianceLegal,
-            ShellPage.adminJoinRequests,
           ],
         ),
       ];
@@ -701,7 +697,6 @@ class _QuikShellState extends State<QuikShell> {
           ShellPage.adminCompanyProfile,
           ShellPage.adminBranches,
           ShellPage.adminAuditLogs,
-          ShellPage.adminJoinRequests,
         ],
       ),
     ];
@@ -808,9 +803,6 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.dispatchShipmentTracking:
       case ShellPage.dispatchDelivered:
       case ShellPage.salesQuotations:
-      case ShellPage.salesFollowUps:
-      case ShellPage.salesTasks:
-      case ShellPage.salesMeetings:
       case ShellPage.adminUsers:
       case ShellPage.adminModules:
       case ShellPage.adminInventoryProfile:
@@ -834,7 +826,6 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.productionEntries:
       case ShellPage.hrHome:
       case ShellPage.reportsSales:
-      case ShellPage.adminJoinRequests:
         return true;
       default:
         return false;
@@ -1214,15 +1205,6 @@ class _QuikShellState extends State<QuikShell> {
           child: SalesOrderListScreen(companyId: widget.companyId),
         );
 
-      case ShellPage.salesFollowUps:
-        return const _SalesFollowupsWorkingPage();
-
-      case ShellPage.salesTasks:
-        return const _SalesTasksWorkingPage();
-
-      case ShellPage.salesMeetings:
-        return const _SalesMeetingsWorkingPage();
-
       case ShellPage.adminUsers:
         return Padding(
           padding: const EdgeInsets.all(10),
@@ -1259,12 +1241,6 @@ class _QuikShellState extends State<QuikShell> {
             currentUserEmail: widget.userEmail,
             currentRole: _currentRole,
           ),
-        );
-
-      case ShellPage.adminJoinRequests:
-        return Padding(
-          padding: const EdgeInsets.all(10),
-          child: JoinRequestsScreen(companyId: widget.companyId),
         );
 
       case ShellPage.financeProforma:
@@ -1470,7 +1446,7 @@ class _QuikShellState extends State<QuikShell> {
         Row(
           children: [
             Expanded(
-              child: _overviewCard(
+              child: overviewCard(
                 title: 'Module Status',
                 value: allowed
                     ? (implemented ? 'Ready to open' : 'Planned')
@@ -1490,7 +1466,7 @@ class _QuikShellState extends State<QuikShell> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _overviewCard(
+              child: overviewCard(
                 title: 'Action',
                 value: implemented ? 'Open module' : 'Coming soon',
                 icon: implemented
@@ -1502,7 +1478,7 @@ class _QuikShellState extends State<QuikShell> {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: _overviewCard(
+              child: overviewCard(
                 title: 'Department',
                 value: sectionName,
                 icon: Icons.apartment_outlined,
@@ -1552,7 +1528,7 @@ class _QuikShellState extends State<QuikShell> {
                         runSpacing: 8,
                         children: _moduleTags(
                           page,
-                        ).map((e) => _moduleTag(e)).toList(),
+                        ).map((e) => moduleTag(e)).toList(),
                       ),
                       const Spacer(),
                     ],
@@ -1565,7 +1541,7 @@ class _QuikShellState extends State<QuikShell> {
                 child: Column(
                   children: [
                     Expanded(
-                      child: _quickPanel(
+                      child: quickPanel(
                         title: 'Recommended Subfeatures',
                         lines: _moduleRecommendations(page),
                         icon: Icons.auto_awesome_outlined,
@@ -1573,7 +1549,7 @@ class _QuikShellState extends State<QuikShell> {
                     ),
                     const SizedBox(height: 8),
                     Expanded(
-                      child: _quickPanel(
+                      child: quickPanel(
                         title: 'Implementation Note',
                         lines: [
                           implemented
@@ -1688,149 +1664,8 @@ class _QuikShellState extends State<QuikShell> {
     }
   }
 
-  Widget _moduleTag(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: zBorder),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: zText,
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
 
-  Widget _overviewCard({
-    required String title,
-    required String value,
-    required IconData icon,
-    required Color tint,
-    required Color iconColor,
-  }) {
-    return Container(
-      height: 76,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: zBorder),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: tint,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, size: 16, color: iconColor),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: zMuted,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w900,
-              color: zText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _quickPanel({
-    required String title,
-    required List<String> lines,
-    required IconData icon,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: zBorder),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: zBlue, size: 16),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: zText,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 13,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: lines
-                  .map(
-                    (e) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 4),
-                            child: Icon(Icons.circle, size: 5, color: zBlue),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              e,
-                              style: const TextStyle(
-                                color: zMuted,
-                                fontSize: 11.5,
-                                height: 1.45,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ignore: unused_element
   Widget _homeDashboardLive() {
@@ -1865,7 +1700,7 @@ class _QuikShellState extends State<QuikShell> {
           Row(
             children: const [
               Expanded(
-                child: _KpiBox(
+                child: KpiBox(
                   title: 'Sales Modules',
                   value: '6',
                   icon: Icons.trending_up_outlined,
@@ -1873,7 +1708,7 @@ class _QuikShellState extends State<QuikShell> {
               ),
               SizedBox(width: 8),
               Expanded(
-                child: _KpiBox(
+                child: KpiBox(
                   title: 'CRM Modules',
                   value: '4',
                   icon: Icons.people_outline,
@@ -1881,7 +1716,7 @@ class _QuikShellState extends State<QuikShell> {
               ),
               SizedBox(width: 8),
               Expanded(
-                child: _KpiBox(
+                child: KpiBox(
                   title: 'Inventory Modules',
                   value: '6',
                   icon: Icons.inventory_2_outlined,
@@ -1889,7 +1724,7 @@ class _QuikShellState extends State<QuikShell> {
               ),
               SizedBox(width: 8),
               Expanded(
-                child: _KpiBox(
+                child: KpiBox(
                   title: 'Reports',
                   value: '5',
                   icon: Icons.assessment_outlined,
@@ -1902,7 +1737,7 @@ class _QuikShellState extends State<QuikShell> {
             child: Row(
               children: const [
                 Expanded(
-                  child: _Panel(
+                  child: Panel(
                     title: 'Workspace Structure',
                     emptyText: 'AMAN Infra ERP modules are ready in sidebar',
                     emptyIcon: Icons.dashboard_customize_outlined,
@@ -1910,7 +1745,7 @@ class _QuikShellState extends State<QuikShell> {
                 ),
                 SizedBox(width: 8),
                 Expanded(
-                  child: _Panel(
+                  child: Panel(
                     title: 'Next Build Suggestion',
                     emptyText:
                         'Start with Follow-ups, Stock Summary and Vendors',
@@ -1979,7 +1814,7 @@ class _QuikShellState extends State<QuikShell> {
             Row(
               children: [
                 Expanded(
-                  child: _KpiBox(
+                  child: KpiBox(
                     title: 'Open Deals',
                     value: '$openDeals',
                     icon: Icons.folder_open_outlined,
@@ -1987,7 +1822,7 @@ class _QuikShellState extends State<QuikShell> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _KpiBox(
+                  child: KpiBox(
                     title: 'Untouched',
                     value: '$untouched',
                     icon: Icons.mark_email_unread_outlined,
@@ -1995,7 +1830,7 @@ class _QuikShellState extends State<QuikShell> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _KpiBox(
+                  child: KpiBox(
                     title: 'Follow-ups Today',
                     value: '$followupsToday',
                     icon: Icons.event_repeat_outlined,
@@ -2003,7 +1838,7 @@ class _QuikShellState extends State<QuikShell> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: _KpiBox(
+                  child: KpiBox(
                     title: 'My Inquiries',
                     value: '$total',
                     icon: Icons.insights_outlined,
@@ -2016,7 +1851,7 @@ class _QuikShellState extends State<QuikShell> {
               child: Row(
                 children: const [
                   Expanded(
-                    child: _Panel(
+                    child: Panel(
                       title: 'My Open Tasks',
                       emptyText: 'No open tasks',
                       emptyIcon: Icons.task_alt,
@@ -2024,7 +1859,7 @@ class _QuikShellState extends State<QuikShell> {
                   ),
                   SizedBox(width: 8),
                   Expanded(
-                    child: _Panel(
+                    child: Panel(
                       title: 'My Meetings',
                       emptyText: 'No meetings scheduled',
                       emptyIcon: Icons.event_available,
@@ -2040,905 +1875,5 @@ class _QuikShellState extends State<QuikShell> {
   }
 }
 
-class _KpiBox extends StatelessWidget {
-  final String title;
-  final String value;
-  final IconData icon;
 
-  const _KpiBox({required this.title, required this.value, required this.icon});
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 70,
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: zBorder),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 16, color: zMuted),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: zMuted,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: zText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Panel extends StatelessWidget {
-  final String title;
-  final String emptyText;
-  final IconData emptyIcon;
-
-  const _Panel({
-    required this.title,
-    required this.emptyText,
-    required this.emptyIcon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: zBorder),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: zBorder)),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    color: zText,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(emptyIcon, color: zMuted, size: 24),
-                    const SizedBox(height: 6),
-                    Text(
-                      emptyText,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: zMuted,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SalesFollowupsWorkingPage extends StatefulWidget {
-  const _SalesFollowupsWorkingPage();
-
-  @override
-  State<_SalesFollowupsWorkingPage> createState() =>
-      _SalesFollowupsWorkingPageState();
-}
-
-class _SalesFollowupsWorkingPageState
-    extends State<_SalesFollowupsWorkingPage> {
-  final _search = TextEditingController();
-  final List<Map<String, String>> _items = [
-    {
-      'customer': 'Sample Customer',
-      'subject': 'Quotation follow-up',
-      'owner': 'Sales Team',
-      'status': 'Open',
-      'priority': 'High',
-      'remarks': 'Call customer and confirm quotation approval.',
-    },
-  ];
-
-  String _status = 'All';
-
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
-
-  List<Map<String, String>> get _filtered {
-    final q = _search.text.trim().toLowerCase();
-    return _items.where((e) {
-      final statusOk = _status == 'All' || e['status'] == _status;
-      final text = e.values.join(' ').toLowerCase();
-      return statusOk && (q.isEmpty || text.contains(q));
-    }).toList();
-  }
-
-  Future<void> _openForm([Map<String, String>? item]) async {
-    final customer = TextEditingController(text: item?['customer'] ?? '');
-    final subject = TextEditingController(text: item?['subject'] ?? '');
-    final owner = TextEditingController(text: item?['owner'] ?? '');
-    final remarks = TextEditingController(text: item?['remarks'] ?? '');
-    String status = item?['status'] ?? 'Open';
-    String priority = item?['priority'] ?? 'Medium';
-
-    await showDialog<void>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setLocal) => AlertDialog(
-          title: Text(item == null ? 'Add Follow-up' : 'Edit Follow-up'),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _field(customer, 'Customer'),
-                _field(subject, 'Subject'),
-                _field(owner, 'Assigned To'),
-                _field(remarks, 'Remarks', lines: 3),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: status,
-                        decoration: _decor('Status'),
-                        items: ['Open', 'Done', 'Overdue']
-                            .map(
-                              (e) => DropdownMenuItem(value: e, child: Text(e)),
-                            )
-                            .toList(),
-                        onChanged: (v) => setLocal(() => status = v ?? status),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: priority,
-                        decoration: _decor('Priority'),
-                        items: ['Low', 'Medium', 'High', 'Urgent']
-                            .map(
-                              (e) => DropdownMenuItem(value: e, child: Text(e)),
-                            )
-                            .toList(),
-                        onChanged: (v) =>
-                            setLocal(() => priority = v ?? priority),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final data = {
-                  'customer': customer.text.trim(),
-                  'subject': subject.text.trim(),
-                  'owner': owner.text.trim(),
-                  'status': status,
-                  'priority': priority,
-                  'remarks': remarks.text.trim(),
-                };
-
-                setState(() {
-                  if (item == null) {
-                    _items.insert(0, data);
-                  } else {
-                    item
-                      ..clear()
-                      ..addAll(data);
-                  }
-                });
-
-                Navigator.pop(context);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _decor(String label) => InputDecoration(
-    labelText: label,
-    filled: true,
-    fillColor: Colors.white,
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-  );
-
-  Widget _field(TextEditingController c, String label, {int lines = 1}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: c,
-        maxLines: lines,
-        decoration: _decor(label),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = _filtered;
-
-    return Scaffold(
-      backgroundColor: const Color(0xfff4f6fb),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Follow-ups',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Track customer calls, quotation reminders and next actions.',
-                        style: TextStyle(color: Color(0xff64748b)),
-                      ),
-                    ],
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: () => _openForm(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Follow-up'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _search,
-                    onChanged: (_) => setState(() {}),
-                    decoration: _decor('Search customer, subject, owner'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                DropdownButton<String>(
-                  value: _status,
-                  items: ['All', 'Open', 'Done', 'Overdue']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _status = v ?? 'All'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: rows.isEmpty
-                  ? const Center(child: Text('No follow-ups found.'))
-                  : ListView.separated(
-                      itemCount: rows.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (_, i) => _card(rows[i]),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _card(Map<String, String> e) {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(18),
-        leading: const CircleAvatar(child: Icon(Icons.call)),
-        title: Text(
-          e['subject'] ?? '-',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        subtitle: Text(
-          '${e['customer'] ?? '-'} • Assigned: ${e['owner'] ?? '-'}\n'
-          'Priority: ${e['priority'] ?? '-'}\n${e['remarks'] ?? ''}',
-        ),
-        trailing: Wrap(
-          spacing: 6,
-          children: [
-            Chip(label: Text(e['status'] ?? 'Open')),
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _openForm(e),
-            ),
-            IconButton(
-              icon: const Icon(Icons.check_circle_outline),
-              onPressed: () => setState(() => e['status'] = 'Done'),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () => setState(() => _items.remove(e)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SalesTasksWorkingPage extends StatefulWidget {
-  const _SalesTasksWorkingPage();
-
-  @override
-  State<_SalesTasksWorkingPage> createState() => _SalesTasksWorkingPageState();
-}
-
-class _SalesTasksWorkingPageState extends State<_SalesTasksWorkingPage> {
-  final _search = TextEditingController();
-  String _status = 'All';
-
-  final List<Map<String, String>> _items = [
-    {
-      'title': 'Prepare quotation follow-up',
-      'customer': 'Sample Customer',
-      'owner': 'Sales Team',
-      'status': 'Open',
-      'priority': 'High',
-      'remarks': 'Check quotation status and update next action.',
-    },
-  ];
-
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
-
-  List<Map<String, String>> get _filtered {
-    final q = _search.text.trim().toLowerCase();
-    return _items.where((e) {
-      final statusOk = _status == 'All' || e['status'] == _status;
-      final text = e.values.join(' ').toLowerCase();
-      return statusOk && (q.isEmpty || text.contains(q));
-    }).toList();
-  }
-
-  Future<void> _openForm([Map<String, String>? item]) async {
-    final title = TextEditingController(text: item?['title'] ?? '');
-    final customer = TextEditingController(text: item?['customer'] ?? '');
-    final owner = TextEditingController(text: item?['owner'] ?? '');
-    final remarks = TextEditingController(text: item?['remarks'] ?? '');
-    String status = item?['status'] ?? 'Open';
-    String priority = item?['priority'] ?? 'Medium';
-
-    await showDialog<void>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setLocal) => AlertDialog(
-          title: Text(item == null ? 'Add Sales Task' : 'Edit Sales Task'),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _field(title, 'Task Title'),
-                _field(customer, 'Customer / Project'),
-                _field(owner, 'Assigned To'),
-                _field(remarks, 'Remarks', lines: 3),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: status,
-                        decoration: _decor('Status'),
-                        items: ['Open', 'In Progress', 'Done', 'Blocked']
-                            .map(
-                              (e) => DropdownMenuItem(value: e, child: Text(e)),
-                            )
-                            .toList(),
-                        onChanged: (v) => setLocal(() => status = v ?? status),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: priority,
-                        decoration: _decor('Priority'),
-                        items: ['Low', 'Medium', 'High', 'Urgent']
-                            .map(
-                              (e) => DropdownMenuItem(value: e, child: Text(e)),
-                            )
-                            .toList(),
-                        onChanged: (v) =>
-                            setLocal(() => priority = v ?? priority),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final data = {
-                  'title': title.text.trim(),
-                  'customer': customer.text.trim(),
-                  'owner': owner.text.trim(),
-                  'status': status,
-                  'priority': priority,
-                  'remarks': remarks.text.trim(),
-                };
-
-                setState(() {
-                  if (item == null) {
-                    _items.insert(0, data);
-                  } else {
-                    item
-                      ..clear()
-                      ..addAll(data);
-                  }
-                });
-
-                Navigator.pop(context);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _decor(String label) => InputDecoration(
-    labelText: label,
-    filled: true,
-    fillColor: Colors.white,
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-  );
-
-  Widget _field(TextEditingController c, String label, {int lines = 1}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: c,
-        maxLines: lines,
-        decoration: _decor(label),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = _filtered;
-
-    return Scaffold(
-      backgroundColor: const Color(0xfff4f6fb),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Tasks',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Manage sales tasks, assignments and pending actions.',
-                        style: TextStyle(color: Color(0xff64748b)),
-                      ),
-                    ],
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: () => _openForm(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Task'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _search,
-                    onChanged: (_) => setState(() {}),
-                    decoration: _decor('Search task, customer, owner, remarks'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                DropdownButton<String>(
-                  value: _status,
-                  items: ['All', 'Open', 'In Progress', 'Done', 'Blocked']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _status = v ?? 'All'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: rows.isEmpty
-                  ? const Center(child: Text('No tasks found.'))
-                  : ListView.separated(
-                      itemCount: rows.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (_, i) => _card(rows[i]),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _card(Map<String, String> e) {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(18),
-        leading: const CircleAvatar(child: Icon(Icons.task_alt)),
-        title: Text(
-          e['title'] ?? '-',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        subtitle: Text(
-          '${e['customer'] ?? '-'} • Assigned: ${e['owner'] ?? '-'}\n'
-          'Priority: ${e['priority'] ?? '-'}\n${e['remarks'] ?? ''}',
-        ),
-        trailing: Wrap(
-          spacing: 6,
-          children: [
-            Chip(label: Text(e['status'] ?? 'Open')),
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _openForm(e),
-            ),
-            IconButton(
-              icon: const Icon(Icons.check_circle_outline),
-              onPressed: () => setState(() => e['status'] = 'Done'),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () => setState(() => _items.remove(e)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SalesMeetingsWorkingPage extends StatefulWidget {
-  const _SalesMeetingsWorkingPage();
-
-  @override
-  State<_SalesMeetingsWorkingPage> createState() =>
-      _SalesMeetingsWorkingPageState();
-}
-
-class _SalesMeetingsWorkingPageState extends State<_SalesMeetingsWorkingPage> {
-  final _search = TextEditingController();
-  String _status = 'All';
-
-  final List<Map<String, String>> _items = [
-    {
-      'title': 'Customer discussion',
-      'customer': 'Sample Customer',
-      'owner': 'Sales Team',
-      'status': 'Scheduled',
-      'mode': 'Online',
-      'remarks': 'Discuss quotation, delivery date and commercial terms.',
-    },
-  ];
-
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
-
-  List<Map<String, String>> get _filtered {
-    final q = _search.text.trim().toLowerCase();
-    return _items.where((e) {
-      final statusOk = _status == 'All' || e['status'] == _status;
-      final text = e.values.join(' ').toLowerCase();
-      return statusOk && (q.isEmpty || text.contains(q));
-    }).toList();
-  }
-
-  Future<void> _openForm([Map<String, String>? item]) async {
-    final title = TextEditingController(text: item?['title'] ?? '');
-    final customer = TextEditingController(text: item?['customer'] ?? '');
-    final owner = TextEditingController(text: item?['owner'] ?? '');
-    final remarks = TextEditingController(text: item?['remarks'] ?? '');
-    String status = item?['status'] ?? 'Scheduled';
-    String mode = item?['mode'] ?? 'Online';
-
-    await showDialog<void>(
-      context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setLocal) => AlertDialog(
-          title: Text(item == null ? 'Add Meeting' : 'Edit Meeting'),
-          content: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _field(title, 'Meeting Title'),
-                _field(customer, 'Customer / Project'),
-                _field(owner, 'Owner'),
-                _field(remarks, 'Agenda / Remarks', lines: 3),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: status,
-                        decoration: _decor('Status'),
-                        items: ['Scheduled', 'Completed', 'Cancelled']
-                            .map(
-                              (e) => DropdownMenuItem(value: e, child: Text(e)),
-                            )
-                            .toList(),
-                        onChanged: (v) => setLocal(() => status = v ?? status),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: mode,
-                        decoration: _decor('Mode'),
-                        items: ['Online', 'Office', 'Site Visit', 'Phone']
-                            .map(
-                              (e) => DropdownMenuItem(value: e, child: Text(e)),
-                            )
-                            .toList(),
-                        onChanged: (v) => setLocal(() => mode = v ?? mode),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                final data = {
-                  'title': title.text.trim(),
-                  'customer': customer.text.trim(),
-                  'owner': owner.text.trim(),
-                  'status': status,
-                  'mode': mode,
-                  'remarks': remarks.text.trim(),
-                };
-
-                setState(() {
-                  if (item == null) {
-                    _items.insert(0, data);
-                  } else {
-                    item
-                      ..clear()
-                      ..addAll(data);
-                  }
-                });
-
-                Navigator.pop(context);
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _decor(String label) => InputDecoration(
-    labelText: label,
-    filled: true,
-    fillColor: Colors.white,
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-  );
-
-  Widget _field(TextEditingController c, String label, {int lines = 1}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
-        controller: c,
-        maxLines: lines,
-        decoration: _decor(label),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = _filtered;
-
-    return Scaffold(
-      backgroundColor: const Color(0xfff4f6fb),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Meetings',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Plan customer meetings, site visits and commercial discussions.',
-                        style: TextStyle(color: Color(0xff64748b)),
-                      ),
-                    ],
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: () => _openForm(),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Meeting'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _search,
-                    onChanged: (_) => setState(() {}),
-                    decoration: _decor(
-                      'Search meeting, customer, owner, remarks',
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                DropdownButton<String>(
-                  value: _status,
-                  items: ['All', 'Scheduled', 'Completed', 'Cancelled']
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _status = v ?? 'All'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: rows.isEmpty
-                  ? const Center(child: Text('No meetings found.'))
-                  : ListView.separated(
-                      itemCount: rows.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (_, i) => _card(rows[i]),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _card(Map<String, String> e) {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(18),
-        leading: const CircleAvatar(child: Icon(Icons.groups)),
-        title: Text(
-          e['title'] ?? '-',
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        subtitle: Text(
-          '${e['customer'] ?? '-'} • Owner: ${e['owner'] ?? '-'}\n'
-          'Mode: ${e['mode'] ?? '-'}\n${e['remarks'] ?? ''}',
-        ),
-        trailing: Wrap(
-          spacing: 6,
-          children: [
-            Chip(label: Text(e['status'] ?? 'Scheduled')),
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () => _openForm(e),
-            ),
-            IconButton(
-              icon: const Icon(Icons.check_circle_outline),
-              onPressed: () => setState(() => e['status'] = 'Completed'),
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () => setState(() => _items.remove(e)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}

@@ -48,6 +48,24 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
 
   bool get isExportImport => widget.industry == 'export_import';
 
+  final List<String> _defaultRoles = [
+  UserRoles.admin,
+  UserRoles.manager,
+  UserRoles.sales,
+  UserRoles.service,
+  ];
+  final List<String> _defaultDepartments = [
+  'Sales',
+  'CRM',
+  'Inventory',
+  'Purchase',
+  'Dispatch',
+  'Finance',
+  'Administration',
+  'Management',
+  'Service',
+  ];
+
   final List<Map<String, dynamic>> _tenantDepartments = [];
   final List<Map<String, dynamic>> _tenantRoles = [];
   bool _isLoadingMetadata = false;
@@ -375,18 +393,38 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     }
   }
 
+  List<String> get availableRoles {
+  if (_tenantRoles.isNotEmpty) {
+    return _tenantRoles
+        .map(_roleKeyFromDoc)
+        .toList(growable: false);
+        }
+
+  return _defaultRoles;
+  }
+
+  List<String> get availableDepartments {
+  if (_tenantDepartments.isNotEmpty) {
+    return _tenantDepartments
+        .map(_departmentLabelFromDoc)
+        .toList(growable: false);
+        }
+
+  return _defaultDepartments;
+  }
+
   bool get _canCreateInvite {
-    if (_isLoadingMetadata) return false;
-    if (_tenantRoles.isEmpty || _tenantDepartments.isEmpty) return false;
-    if (!_tenantRoles.any((role) => _roleKeyFromDoc(role) == selectedRole)) {
-      return false;
+  if (_isLoadingMetadata) return false;
+
+  if (!availableRoles.contains(selectedRole)) {
+    return false;
     }
-    if (!_tenantDepartments.any(
-      (department) => _departmentLabelFromDoc(department) == selectedDepartment,
-    )) {
-      return false;
+
+  if (!availableDepartments.contains(selectedDepartment)) {
+    return false;
     }
-    return true;
+
+  return true;
   }
 
   Widget _buildTenantMetadataStatus() {
@@ -1305,9 +1343,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                             left: _buildDropdownField(
                               label: 'Role',
                               value: selectedRole,
-                              options: _tenantRoles
-                                  .map(_roleKeyFromDoc)
-                                  .toList(growable: false),
+                              options: availableRoles,
                               icon: Icons.admin_panel_settings_outlined,
                               labelBuilder: _roleLabelFromKey,
                               onChanged: (value) {
@@ -1321,9 +1357,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                             right: _buildDropdownField(
                               label: 'Department',
                               value: selectedDepartment,
-                              options: _tenantDepartments
-                                  .map(_departmentLabelFromDoc)
-                                  .toList(growable: false),
+                              options: availableDepartments,
                               icon: Icons.apartment_outlined,
                               onChanged: (value) {
                                 final department = value ?? selectedDepartment;
