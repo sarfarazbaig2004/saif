@@ -7,7 +7,7 @@ import 'package:QUIK/modules/administration/users/helpers/user_management_consta
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
 import 'package:QUIK/modules/administration/users/widgets/mini_badge.dart';
 
-typedef UserDoc = QueryDocumentSnapshot<Map<String, dynamic>>;
+typedef UserDoc = DocumentSnapshot<Map<String, dynamic>>;
 
 const Color _editPrimaryColor = Color(0xFF17324D);
 const Color _editAccentColor = Color(0xFF3B82F6);
@@ -35,7 +35,7 @@ Future<void> showEditUserDialog({
   })
   onSaveUser,
 }) async {
-  final data = doc.data();
+  final data = doc.data() ?? <String, dynamic>{};
   final bool isExportImport = industry == 'export_import';
 
   String selectedRole = _normalizeRoleValue(
@@ -125,12 +125,14 @@ Future<void> showEditUserDialog({
     (data['accessScope'] ?? AccessScope.company).toString(),
   );
 
+  final savedPermissions = Map<String, dynamic>.from(
+    data['permissions'] ?? const <String, dynamic>{},
+  );
+
   Map<String, dynamic> permissions = _buildUiPermissionState(
     role: selectedRole,
     isExportImport: isExportImport,
-    permissions: Map<String, dynamic>.from(
-      data['permissions'] ?? const <String, dynamic>{},
-    ),
+    permissions: savedPermissions,
   );
 
   final List<String> activeModules = isExportImport
@@ -156,12 +158,18 @@ Future<void> showEditUserDialog({
             });
 
             try {
+              final normalizedPermissions = _buildUiPermissionState(
+                role: selectedRole,
+                isExportImport: isExportImport,
+                permissions: permissions,
+              );
+
               await onSaveUser(
                 companyId: companyId,
                 userUid: doc.id,
                 role: selectedRole,
                 isActive: isDeleted ? false : isActive,
-                permissions: permissions,
+                permissions: normalizedPermissions,
                 department: selectedDepartment.trim(),
                 designation: selectedDesignation.trim(),
                 accessScope: selectedAccessScope.trim(),
@@ -323,11 +331,6 @@ Future<void> showEditUserDialog({
                                           selectedRole = _normalizeRoleValue(
                                             value,
                                           );
-                                          permissions = _buildUiPermissionState(
-                                            role: selectedRole,
-                                            isExportImport: isExportImport,
-                                            permissions: permissions,
-                                          );
                                         });
                                       },
                                     ),
@@ -446,6 +449,7 @@ Future<void> showEditUserDialog({
                                     _selectedPermissionCount(
                                       visiblePermissions,
                                       activeModules,
+                                      isExportImport: isExportImport,
                                     ),
                               ),
                             ),
@@ -454,24 +458,51 @@ Future<void> showEditUserDialog({
                               title: 'Module Permissions',
                               subtitle:
                                   'Permissions are aligned with QUIK ERP modules, submodules, and actions.',
-                              trailing: TextButton(
-                                onPressed: isSaving
-                                    ? null
-                                    : () {
-                                        setLocalState(() {
-                                          permissions = _buildUiPermissionState(
-                                            role: selectedRole,
-                                            isExportImport: isExportImport,
-                                            permissions:
-                                                _getIndustryDefaultPermissions(
-                                                  role: selectedRole,
-                                                  isExportImport:
-                                                      isExportImport,
-                                                ),
-                                          );
-                                        });
-                                      },
-                                child: const Text('Apply Role Defaults'),
+                              trailing: Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                alignment: WrapAlignment.end,
+                                children: [
+                                  TextButton(
+                                    onPressed: isSaving
+                                        ? null
+                                        : () {
+                                            setLocalState(() {
+                                              permissions =
+                                                  mergePermissionsWithCanonicalShape(
+                                                    _getIndustryDefaultPermissions(
+                                                      role: selectedRole,
+                                                      isExportImport:
+                                                          isExportImport,
+                                                    ),
+                                                  );
+                                            });
+                                          },
+                                    child: const Text('Apply Role Template'),
+                                  ),
+                                  TextButton(
+                                    onPressed: isSaving
+                                        ? null
+                                        : () {
+                                            setLocalState(() {
+                                              permissions =
+                                                  buildFullPermissions();
+                                            });
+                                          },
+                                    child: const Text('Select All'),
+                                  ),
+                                  TextButton(
+                                    onPressed: isSaving
+                                        ? null
+                                        : () {
+                                            setLocalState(() {
+                                              permissions =
+                                                  buildEmptyPermissions();
+                                            });
+                                          },
+                                    child: const Text('Deselect All'),
+                                  ),
+                                ],
                               ),
                               child: Column(
                                 children: activeModules.map((moduleKey) {
@@ -678,31 +709,33 @@ Map<String, dynamic> _getIndustryDefaultPermissions({
   required String role,
   required bool isExportImport,
 }) {
-  if (isExportImport) {
-    if (role.toLowerCase() == 'admin') {
-      return {
-        'dashboard': {'dashboard': true},
-        'crm': {'customers': true},
-        'finance': {
-          'taxInvoice': true,
-          'paymentReceived': true,
-          'outstanding': true,
-          'expenseEntries': true,
-        },
-        'reports': {
-          'salesReport': true,
-          'customerReport': true,
-          'paymentReport': true,
-        },
-      };
-    } else {
-      return {
-        'dashboard': {'dashboard': true},
-        'crm': {'customers': true},
-      };
+  final defaults = getDefaultPermissions(role);
+  if (!isExportImport) return defaults;
+
+  final normalized = mergePermissionsWithCanonicalShape(defaults);
+  final filtered = buildEmptyPermissions();
+
+  for (final moduleKey in ['dashboard', 'crm', 'finance', 'reports']) {
+    if (moduleKey == PermissionModules.dashboard) {
+      filtered[moduleKey] = Map<String, dynamic>.from(
+        normalized[moduleKey] as Map,
+      );
+      continue;
     }
+
+    final moduleMap = Map<String, dynamic>.from(normalized[moduleKey] as Map);
+    filtered[moduleKey] = {
+      for (final submoduleKey in _visibleSubmodulesForModule(
+        moduleKey: moduleKey,
+        isExportImport: isExportImport,
+      ))
+        submoduleKey: Map<String, dynamic>.from(
+          moduleMap[submoduleKey] as Map? ?? const <String, dynamic>{},
+        ),
+    };
   }
-  return getDefaultPermissions(role);
+
+  return mergePermissionsWithCanonicalShape(filtered);
 }
 
 Widget _buildHeaderCard(Map<String, dynamic> data) {
@@ -1002,10 +1035,12 @@ Widget _buildPermissionModuleCard({
   final selectedCount = _countEnabledActionsInModule(
     moduleKey: moduleKey,
     modulePermissions: modulePermissions,
+    isExportImport: isExportImport,
   );
   final totalCount = _countTotalActionsInModule(
     moduleKey: moduleKey,
     modulePermissions: modulePermissions,
+    isExportImport: isExportImport,
   );
 
   return Container(
@@ -1066,57 +1101,29 @@ Widget _buildPermissionModuleCard({
                       onActionChanged(moduleKey, null, action, value),
                 ),
               ]
-            : (permissionSubmoduleMap[moduleKey] ?? const <String>[])
-                  .where((submoduleKey) {
-                    if (isExportImport) {
-                      if (moduleKey == 'sales') return false;
-                      if (moduleKey == 'crm') {
-                        return submoduleKey == 'customers';
-                      }
-                      if (moduleKey == 'finance') {
-                        return [
-                          'taxInvoice',
-                          'paymentReceived',
-                          'outstanding',
-                          'expenseEntries',
-                        ].contains(submoduleKey);
-                      }
-                      if (moduleKey == 'reports') {
-                        return [
-                          'salesReport',
-                          'customerReport',
-                          'paymentReport',
-                        ].contains(submoduleKey);
-                      }
-                      return false;
-                    }
-                    return true;
-                  })
-                  .map((submoduleKey) {
-                    final submodulePermissions = Map<String, bool>.from(
-                      modulePermissions[submoduleKey] ?? {},
-                    );
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: _buildActionGroup(
-                        title: formatSubmoduleLabel(submoduleKey),
-                        actions: submodulePermissions,
-                        onChanged: (action, value) => onActionChanged(
-                          moduleKey,
-                          submoduleKey,
-                          action,
-                          value,
-                        ),
-                      ),
-                    );
-                  })
-                  .toList(),
+            : _visibleSubmodulesForModule(
+                moduleKey: moduleKey,
+                isExportImport: isExportImport,
+              ).map((submoduleKey) {
+                final submodulePermissions = Map<String, bool>.from(
+                  modulePermissions[submoduleKey] ?? {},
+                );
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: _buildActionGroup(
+                    title: formatSubmoduleLabel(submoduleKey),
+                    actions: submodulePermissions,
+                    onChanged: (action, value) =>
+                        onActionChanged(moduleKey, submoduleKey, action, value),
+                  ),
+                );
+              }).toList(),
       ),
     ),
   );
@@ -1246,39 +1253,67 @@ Map<String, dynamic> _deepCopyPermissions(Map<String, dynamic> input) {
 
 int _selectedPermissionCount(
   Map<String, dynamic> permissions,
-  List<String> activeModules,
-) {
+  List<String> activeModules, {
+  required bool isExportImport,
+}) {
   int count = 0;
 
   for (final moduleKey in activeModules) {
-    final moduleValue = permissions[moduleKey];
-
-    if (moduleKey == PermissionModules.dashboard) {
-      if (moduleValue is Map) {
-        for (final value in moduleValue.values) {
-          if (value == true) count++;
-        }
-      }
-      continue;
-    }
-
-    if (moduleValue is Map) {
-      for (final submoduleValue in moduleValue.values) {
-        if (submoduleValue is Map) {
-          for (final actionValue in submoduleValue.values) {
-            if (actionValue == true) count++;
-          }
-        }
-      }
-    }
+    count += _countEnabledActionsInModule(
+      moduleKey: moduleKey,
+      modulePermissions: _readModulePermissions(permissions, moduleKey),
+      isExportImport: isExportImport,
+    );
   }
 
   return count;
 }
 
+List<String> _visibleSubmodulesForModule({
+  required String moduleKey,
+  required bool isExportImport,
+}) {
+  final submodules = permissionSubmoduleMap[moduleKey] ?? const <String>[];
+  if (!isExportImport) return submodules;
+
+  if (moduleKey == PermissionModules.crm) {
+    return submodules
+        .where((submoduleKey) => submoduleKey == CrmSubmodules.customers)
+        .toList();
+  }
+
+  if (moduleKey == PermissionModules.finance) {
+    return submodules
+        .where(
+          (submoduleKey) => const {
+            FinanceSubmodules.taxInvoice,
+            FinanceSubmodules.paymentReceived,
+            FinanceSubmodules.outstanding,
+            FinanceSubmodules.expenseEntries,
+          }.contains(submoduleKey),
+        )
+        .toList();
+  }
+
+  if (moduleKey == PermissionModules.reports) {
+    return submodules
+        .where(
+          (submoduleKey) => const {
+            ReportsSubmodules.salesReport,
+            ReportsSubmodules.customerReport,
+            ReportsSubmodules.paymentReport,
+          }.contains(submoduleKey),
+        )
+        .toList();
+  }
+
+  return const <String>[];
+}
+
 int _countEnabledActionsInModule({
   required String moduleKey,
   required Map<String, dynamic> modulePermissions,
+  required bool isExportImport,
 }) {
   int count = 0;
 
@@ -1289,7 +1324,11 @@ int _countEnabledActionsInModule({
     return count;
   }
 
-  for (final submoduleValue in modulePermissions.values) {
+  for (final submoduleKey in _visibleSubmodulesForModule(
+    moduleKey: moduleKey,
+    isExportImport: isExportImport,
+  )) {
+    final submoduleValue = modulePermissions[submoduleKey];
     if (submoduleValue is Map) {
       for (final actionValue in submoduleValue.values) {
         if (actionValue == true) count++;
@@ -1303,17 +1342,24 @@ int _countEnabledActionsInModule({
 int _countTotalActionsInModule({
   required String moduleKey,
   required Map<String, dynamic> modulePermissions,
+  required bool isExportImport,
 }) {
   int count = 0;
 
   if (moduleKey == PermissionModules.dashboard) {
-    return modulePermissions.length;
+    return permissionActionsByModule[moduleKey]?.length ??
+        modulePermissions.length;
   }
 
-  for (final submoduleValue in modulePermissions.values) {
-    if (submoduleValue is Map) {
-      count += submoduleValue.length;
-    }
+  for (final submoduleKey in _visibleSubmodulesForModule(
+    moduleKey: moduleKey,
+    isExportImport: isExportImport,
+  )) {
+    count +=
+        permissionActionsBySubmodule[submoduleKey]?.length ??
+        (modulePermissions[submoduleKey] is Map
+            ? (modulePermissions[submoduleKey] as Map).length
+            : 0);
   }
 
   return count;

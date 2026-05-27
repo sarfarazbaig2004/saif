@@ -1000,6 +1000,14 @@ export const sendJoinCompanyOtp = onCall(
       role: inviteData.role ?? "sales",
       isAdmin: inviteData.role === "admin",
       phone: inviteData.phone ?? "",
+      department: inviteData.department ?? "",
+      designation: inviteData.designation ?? "",
+      employeeCode: inviteData.employeeCode ?? "",
+      branchId: inviteData.branchId ?? "",
+      branchName: inviteData.branchName ?? "Head Office",
+      reportingManagerUid: inviteData.reportingManagerUid ?? "",
+      reportingManagerName: inviteData.reportingManagerName ?? "",
+      accessScope: inviteData.accessScope ?? "company",
       permissions: inviteData.permissions ?? {},
       verified: false,
       status: "pending",
@@ -1065,9 +1073,17 @@ export const verifyJoinCompanyOtp = onCall(
   async (request) => {
     const draftId = request.data?.draftId;
     const otp = request.data?.otp;
+    const password = callableString(request.data?.password);
 
     if (!draftId || !otp) {
       throw new HttpsError("invalid-argument", "Missing data");
+    }
+
+    if (password.length < 6) {
+      throw new HttpsError(
+        "invalid-argument",
+        "Password must be at least 6 characters",
+      );
     }
 
     const ref = db.collection("join_company_requests").doc(draftId);
@@ -1083,24 +1099,227 @@ export const verifyJoinCompanyOtp = onCall(
       throw new HttpsError("invalid-argument", "Invalid OTP");
     }
 
-    await ref.update({
-      verified: true,
-      status: "verified",
-      ...legacyRequestSecretDeletes(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    });
+    const email = callableString(data.email).toLowerCase();
+    const fullName = callableString(data.fullName);
+    const companyId = callableString(data.companyId);
+    const companyName = callableString(data.companyName);
+    const inviteId = callableString(data.inviteId);
+    const role = callableString(data.role || "sales").toLowerCase();
+    const phone = callableString(data.phone);
+    const department = callableString(data.department);
+    const designation = callableString(data.designation);
+    const employeeCode = callableString(data.employeeCode);
+    const branchId = callableString(data.branchId) || "head_office";
+    const branchName = callableString(data.branchName) || "Head Office";
+    const reportingManagerUid = callableString(data.reportingManagerUid);
+    const reportingManagerName = callableString(data.reportingManagerName);
+    const accessScope = callableString(data.accessScope) || "company";
+    const permissions = data.permissions ?? {};
+
+    if (!email || !fullName || !companyId) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Join request is missing required profile data",
+      );
+    }
+
+    const companyRef = db.collection("companies").doc(companyId);
+    const inviteRef = inviteId ?
+      companyRef.collection("invites").doc(inviteId) :
+      null;
+
+    const companySnap = await companyRef.get();
+    if (!companySnap.exists) {
+      throw new HttpsError("not-found", "Company not found");
+    }
+
+    const companyData = companySnap.data() || {};
+    if (companyData.isActive === false) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Company is inactive",
+      );
+    }
+
+    let authUser: admin.auth.UserRecord;
+    let createdAuthUser = false;
+    try {
+      authUser = await admin.auth().createUser({
+        email,
+        password,
+        displayName: fullName,
+        disabled: false,
+      });
+      createdAuthUser = true;
+    } catch (error) {
+      const code = (error as {code?: string}).code;
+      if (code !== "auth/email-already-exists") {
+        throw new HttpsError(
+          "internal",
+          `Failed to create auth user: ${error}`,
+        );
+      }
+
+      authUser = await admin.auth().getUserByEmail(email);
+      await admin.auth().updateUser(authUser.uid, {
+        password,
+        displayName: fullName,
+        disabled: false,
+      });
+    }
+
+    const uid = authUser.uid;
+    const status = "active";
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+
+    const rootUserRef = db.collection("users").doc(uid);
+    const companyUserRef = companyRef.collection("users").doc(uid);
+
+    try {
+      await db.runTransaction(async (transaction) => {
+        if (inviteRef) {
+          const inviteSnap = await transaction.get(inviteRef);
+          if (!inviteSnap.exists) {
+            throw new HttpsError(
+              "not-found",
+              "Invite not found or already removed",
+            );
+          }
+
+          const inviteData = inviteSnap.data() || {};
+          const inviteCompanyId = callableString(inviteData.companyId);
+          const inviteStatus =
+            callableString(inviteData.status).toLowerCase();
+          const inviteEmail = callableString(inviteData.email).toLowerCase();
+
+          if (inviteCompanyId && inviteCompanyId !== companyId) {
+            throw new HttpsError(
+              "failed-precondition",
+              "Invite company mismatch",
+            );
+          }
+
+          if (inviteStatus && inviteStatus !== "pending") {
+            throw new HttpsError(
+              "failed-precondition",
+              "This invite is no longer pending",
+            );
+          }
+
+          if (inviteEmail && inviteEmail !== email) {
+            throw new HttpsError(
+              "permission-denied",
+              "Invite email does not match verified email",
+            );
+          }
+        }
+
+        const rootPayload = {
+          uid,
+          email,
+          displayName: fullName,
+          name: fullName,
+          companyId,
+          companyName,
+          role,
+          isActive: true,
+          isDeleted: false,
+          status,
+          phone,
+          companyIds: admin.firestore.FieldValue.arrayUnion(companyId),
+          memberships: {
+            [companyId]: {
+              companyId,
+              role,
+              isAdmin: role === "admin",
+              isActive: true,
+              isDeleted: false,
+              status,
+              updatedAt: timestamp,
+              updatedByUid: uid,
+            },
+          },
+          joinedAt: timestamp,
+          updatedAt: timestamp,
+          updatedByUid: uid,
+        };
+
+        const companyUserPayload = {
+          uid,
+          companyId,
+          companyName,
+          displayName: fullName,
+          name: fullName,
+          email,
+          phone,
+          role,
+          roleLabel: role,
+          department,
+          designation,
+          employeeCode,
+          branchId,
+          branchName,
+          reportingManagerUid,
+          reportingManagerName,
+          accessScope,
+          isAdmin: role === "admin",
+          isActive: true,
+          isDeleted: false,
+          status,
+          permissions,
+          joinedAt: timestamp,
+          createdAt: timestamp,
+          createdByUid: uid,
+          updatedAt: timestamp,
+          updatedByUid: uid,
+        };
+
+        transaction.set(rootUserRef, rootPayload, {merge: true});
+        transaction.set(companyUserRef, companyUserPayload, {merge: true});
+
+        if (inviteRef) {
+          transaction.set(inviteRef, {
+            status: "accepted",
+            isActive: false,
+            acceptedByUid: uid,
+            acceptedByEmail: email,
+            acceptedAt: timestamp,
+            updatedAt: timestamp,
+            updatedByUid: uid,
+          }, {merge: true});
+        }
+
+        transaction.set(ref, {
+          verified: true,
+          status: "completed",
+          finalUid: uid,
+          ...legacyRequestSecretDeletes(),
+          updatedAt: timestamp,
+        }, {merge: true});
+      });
+    } catch (error) {
+      if (createdAuthUser) {
+        try {
+          await admin.auth().deleteUser(uid);
+        } catch (deleteError) {
+          console.warn("Failed to rollback invite auth user:", deleteError);
+        }
+      }
+      throw error;
+    }
 
     return {
       success: true,
-      email: data.email,
-      fullName: data.fullName,
-      companyId: data.companyId,
-      companyName: data.companyName,
-      inviteId: data.inviteId,
-      role: data.role,
-      isAdmin: data.isAdmin,
-      phone: data.phone,
-      permissions: data.permissions,
+      uid,
+      email,
+      fullName,
+      companyId,
+      companyName,
+      inviteId,
+      role,
+      isAdmin: role === "admin",
+      phone,
+      permissions,
     };
   },
 );
@@ -1202,23 +1421,65 @@ export const createCompanyUser = onCall(
     }
 
     // Create Firestore user profile
+    const rootProfileRef = db.collection("users").doc(newUser.uid);
     const userProfileRef = db
       .collection("companies")
       .doc(companyId)
       .collection("users")
       .doc(newUser.uid);
-    await userProfileRef.set({
+
+    const timestamp = admin.firestore.FieldValue.serverTimestamp();
+    const rootPayload = {
       uid: newUser.uid,
       email,
       displayName,
+      name: displayName,
+      companyId,
+      companyName: finalCompanyName,
+      role,
+      isActive: true,
+      isDeleted: false,
+      status: "active",
+      companyIds: admin.firestore.FieldValue.arrayUnion(companyId),
+      memberships: {
+        [companyId]: {
+          companyId,
+          role,
+          isAdmin: role === "admin",
+          isActive: true,
+          isDeleted: false,
+          status: "active",
+          updatedAt: timestamp,
+          updatedByUid: callerUid,
+        },
+      },
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      createdBy: callerUid,
+      updatedByUid: callerUid,
+    };
+
+    const companyUserPayload = {
+      uid: newUser.uid,
+      email,
+      displayName,
+      name: displayName,
       role,
       companyId,
       companyName: finalCompanyName,
       isActive: true,
+      isDeleted: false,
+      status: "active",
       permissions,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: timestamp,
+      updatedAt: timestamp,
       createdBy: callerUid,
+      updatedByUid: callerUid,
+    };
+
+    await db.runTransaction(async (transaction) => {
+      transaction.set(rootProfileRef, rootPayload, {merge: true});
+      transaction.set(userProfileRef, companyUserPayload, {merge: true});
     });
 
     // Send password reset email

@@ -590,7 +590,10 @@ Map<String, dynamic> mergePermissionsWithCanonicalShape(
 
       if (incomingModule is Map) {
         for (final action in moduleActions.keys) {
-          moduleActions[action] = incomingModule[action] == true;
+          moduleActions[action] =
+              incomingModule[action] == true ||
+              (action == PermissionActions.view &&
+                  incomingModule[PermissionModules.dashboard] == true);
         }
       }
 
@@ -612,6 +615,10 @@ Map<String, dynamic> mergePermissionsWithCanonicalShape(
         if (incomingSubmodule is Map) {
           for (final action in canonicalActions.keys) {
             canonicalActions[action] = incomingSubmodule[action] == true;
+          }
+        } else if (incomingSubmodule == true) {
+          for (final action in canonicalActions.keys) {
+            canonicalActions[action] = true;
           }
         }
 
@@ -639,8 +646,10 @@ Map<String, dynamic> getDefaultPermissions(String role) {
     case UserRoles.founder:
     case UserRoles.ceo:
     case UserRoles.superadmin:
-    case UserRoles.admin:
       return buildFullPermissions();
+
+    case UserRoles.admin:
+      return buildEmptyPermissions();
 
     case UserRoles.manager:
       return _canonicalRolePermissions({
@@ -1112,9 +1121,6 @@ Map<String, dynamic> normalizePermissionsForStorage(
   Map<String, dynamic>? permissions, {
   String? role,
 }) {
-  if (isSuperAccessRole(role)) {
-    return buildFullPermissions();
-  }
   return mergePermissionsWithCanonicalShape(permissions);
 }
 

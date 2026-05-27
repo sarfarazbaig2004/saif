@@ -98,13 +98,20 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
   bool _isSoftwareSuperAdminDoc(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) {
-    final data = doc.data();
+    return _isSoftwareSuperAdminData(doc.data());
+  }
+
+  bool _isSoftwareSuperAdminData(Map<String, dynamic> data) {
     return (data['role'] ?? '').toString().trim().toLowerCase() ==
         UserRoles.softwareSuperAdmin;
   }
 
   bool _canManageUserDoc(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
     return !_isSoftwareSuperAdminDoc(doc);
+  }
+
+  bool _canManageUserData(Map<String, dynamic> data) {
+    return !_isSoftwareSuperAdminData(data);
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> get _usersStream {
@@ -151,9 +158,35 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
       return;
     }
 
+    final freshDoc = await FirebaseFirestore.instance
+        .collection('companies')
+        .doc(widget.companyId)
+        .collection('users')
+        .doc(doc.id)
+        .get();
+
+    if (!freshDoc.exists) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'User profile was not found. Please refresh and try again.',
+          ),
+          backgroundColor: dangerColor,
+        ),
+      );
+      return;
+    }
+
+    final editableDoc = freshDoc;
+    if (!_canManageUserData(editableDoc.data() ?? <String, dynamic>{})) {
+      _showProtectedSoftwareAdminMessage();
+      return;
+    }
+
     await showEditUserDialog(
       context: context,
-      doc: doc,
+      doc: editableDoc,
       companyId: widget.companyId,
       currentUid: widget.currentUid,
       industry: _resolvedIndustry,

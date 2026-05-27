@@ -59,19 +59,38 @@ service cloud.firestore {
           );
     }
 
-    function isAdmin(companyId) {
-      return role(companyId) in [
-        'admin',
+    function isAdminRole(roleValue) {
+      return roleValue in [
+        'software_super_admin',
         'SOFTWARE_SUPER_ADMIN',
-        'COMPANY_SUPER_ADMIN'
+        'company_super_admin',
+        'COMPANY_SUPER_ADMIN',
+        'owner',
+        'OWNER',
+        'founder',
+        'FOUNDER',
+        'ceo',
+        'CEO',
+        'superadmin',
+        'SUPERADMIN',
+        'admin',
+        'ADMIN'
       ];
     }
 
-    function isManager(companyId) {
-      return role(companyId) in [
+    function isManagerRole(roleValue) {
+      return roleValue in [
         'manager',
         'MANAGER'
       ];
+    }
+
+    function isAdmin(companyId) {
+      return isAdminRole(role(companyId));
+    }
+
+    function isManager(companyId) {
+      return isManagerRole(role(companyId));
     }
 
     function canReadCompany(companyId) {
@@ -101,9 +120,31 @@ service cloud.firestore {
         tenantFieldsMatchPath(companyId);
     }
 
+    function userPrimaryCompanyId(userId) {
+      return exists(rootUserDoc(userId))
+        ? get(rootUserDoc(userId)).data.companyId
+        : (
+            'companyId' in request.resource.data
+              ? request.resource.data.companyId
+              : ''
+          );
+    }
+
+    function canManageRootUser(userId) {
+      return signedIn() &&
+        userPrimaryCompanyId(userId) is string &&
+        userPrimaryCompanyId(userId) != '' &&
+        isAdmin(userPrimaryCompanyId(userId)) &&
+        (
+          !('companyId' in request.resource.data) ||
+          request.resource.data.companyId == userPrimaryCompanyId(userId)
+        );
+    }
+
     match /users/{userId} {
       allow read: if signedIn() && uid() == userId;
-      allow create, update: if signedIn() && uid() == userId;
+      allow create, update: if (signedIn() && uid() == userId) ||
+        canManageRootUser(userId);
       allow delete: if false;
     }
 

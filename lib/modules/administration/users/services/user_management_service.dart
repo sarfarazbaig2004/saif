@@ -356,7 +356,7 @@ class UserManagementService {
       return getDefaultPermissions(normalizedRole);
     }
 
-    return normalizePermissionsForStorage(sanitized, role: normalizedRole);
+    return mergePermissionsWithCanonicalShape(sanitized);
   }
 
   bool _deepMapEquals(Map<String, dynamic> a, Map<String, dynamic> b) {
