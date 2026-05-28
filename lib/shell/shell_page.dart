@@ -43,6 +43,7 @@ enum ShellPage {
 
   // Inventory
   inventoryProducts,
+  inventoryMaterialMaster,
   inventoryStockSummary,
   inventoryStockIn,
   inventoryStockOut,
@@ -164,6 +165,8 @@ extension ShellPageX on ShellPage {
 
       case ShellPage.inventoryProducts:
         return 'Raw Materials';
+      case ShellPage.inventoryMaterialMaster:
+        return 'Material Master';
       case ShellPage.inventoryStockSummary:
         return 'Raw Material Stock Summary';
       case ShellPage.inventoryStockIn:
@@ -320,6 +323,8 @@ extension ShellPageX on ShellPage {
         return Icons.menu_book_outlined;
       case ShellPage.inventoryProducts:
         return Icons.inventory_2_outlined;
+      case ShellPage.inventoryMaterialMaster:
+        return Icons.category_outlined;
       case ShellPage.inventoryStockSummary:
         return Icons.bar_chart_outlined;
       case ShellPage.inventoryStockIn:

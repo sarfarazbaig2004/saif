@@ -21,6 +21,7 @@ import 'package:QUIK/modules/inventory/fabrication/screens/material_issue_screen
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_master_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_low_stock_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_stock_screen.dart';
+import 'package:QUIK/modules/inventory/material_master/screens/material_master_screen.dart';
 import 'package:QUIK/modules/purchase/fabrication/screens/purchase_bill_screen.dart';
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_ledger_screen.dart';
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_master_screen.dart';
@@ -311,6 +312,7 @@ class _QuikShellState extends State<QuikShell> {
                 _hasPermission('purchase', 'purchaseOrders'));
       // Inventory
       case ShellPage.inventoryProducts:
+      case ShellPage.inventoryMaterialMaster:
         return _hasPermission('inventory', 'products');
       case ShellPage.inventoryStockSummary:
         return _hasPermission('inventory', 'stockSummary');
@@ -445,6 +447,7 @@ class _QuikShellState extends State<QuikShell> {
 
   bool _isGeneralInventoryPage(ShellPage page) {
     return page == ShellPage.inventoryProducts ||
+        page == ShellPage.inventoryMaterialMaster ||
         page == ShellPage.inventoryStockSummary ||
         page == ShellPage.inventoryStockIn ||
         page == ShellPage.inventoryStockOut ||
@@ -454,6 +457,7 @@ class _QuikShellState extends State<QuikShell> {
 
   bool _isFabricationInventoryCompatiblePage(ShellPage page) {
     return page == ShellPage.inventoryProducts ||
+        page == ShellPage.inventoryMaterialMaster ||
         page == ShellPage.inventoryStockSummary ||
         page == ShellPage.inventoryStockIn ||
         page == ShellPage.inventoryStockOut ||
@@ -474,6 +478,7 @@ class _QuikShellState extends State<QuikShell> {
     if (_isFabricationInventory) {
       return const [
         ShellPage.inventoryProducts,
+        ShellPage.inventoryMaterialMaster,
         ShellPage.inventoryRawMaterialStock,
         ShellPage.inventoryMaterialInward,
         ShellPage.inventoryMaterialIssue,
@@ -484,6 +489,7 @@ class _QuikShellState extends State<QuikShell> {
 
     return const [
       ShellPage.inventoryProducts,
+      ShellPage.inventoryMaterialMaster,
       ShellPage.inventoryStockSummary,
       ShellPage.inventoryStockIn,
       ShellPage.inventoryStockOut,
@@ -794,6 +800,7 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.purchaseOrders:
       case ShellPage.purchaseGrn:
       case ShellPage.inventoryProducts:
+      case ShellPage.inventoryMaterialMaster:
       case ShellPage.inventoryStockSummary:
       case ShellPage.inventoryStockIn:
       case ShellPage.inventoryStockOut:
@@ -1137,6 +1144,12 @@ class _QuikShellState extends State<QuikShell> {
         return Padding(
           padding: EdgeInsets.all(10),
           child: RawMaterialMasterScreen(tenantId: widget.companyId),
+        );
+
+      case ShellPage.inventoryMaterialMaster:
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: MaterialMasterScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.inventoryStockSummary:

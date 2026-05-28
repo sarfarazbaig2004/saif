@@ -4,7 +4,9 @@ import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/engineering/bom/models/engineering_bom_line_model.dart';
 import 'package:QUIK/modules/engineering/bom/models/engineering_bom_model.dart';
 import 'package:QUIK/modules/engineering/bom/repositories/engineering_bom_repository.dart';
-import 'package:QUIK/modules/engineering/bom/services/bom_weight_engine.dart';
+import 'package:QUIK/modules/inventory/material_master/models/material_master_model.dart';
+import 'package:QUIK/modules/inventory/material_master/services/weight_formula_service.dart';
+import 'package:QUIK/modules/inventory/material_master/widgets/material_picker_dialog.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
 
 class EngineeringBomEntryScreen extends StatefulWidget {
@@ -31,7 +33,7 @@ class EngineeringBomEntryScreen extends StatefulWidget {
 }
 
 class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
-  static const double _gridWidth = 1180;
+  static const double _gridWidth = 1540;
 
   final _formKey = GlobalKey<FormState>();
   final _bomNo = TextEditingController();
@@ -231,6 +233,7 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
                 for (var i = 0; i < _lines.length; i++)
                   _BomLineRow(
                     line: _lines[i],
+                    tenantId: widget.tenantId,
                     lineNo: i + 1,
                     canDelete: _lines.length > 1,
                     onChanged: () => setState(() {}),
@@ -457,7 +460,11 @@ class _BomGridHeader extends StatelessWidget {
           SizedBox(width: 140, child: Text('Material', style: style)),
           SizedBox(width: 80, child: Text('Qty', style: style)),
           SizedBox(width: 110, child: Text('Length mm', style: style)),
-          SizedBox(width: 140, child: Text('Weight / meter', style: style)),
+          SizedBox(width: 95, child: Text('Width', style: style)),
+          SizedBox(width: 95, child: Text('Thick', style: style)),
+          SizedBox(width: 95, child: Text('OD', style: style)),
+          SizedBox(width: 95, child: Text('ID', style: style)),
+          SizedBox(width: 120, child: Text('Std kg/m', style: style)),
           SizedBox(width: 150, child: Text('Calculated weight', style: style)),
           SizedBox(width: 150, child: Text('Galvanizing micron', style: style)),
           SizedBox(width: 110, child: Text('Grade', style: style)),
@@ -470,6 +477,7 @@ class _BomGridHeader extends StatelessWidget {
 
 class _BomLineRow extends StatelessWidget {
   final _BomLineDraft line;
+  final String tenantId;
   final int lineNo;
   final bool canDelete;
   final VoidCallback onChanged;
@@ -477,6 +485,7 @@ class _BomLineRow extends StatelessWidget {
 
   const _BomLineRow({
     required this.line,
+    required this.tenantId,
     required this.lineNo,
     required this.canDelete,
     required this.onChanged,
@@ -499,10 +508,14 @@ class _BomLineRow extends StatelessWidget {
           ),
           _cell(line.itemDescription, 'Description', 210, required: true),
           _cell(line.section, 'Section', 120),
-          _cell(line.material, 'Material', 140),
+          _materialCell(context),
           _cell(line.qty, 'Qty', 80, number: true),
           _cell(line.lengthMm, 'Length', 110, number: true),
-          _cell(line.weightPerMeter, 'Kg/m', 140, number: true),
+          _cell(line.widthMm, 'Width', 95, number: true),
+          _cell(line.thicknessMm, 'Thick', 95, number: true),
+          _cell(line.odMm, 'OD', 95, number: true),
+          _cell(line.idMm, 'ID', 95, number: true),
+          _cell(line.weightPerMeter, 'Kg/m', 120, number: true),
           SizedBox(
             width: 150,
             child: Padding(
@@ -553,6 +566,36 @@ class _BomLineRow extends StatelessWidget {
       ),
     );
   }
+
+  Widget _materialCell(BuildContext context) {
+    return SizedBox(
+      width: 140,
+      child: Padding(
+        padding: const EdgeInsets.only(right: 10),
+        child: TextFormField(
+          controller: line.material,
+          decoration: _dec('Material').copyWith(
+            suffixIcon: IconButton(
+              tooltip: 'Select material',
+              icon: const Icon(Icons.search, size: 18),
+              onPressed: () => _pickMaterial(context),
+            ),
+          ),
+          onChanged: (_) => onChanged(),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickMaterial(BuildContext context) async {
+    final material = await showDialog<MaterialMasterModel>(
+      context: context,
+      builder: (_) => MaterialPickerDialog(tenantId: tenantId),
+    );
+    if (material == null) return;
+    line.applyMaterial(material);
+    onChanged();
+  }
 }
 
 class _BomLineDraft {
@@ -561,9 +604,17 @@ class _BomLineDraft {
   final material = TextEditingController();
   final qty = TextEditingController(text: '1');
   final lengthMm = TextEditingController();
+  final widthMm = TextEditingController();
+  final thicknessMm = TextEditingController();
+  final odMm = TextEditingController();
+  final idMm = TextEditingController();
   final weightPerMeter = TextEditingController();
   final galvanizingMicron = TextEditingController();
   final grade = TextEditingController();
+  String materialMasterId = '';
+  String materialType = '';
+  String formulaType = 'sectionWeightPerMeter';
+  double density = 0;
 
   _BomLineDraft({String? itemDescription, double? qty}) {
     this.itemDescription.text = (itemDescription ?? '').trim();
@@ -577,15 +628,44 @@ class _BomLineDraft {
         section.text.trim().isEmpty &&
         material.text.trim().isEmpty &&
         lengthMm.text.trim().isEmpty &&
+        widthMm.text.trim().isEmpty &&
+        thicknessMm.text.trim().isEmpty &&
+        odMm.text.trim().isEmpty &&
+        idMm.text.trim().isEmpty &&
         weightPerMeter.text.trim().isEmpty;
   }
 
   double get calculatedWeight {
-    return BomWeightEngine.calculatedWeight(
-      qty: _toDouble(qty.text),
-      lengthMm: _toDouble(lengthMm.text),
-      weightPerMeter: _toDouble(weightPerMeter.text),
+    return WeightFormulaService.calculateWeight(
+      WeightFormulaInput(
+        formulaType: formulaType,
+        materialGrade: grade.text.trim(),
+        qty: _toDouble(qty.text),
+        lengthMm: _toDouble(lengthMm.text),
+        widthMm: _toDouble(widthMm.text),
+        thicknessMm: _toDouble(thicknessMm.text),
+        odMm: _toDouble(odMm.text),
+        idMm: _toDouble(idMm.text),
+        density: density,
+        standardWeightPerMeter: _toDouble(weightPerMeter.text),
+      ),
     );
+  }
+
+  void applyMaterial(MaterialMasterModel selected) {
+    materialMasterId = selected.id;
+    materialType = selected.materialType;
+    formulaType = selected.formulaType.trim().isEmpty
+        ? WeightFormulaService.formulaTypeForMaterial(selected.materialType)
+        : selected.formulaType;
+    density = selected.density > 0
+        ? selected.density
+        : WeightFormulaService.densityForGrade(selected.materialGrade);
+    material.text = selected.displayName;
+    grade.text = selected.materialGrade;
+    if (selected.standardWeightPerMeter > 0) {
+      weightPerMeter.text = _formatNumber(selected.standardWeightPerMeter);
+    }
   }
 
   EngineeringBomLineModel toModel(int lineNo) {
@@ -596,10 +676,18 @@ class _BomLineDraft {
       material: material.text.trim(),
       qty: _toDouble(qty.text),
       lengthMm: _toDouble(lengthMm.text),
+      widthMm: _toDouble(widthMm.text),
+      thicknessMm: _toDouble(thicknessMm.text),
+      odMm: _toDouble(odMm.text),
+      idMm: _toDouble(idMm.text),
       weightPerMeter: _toDouble(weightPerMeter.text),
       calculatedWeight: calculatedWeight,
       galvanizingMicron: _toDouble(galvanizingMicron.text),
       grade: grade.text.trim(),
+      materialMasterId: materialMasterId,
+      materialType: materialType,
+      formulaType: formulaType,
+      density: density,
     );
   }
 
@@ -609,6 +697,10 @@ class _BomLineDraft {
     material.dispose();
     qty.dispose();
     lengthMm.dispose();
+    widthMm.dispose();
+    thicknessMm.dispose();
+    odMm.dispose();
+    idMm.dispose();
     weightPerMeter.dispose();
     galvanizingMicron.dispose();
     grade.dispose();
