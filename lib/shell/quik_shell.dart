@@ -15,6 +15,7 @@ import 'package:QUIK/modules/administration/join_requests/join_requests_screen.d
 import 'package:QUIK/modules/crm/customers/screens_customer_list.dart';
 import 'package:QUIK/modules/dashboard/dashboard_screen.dart';
 import 'package:QUIK/modules/dispatch/screens/dispatch_list_screen.dart';
+import 'package:QUIK/modules/engineering/bom/screens/engineering_bom_entry_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_inward_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_issue_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_master_screen.dart';
@@ -801,6 +802,7 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.inventoryRawMaterialStock:
       case ShellPage.inventoryMaterialInward:
       case ShellPage.inventoryMaterialIssue:
+      case ShellPage.engineeringBomBoq:
       case ShellPage.dispatchReady:
       case ShellPage.dispatchChallans:
       case ShellPage.dispatchShipmentTracking:
@@ -1208,6 +1210,12 @@ class _QuikShellState extends State<QuikShell> {
             tenantId: widget.companyId,
             purchaseView: true,
           ),
+        );
+
+      case ShellPage.engineeringBomBoq:
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: EngineeringBomEntryScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.dispatchReady:
