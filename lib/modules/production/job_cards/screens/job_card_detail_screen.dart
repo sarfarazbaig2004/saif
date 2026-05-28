@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/job_cards/models/job_card_model.dart';
 import 'package:QUIK/modules/production/job_cards/screens/job_card_form_screen.dart';
+import 'package:QUIK/modules/production/material_requirements/models/material_requirement_model.dart';
+import 'package:QUIK/modules/production/material_requirements/repositories/material_requirement_repository.dart';
 
 class JobCardDetailScreen extends StatelessWidget {
   final String tenantId;
@@ -28,6 +30,121 @@ class JobCardDetailScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _generateMaterialRequirement(
+    BuildContext context,
+    String activeTenantId,
+  ) async {
+    final lines = _buildRequirementLines();
+    if (lines.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No job card items available.')),
+      );
+      return;
+    }
+
+    try {
+      final repository = MaterialRequirementRepository(
+        tenantId: activeTenantId,
+      );
+      final requirementId = repository.newRequirementId();
+      final totalWeight = lines.fold<double>(
+        0,
+        (total, line) => total + line.requiredWeightKg,
+      );
+
+      final requirement = MaterialRequirementModel(
+        requirementId: requirementId,
+        requirementNo: repository.nextRequirementNo(jobCard.jobCardNo),
+        jobCardId: jobCard.jobCardId,
+        jobCardNo: jobCard.jobCardNo,
+        customerName: jobCard.customerName,
+        projectCode: jobCard.projectCode,
+        poNumber: jobCard.poNumber,
+        status: 'draft',
+        lines: lines,
+        totalWeightKg: totalWeight,
+        tenantId: activeTenantId,
+        companyId: activeTenantId,
+      );
+
+      await repository.save(requirement);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Material requirement draft created: ${requirement.requirementNo}',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to create material requirement: $e')),
+      );
+    }
+  }
+
+  List<MaterialRequirementLineModel> _buildRequirementLines() {
+    if (jobCard.sourcePoItems.isNotEmpty) {
+      return jobCard.sourcePoItems
+          .asMap()
+          .entries
+          .map((entry) {
+            final item = entry.value;
+            final material = _firstNonEmpty([
+              item['bomMaterial'],
+              item['material'],
+              item['itemName'],
+              item['description'],
+            ]);
+            final section = _firstNonEmpty([
+              item['bomSection'],
+              item['section'],
+              item['itemName'],
+            ]);
+            final weight = _toDouble(item['bomWeight'] ?? item['weightKg']);
+            final qty = _toDouble(item['quantity']);
+            return MaterialRequirementLineModel(
+              lineNo: entry.key + 1,
+              sourceItemId: _string(item['id'] ?? item['quotationItemId']),
+              material: material,
+              section: section,
+              requiredWeightKg: weight > 0 ? weight : qty,
+              requiredQty: qty,
+              unit: weight > 0
+                  ? 'KG'
+                  : _firstNonEmpty([item['uom'], item['unit']]),
+              lengthMm: _toDouble(item['bomLengthMm']),
+              remarks:
+                  'Customer: ${jobCard.customerName}; Project: ${jobCard.projectCode}; PO: ${jobCard.poNumber}',
+            );
+          })
+          .toList(growable: false);
+    }
+
+    return jobCard.quantityLines
+        .asMap()
+        .entries
+        .map((entry) {
+          final line = entry.value;
+          return MaterialRequirementLineModel(
+            lineNo: entry.key + 1,
+            sourceItemId: '',
+            material: line.label,
+            section: line.label,
+            requiredWeightKg: line.unit.toLowerCase() == 'kg'
+                ? line.quantity
+                : 0,
+            requiredQty: line.quantity,
+            unit: line.unit,
+            lengthMm: 0,
+            remarks:
+                'Customer: ${jobCard.customerName}; Project: ${jobCard.projectCode}; PO: ${jobCard.poNumber}',
+          );
+        })
+        .toList(growable: false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeTenantId = tenantId.trim();
@@ -42,6 +159,12 @@ class JobCardDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(jobCard.jobCardNo),
         actions: [
+          TextButton.icon(
+            onPressed: () =>
+                _generateMaterialRequirement(context, activeTenantId),
+            icon: const Icon(Icons.inventory_2_outlined),
+            label: const Text('Generate Material Requirement'),
+          ),
           TextButton.icon(
             onPressed: () => _edit(context, activeTenantId),
             icon: const Icon(Icons.edit_outlined),
@@ -152,6 +275,21 @@ class JobCardDetailScreen extends StatelessWidget {
       'Dec',
     ];
     return '${value.day} ${months[value.month - 1]} ${value.year}';
+  }
+
+  String _firstNonEmpty(List<Object?> values) {
+    for (final value in values) {
+      final text = _string(value);
+      if (text.isNotEmpty) return text;
+    }
+    return '';
+  }
+
+  String _string(Object? value) => value?.toString().trim() ?? '';
+
+  double _toDouble(Object? value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 }
 
