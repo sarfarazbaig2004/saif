@@ -191,46 +191,47 @@ class _LoginScreenState extends State<LoginScreen> {
                       minHeight:
                           constraints.maxHeight - (compactHeight ? 28 : 42),
                     ),
-                    child: IntrinsicHeight(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          if (isWide) ...[
-                            const Expanded(flex: 6, child: LoginBrandPanel()),
-                            const SizedBox(width: 28),
-                          ],
-                          Expanded(
-                            flex: isWide ? 5 : 1,
-                            child: Center(
-                              child: LoginFormCard(
-                                formKey: _formKey,
-                                emailController: _email,
-                                passwordController: _pass,
-                                compactHeight: compactHeight,
-                                obscurePassword: _obscure,
-                                loading: _loading,
-                                rememberMe: _rememberMe,
-                                validateEmail: _validateEmail,
-                                validatePassword: _validatePassword,
-                                onTogglePassword: () {
-                                  setState(() => _obscure = !_obscure);
-                                },
-                                onRememberChanged: (value) {
-                                  setState(() => _rememberMe = value ?? false);
-                                },
-                                onForgotPassword: _loading ? null : _forgot,
-                                onLogin: _loading ? null : _login,
-                                onJoinWorkspace: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const ScreenJoinCompany(),
-                                  ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (isWide) ...[
+                          const Expanded(flex: 6, child: LoginBrandPanel()),
+                          const SizedBox(width: 28),
+                        ],
+                        Expanded(
+                          flex: isWide ? 5 : 1,
+                          child: Align(
+                            alignment: isWide
+                                ? Alignment.centerLeft
+                                : Alignment.center,
+                            child: LoginFormCard(
+                              formKey: _formKey,
+                              emailController: _email,
+                              passwordController: _pass,
+                              compactHeight: compactHeight,
+                              obscurePassword: _obscure,
+                              loading: _loading,
+                              rememberMe: _rememberMe,
+                              validateEmail: _validateEmail,
+                              validatePassword: _validatePassword,
+                              onTogglePassword: () {
+                                setState(() => _obscure = !_obscure);
+                              },
+                              onRememberChanged: (value) {
+                                setState(() => _rememberMe = value ?? false);
+                              },
+                              onForgotPassword: _loading ? null : _forgot,
+                              onLogin: _loading ? null : _login,
+                              onJoinWorkspace: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const ScreenJoinCompany(),
                                 ),
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

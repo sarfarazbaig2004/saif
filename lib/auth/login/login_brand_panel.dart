@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/auth/login/login_brand_metrics.dart';
 import 'package:QUIK/auth/login/login_workspace_preview.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 
@@ -24,10 +25,12 @@ class LoginBrandPanel extends StatelessWidget {
             AbstractWorkspacePreview(),
             SizedBox(height: 18),
             _ModuleSignals(),
-            SizedBox(height: 18),
-            _TrustLayer(),
-            SizedBox(height: 18),
-            _SecurityCompliance(),
+            SizedBox(height: 16),
+            OperationalStatusCards(),
+            SizedBox(height: 16),
+            EnterpriseTrustBadges(),
+            SizedBox(height: 14),
+            LoginVendorCredit(),
           ],
         ),
       ),
@@ -91,159 +94,57 @@ class _ModuleSignals extends StatelessWidget {
   }
 }
 
-class _ModulePill extends StatelessWidget {
+class _ModulePill extends StatefulWidget {
   final IconData icon;
   final String label;
 
   const _ModulePill({required this.icon, required this.label});
 
   @override
+  State<_ModulePill> createState() => _ModulePillState();
+}
+
+class _ModulePillState extends State<_ModulePill> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF7ED),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFED7AA)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 17, color: zBlue),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: zText,
-              fontSize: 12.5,
-              fontWeight: FontWeight.w800,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOutCubic,
+        transform: Matrix4.translationValues(0, _hovered ? -1.5 : 0, 0),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7ED),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFED7AA)),
+          boxShadow: _hovered
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(widget.icon, size: 17, color: zBlue),
+            const SizedBox(width: 8),
+            Text(
+              widget.label,
+              style: const TextStyle(
+                color: zText,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TrustLayer extends StatelessWidget {
-  const _TrustLayer();
-
-  @override
-  Widget build(BuildContext context) {
-    const items = [
-      (Icons.verified_user_outlined, 'Secure Workspace'),
-      (Icons.admin_panel_settings_outlined, 'Role-Based Access'),
-      (Icons.fact_check_outlined, 'Audit Ready'),
-      (Icons.cloud_done_outlined, 'Cloud Enabled'),
-    ];
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: [
-        for (final item in items) _TrustPill(icon: item.$1, label: item.$2),
-      ],
-    );
-  }
-}
-
-class _TrustPill extends StatelessWidget {
-  final IconData icon;
-  final String label;
-
-  const _TrustPill({required this.icon, required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: zBorder),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 15, color: zMuted),
-          const SizedBox(width: 7),
-          Text(
-            label,
-            style: const TextStyle(
-              color: zMuted,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SecurityCompliance extends StatelessWidget {
-  const _SecurityCompliance();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'SECURITY & COMPLIANCE',
-          style: TextStyle(
-            color: zMuted,
-            fontSize: 10.5,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 0,
-          ),
-        ),
-        SizedBox(height: 8),
-        _ComplianceLine('• Role-Based Access Control'),
-        _ComplianceLine('• Audit Ready Logs'),
-        _ComplianceLine('• Secure Cloud Workspace'),
-        _ComplianceLine('• Production & Inventory Control'),
-        SizedBox(height: 10),
-        Text(
-          'QUIK ERP by Genzprotech',
-          style: TextStyle(
-            color: zMuted,
-            fontSize: 10.5,
-            fontWeight: FontWeight.w700,
-            height: 1.25,
-          ),
-        ),
-        SizedBox(height: 2),
-        Text(
-          'Enterprise Infrastructure ERP Platform',
-          style: TextStyle(
-            color: zMuted,
-            fontSize: 10.5,
-            fontWeight: FontWeight.w500,
-            height: 1.25,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ComplianceLine extends StatelessWidget {
-  final String text;
-
-  const _ComplianceLine(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: zMuted,
-          fontSize: 10.5,
-          fontWeight: FontWeight.w500,
-          height: 1.25,
+          ],
         ),
       ),
     );

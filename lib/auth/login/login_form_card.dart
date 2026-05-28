@@ -78,6 +78,11 @@ class LoginFormCard extends StatelessWidget {
           border: Border.all(color: zBorder),
           boxShadow: [
             BoxShadow(
+              color: zBlue.withValues(alpha: 0.035),
+              blurRadius: 54,
+              offset: const Offset(0, 18),
+            ),
+            BoxShadow(
               color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 30,
               offset: const Offset(0, 18),
