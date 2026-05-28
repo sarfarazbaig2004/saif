@@ -67,6 +67,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
   int _currentVersion = 1;
   bool _initialized = false;
   String _quotationFormat = 'commercial';
+  String _engineeringBomId = '';
+  String _engineeringBomNo = '';
 
   String get _tenantId => (_companyId ?? '').trim();
 
@@ -189,6 +191,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     _paymentStatus = data['paymentStatus']?.toString() ?? 'Pending';
     _currentVersion = data['version'] ?? 1;
     _quotationFormat = data['quotationFormat']?.toString() ?? 'commercial';
+    _engineeringBomId = data['engineeringBomId']?.toString() ?? '';
+    _engineeringBomNo = data['engineeringBomNo']?.toString() ?? '';
 
     if ((_approvalStatus == 'Approved' || _quotationStatus == 'Converted') &&
         !_isAdminOrManager) {
@@ -537,6 +541,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     _linkedInquiryAssignedToUid = seed['assignedToUid']?.toString();
     _linkedInquiryAssignedToName = seed['assignedToName']?.toString();
     _quotationFormat = (seed['quotationFormat'] ?? 'commercial').toString();
+    _engineeringBomId = (seed['engineeringBomId'] ?? '').toString();
+    _engineeringBomNo = (seed['engineeringBomNo'] ?? '').toString();
 
     final seededCustomerId = (seed['customerId'] ?? '').toString().trim();
     if (seededCustomerId.isNotEmpty) {
@@ -1212,6 +1218,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
         'approvalStatus': _approvalStatus,
         'paymentStatus': _paymentStatus,
         'quotationFormat': _quotationFormat,
+        'engineeringBomId': _engineeringBomId,
+        'engineeringBomNo': _engineeringBomNo,
 
         'customerId': _selectedCustomerId,
         'clientName': _clientNameController.text.trim(),
@@ -1601,6 +1609,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
       'quotationFormat': _quotationFormat,
       'quotationId': widget.quotationId ?? '',
       'quotationNumber': _quoteNumberController.text.trim(),
+      'engineeringBomId': _engineeringBomId,
+      'engineeringBomNo': _engineeringBomNo,
       'totalWeightKg': _items.fold<double>(
         0,
         (total, item) => total + item.bomWeight,

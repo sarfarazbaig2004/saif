@@ -63,6 +63,10 @@ class JobCardModel {
   final String tenantId;
   final String companyId;
   final String createdBy;
+  final String customerPoId;
+  final String quotationFormat;
+  final List<Map<String, dynamic>> sourcePoItems;
+  final Map<String, dynamic> bomMetadata;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -98,6 +102,10 @@ class JobCardModel {
     required this.tenantId,
     required this.companyId,
     required this.createdBy,
+    this.customerPoId = '',
+    this.quotationFormat = 'commercial',
+    this.sourcePoItems = const [],
+    this.bomMetadata = const {},
     this.createdAt,
     this.updatedAt,
   });
@@ -150,6 +158,10 @@ class JobCardModel {
       'tenantId': tenantId,
       'companyId': companyId,
       'createdBy': createdBy,
+      'customerPoId': customerPoId,
+      'quotationFormat': quotationFormat,
+      'sourcePoItems': sourcePoItems,
+      'bomMetadata': bomMetadata,
       'updatedAt': FieldValue.serverTimestamp(),
       if (createdAt == null) 'createdAt': FieldValue.serverTimestamp(),
     };
@@ -205,8 +217,22 @@ class JobCardModel {
       tenantId: (data['tenantId'] ?? '').toString(),
       companyId: (data['companyId'] ?? '').toString(),
       createdBy: (data['createdBy'] ?? '').toString(),
+      customerPoId: (data['customerPoId'] ?? '').toString(),
+      quotationFormat: (data['quotationFormat'] ?? 'commercial').toString(),
+      sourcePoItems: _mapList(data['sourcePoItems']),
+      bomMetadata: data['bomMetadata'] is Map
+          ? Map<String, dynamic>.from(data['bomMetadata'] as Map)
+          : const {},
       createdAt: dateTimeFromValue(data['createdAt']),
       updatedAt: dateTimeFromValue(data['updatedAt']),
     );
+  }
+
+  static List<Map<String, dynamic>> _mapList(Object? value) {
+    if (value is! Iterable) return const [];
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
   }
 }
