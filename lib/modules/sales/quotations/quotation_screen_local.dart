@@ -60,6 +60,7 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
   bool _isReadOnly = false;
   int _currentVersion = 1;
   bool _initialized = false;
+  String _quotationFormat = 'commercial';
 
   String get _tenantId => (_companyId ?? '').trim();
 
@@ -181,6 +182,7 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     _quotationStatus = data['status']?.toString() ?? 'Sent';
     _paymentStatus = data['paymentStatus']?.toString() ?? 'Pending';
     _currentVersion = data['version'] ?? 1;
+    _quotationFormat = data['quotationFormat']?.toString() ?? 'commercial';
 
     if ((_approvalStatus == 'Approved' || _quotationStatus == 'Converted') &&
         !_isAdminOrManager) {
@@ -510,6 +512,12 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
       sgstPercent: 0.0,
       igstPercent: totalGst > 0 ? totalGst : 18.0,
       availableStock: stock,
+      quotationLineType: (i['quotationLineType'] ?? _quotationFormat)
+          .toString(),
+      bomSection: (i['bomSection'] ?? '').toString(),
+      bomMaterial: (i['bomMaterial'] ?? '').toString(),
+      bomLengthMm: double.tryParse(i['bomLengthMm']?.toString() ?? '0') ?? 0.0,
+      bomWeight: double.tryParse(i['bomWeight']?.toString() ?? '0') ?? 0.0,
     );
   }
 
@@ -522,6 +530,7 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
         seed['inquiryNumber']?.toString() ?? seed['inquiryCode']?.toString();
     _linkedInquiryAssignedToUid = seed['assignedToUid']?.toString();
     _linkedInquiryAssignedToName = seed['assignedToName']?.toString();
+    _quotationFormat = (seed['quotationFormat'] ?? 'commercial').toString();
 
     final seededCustomerId = (seed['customerId'] ?? '').toString().trim();
     if (seededCustomerId.isNotEmpty) {
@@ -1196,6 +1205,7 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
         'status': _quotationStatus,
         'approvalStatus': _approvalStatus,
         'paymentStatus': _paymentStatus,
+        'quotationFormat': _quotationFormat,
 
         'customerId': _selectedCustomerId,
         'clientName': _clientNameController.text.trim(),
@@ -1557,6 +1567,7 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
       'revisionNo': _currentVersion.toString(),
       'inquiryRefNo': _linkedInquiryNumber ?? '',
       'subject': _subjectController.text.trim(),
+      'quotationFormat': _quotationFormat,
       'clientName': _clientNameController.text.trim(),
       'clientAddress': _addressController.text.trim(),
       'clientEmail': _emailController.text.trim(),
@@ -2156,6 +2167,13 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                             sgstPercent: sgst,
                             igstPercent: igst,
                             availableStock: currentStock,
+                            quotationLineType:
+                                itemToEdit?.quotationLineType ??
+                                _quotationFormat,
+                            bomSection: itemToEdit?.bomSection ?? '',
+                            bomMaterial: itemToEdit?.bomMaterial ?? '',
+                            bomLengthMm: itemToEdit?.bomLengthMm ?? 0,
+                            bomWeight: itemToEdit?.bomWeight ?? 0,
                           );
 
                           setState(() {
@@ -2731,9 +2749,15 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                                       children: [
                                         if (item.hsnCode.isNotEmpty)
                                           Text('HSN/SAC: ${item.hsnCode}'),
-                                        Text(
-                                          '${item.quantity} ${item.uom} x ₹${item.unitPrice.toStringAsFixed(2)}\nTax: ${item.cgstPercent + item.sgstPercent + item.igstPercent}% | Disc: ${item.discountPercent}%',
-                                        ),
+                                        if (item.quotationLineType ==
+                                            'bomDetailed')
+                                          Text(
+                                            'Section: ${item.bomSection} | Material: ${item.bomMaterial}\nQty: ${item.quantity} | Length: ${item.bomLengthMm} mm | Weight: ${item.bomWeight.toStringAsFixed(3)} kg | Rate: ₹${item.unitPrice.toStringAsFixed(2)}',
+                                          )
+                                        else
+                                          Text(
+                                            '${item.quantity} ${item.uom} x ₹${item.unitPrice.toStringAsFixed(2)}\nTax: ${item.cgstPercent + item.sgstPercent + item.igstPercent}% | Disc: ${item.discountPercent}%',
+                                          ),
                                         if (item.productId.isNotEmpty)
                                           Text(
                                             'Inventory: $stockText (${item.availableStock} available)',

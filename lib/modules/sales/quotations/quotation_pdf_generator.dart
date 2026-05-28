@@ -25,6 +25,11 @@ class QuotationLineItem {
   double sgstPercent;
   double igstPercent;
   double availableStock;
+  String quotationLineType;
+  String bomSection;
+  String bomMaterial;
+  double bomLengthMm;
+  double bomWeight;
 
   QuotationLineItem({
     required this.id,
@@ -40,9 +45,20 @@ class QuotationLineItem {
     this.sgstPercent = 0.0,
     this.igstPercent = 0.0,
     this.availableStock = 0.0,
+    this.quotationLineType = 'commercial',
+    this.bomSection = '',
+    this.bomMaterial = '',
+    this.bomLengthMm = 0.0,
+    this.bomWeight = 0.0,
   });
 
-  double get subtotal => quantity * unitPrice;
+  double get subtotal {
+    final effectiveQty = quotationLineType == 'bomDetailed' && bomWeight > 0
+        ? bomWeight
+        : quantity;
+    return effectiveQty * unitPrice;
+  }
+
   double get discountAmount => subtotal * (discountPercent / 100);
   double get taxableAmount => subtotal - discountAmount;
   double get cgstAmount => taxableAmount * (cgstPercent / 100);
@@ -91,6 +107,11 @@ class QuotationLineItem {
       'taxAmount': taxAmount,
       'totalAmount': totalAmount,
       'availableStock': availableStock,
+      'quotationLineType': quotationLineType,
+      'bomSection': bomSection,
+      'bomMaterial': bomMaterial,
+      'bomLengthMm': bomLengthMm,
+      'bomWeight': bomWeight,
     };
   }
 
@@ -113,6 +134,13 @@ class QuotationLineItem {
       sgstPercent: _toDouble(map['sgstPercent']),
       igstPercent: _toDouble(map['igstPercent']),
       availableStock: _toDouble(map['availableStock']),
+      quotationLineType: _safeString(map['quotationLineType']).isEmpty
+          ? 'commercial'
+          : _safeString(map['quotationLineType']),
+      bomSection: _safeString(map['bomSection']),
+      bomMaterial: _safeString(map['bomMaterial']),
+      bomLengthMm: _toDouble(map['bomLengthMm']),
+      bomWeight: _toDouble(map['bomWeight']),
     );
   }
 }
@@ -231,6 +259,14 @@ class QuotationPdfGenerator {
       decimalDigits: 2,
     );
     return format.format(value);
+  }
+
+  static String _formatQty(double value) {
+    if (value == value.roundToDouble()) return value.toInt().toString();
+    return value
+        .toStringAsFixed(3)
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
   }
 
   static bool _isSalesOrder(String type) {
@@ -759,6 +795,10 @@ class QuotationPdfGenerator {
       );
     }
 
+    final isBomDetailed =
+        _safeString(items.first.quotationLineType) == 'bomDetailed';
+    if (isBomDetailed) return _buildBomDetailedProductsTable(items);
+
     return pw.Container(
       decoration: pw.BoxDecoration(
         color: _cardBgColor,
@@ -938,6 +978,131 @@ class QuotationPdfGenerator {
                   _currency(item.totalAmount),
                   bold: true,
                 ), // Amount column bold
+              ],
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  static pw.Widget _buildBomDetailedProductsTable(
+    List<QuotationLineItem> items,
+  ) {
+    return pw.Container(
+      decoration: pw.BoxDecoration(
+        color: _cardBgColor,
+        borderRadius: pw.BorderRadius.circular(10),
+        border: pw.Border.all(color: _borderColor),
+      ),
+      child: pw.Table(
+        columnWidths: {
+          0: const pw.FixedColumnWidth(35),
+          1: const pw.FlexColumnWidth(1.7),
+          2: const pw.FlexColumnWidth(1.8),
+          3: const pw.FixedColumnWidth(55),
+          4: const pw.FixedColumnWidth(65),
+          5: const pw.FixedColumnWidth(70),
+          6: const pw.FixedColumnWidth(70),
+          7: const pw.FixedColumnWidth(80),
+        },
+        children: [
+          pw.TableRow(
+            decoration: pw.BoxDecoration(
+              color: _primaryColor,
+              borderRadius: const pw.BorderRadius.vertical(
+                top: pw.Radius.circular(9),
+              ),
+            ),
+            children:
+                [
+                  'S.No',
+                  'Section',
+                  'Material',
+                  'Qty',
+                  'Length',
+                  'Weight',
+                  'Rate',
+                  'Amount',
+                ].map((text) {
+                  return pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 8,
+                    ),
+                    alignment: text == 'Section' || text == 'Material'
+                        ? pw.Alignment.centerLeft
+                        : pw.Alignment.centerRight,
+                    child: pw.Text(
+                      text,
+                      style: pw.TextStyle(
+                        color: PdfColors.white,
+                        fontSize: 9,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                  );
+                }).toList(),
+          ),
+          ...List.generate(items.length, (i) {
+            final item = items[i];
+            final weight = item.bomWeight > 0 ? item.bomWeight : item.quantity;
+            final amount = weight * item.unitPrice;
+
+            pw.Widget textCell(
+              String text, {
+              pw.Alignment align = pw.Alignment.centerRight,
+              bool bold = false,
+            }) {
+              return pw.Container(
+                padding: const pw.EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 8,
+                ),
+                alignment: align,
+                child: pw.Text(
+                  text,
+                  style: pw.TextStyle(
+                    fontSize: 9,
+                    color: _textMain,
+                    fontWeight: bold ? pw.FontWeight.bold : null,
+                  ),
+                  textAlign: align == pw.Alignment.centerLeft
+                      ? pw.TextAlign.left
+                      : pw.TextAlign.right,
+                ),
+              );
+            }
+
+            return pw.TableRow(
+              decoration: pw.BoxDecoration(
+                color: i % 2 == 1 ? _zebraColor : _cardBgColor,
+                border: pw.Border(
+                  bottom: pw.BorderSide(
+                    color: i == items.length - 1
+                        ? pw.BorderSide.none.color
+                        : _borderColor,
+                    width: i == items.length - 1 ? 0 : 0.5,
+                  ),
+                ),
+              ),
+              children: [
+                textCell('${i + 1}'),
+                textCell(
+                  item.bomSection.isEmpty ? item.name : item.bomSection,
+                  align: pw.Alignment.centerLeft,
+                ),
+                textCell(
+                  item.bomMaterial.isEmpty
+                      ? item.description
+                      : item.bomMaterial,
+                  align: pw.Alignment.centerLeft,
+                ),
+                textCell(_formatQty(item.quantity)),
+                textCell('${_formatQty(item.bomLengthMm)} mm'),
+                textCell('${_formatQty(weight)} kg'),
+                textCell(_currency(item.unitPrice)),
+                textCell(_currency(amount), bold: true),
               ],
             );
           }),

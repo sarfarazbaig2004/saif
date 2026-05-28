@@ -5,6 +5,7 @@ import 'package:QUIK/modules/engineering/bom/models/engineering_bom_line_model.d
 import 'package:QUIK/modules/engineering/bom/models/engineering_bom_model.dart';
 import 'package:QUIK/modules/engineering/bom/repositories/engineering_bom_repository.dart';
 import 'package:QUIK/modules/engineering/bom/services/bom_weight_engine.dart';
+import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
 
 class EngineeringBomEntryScreen extends StatefulWidget {
   final String tenantId;
@@ -148,6 +149,30 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
       appBar: AppBar(
         title: const Text('Engineering BOM'),
         actions: [
+          PopupMenuButton<String>(
+            tooltip: 'Generate Quotation',
+            onSelected: _openQuotation,
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'commercial',
+                child: Text('Commercial Quotation'),
+              ),
+              PopupMenuItem(
+                value: 'bomDetailed',
+                child: Text('BOM Detailed Quotation'),
+              ),
+            ],
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  Icon(Icons.request_quote_outlined),
+                  SizedBox(width: 6),
+                  Text('Generate Quotation'),
+                ],
+              ),
+            ),
+          ),
           TextButton.icon(
             onPressed: _saving ? null : _saveBom,
             icon: const Icon(Icons.save_outlined),
@@ -217,6 +242,103 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
         ),
       ),
     );
+  }
+
+  void _openQuotation(String format) {
+    final lineModels = <EngineeringBomLineModel>[];
+    for (var i = 0; i < _lines.length; i++) {
+      final line = _lines[i];
+      if (line.isBlank) continue;
+      lineModels.add(line.toModel(i + 1));
+    }
+    if (lineModels.isEmpty) {
+      _showMessage('Add at least one BOM line before generating quotation.');
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuotationScreenLocal(
+          companyId: widget.tenantId,
+          inquirySeed: _buildQuotationSeed(format, lineModels),
+        ),
+      ),
+    );
+  }
+
+  Map<String, dynamic> _buildQuotationSeed(
+    String format,
+    List<EngineeringBomLineModel> lines,
+  ) {
+    return {
+      'source': 'Engineering BOM',
+      'quotationFormat': format,
+      'engineeringBomId': _bomId,
+      'engineeringBomNo': _bomNo.text.trim(),
+      'inquiryId': _inquiryId.text.trim(),
+      'inquiryNumber': _inquiryId.text.trim(),
+      'customerName': _customer.text.trim(),
+      'subject': _project.text.trim().isEmpty
+          ? 'Engineering BOM ${_bomNo.text.trim()}'
+          : _project.text.trim(),
+      'notes': 'Generated from Engineering BOM ${_bomNo.text.trim()}',
+      'products': format == 'bomDetailed'
+          ? _buildDetailedQuotationItems(lines)
+          : [_buildCommercialQuotationItem(lines)],
+    };
+  }
+
+  Map<String, dynamic> _buildCommercialQuotationItem(
+    List<EngineeringBomLineModel> lines,
+  ) {
+    final firstDescription = lines
+        .map((line) => line.itemDescription)
+        .where((value) => value.trim().isNotEmpty)
+        .join(', ');
+    return {
+      'id': 'bom-commercial-$_bomId',
+      'productId': '',
+      'name': _project.text.trim().isEmpty
+          ? 'Engineering BOM ${_bomNo.text.trim()}'
+          : _project.text.trim(),
+      'description': firstDescription,
+      'quantity': _totalWeight,
+      'uom': 'KG',
+      'unit': 'KG',
+      'rate': 0.0,
+      'unitPrice': 0.0,
+      'gstPercentage': 18.0,
+      'quotationLineType': 'commercial',
+    };
+  }
+
+  List<Map<String, dynamic>> _buildDetailedQuotationItems(
+    List<EngineeringBomLineModel> lines,
+  ) {
+    return lines
+        .map((line) {
+          return {
+            'id': 'bom-$_bomId-${line.lineNo}',
+            'productId': '',
+            'name': line.section.isEmpty ? line.itemDescription : line.section,
+            'description': line.material.isEmpty
+                ? line.itemDescription
+                : '${line.itemDescription}\nMaterial: ${line.material}',
+            'quantity': line.qty,
+            'uom': 'KG',
+            'unit': 'KG',
+            'rate': 0.0,
+            'unitPrice': 0.0,
+            'gstPercentage': 18.0,
+            'quotationLineType': 'bomDetailed',
+            'bomSection': line.section,
+            'bomMaterial': line.material,
+            'bomLengthMm': line.lengthMm,
+            'bomWeight': line.calculatedWeight,
+          };
+        })
+        .toList(growable: false);
   }
 }
 
