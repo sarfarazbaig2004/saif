@@ -8,7 +8,7 @@ extension _AddInquiryProductsSection on _ScreensAddInquiryState {
       items: _structuredProducts,
       onChanged: (items) {
         setState(() => _structuredProducts = items);
-        _calculateDealScore();
+        _calculateInquiryReadiness();
       },
       onImportBoq: () => _showInquiryItemFutureMessage('BOQ import'),
       onUploadBom: () => _showInquiryItemFutureMessage('BOM linkage'),

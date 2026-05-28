@@ -60,17 +60,17 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   String? _selectedType;
   String _selectedPriority = 'Warm';
   String _suggestedPriority = 'Warm';
-  String _selectedStage = 'Lead';
+  String _selectedStage = 'RFQ';
   String _selectedStatus = 'Open';
   String? _previousStage;
 
   final List<String> _pipelineStages = [
-    'Lead',
-    'Qualified',
-    'Proposal',
-    'Negotiation',
-    'Won',
-    'Lost',
+    'RFQ',
+    'Engineering',
+    'Quoted',
+    'Discussion',
+    'PO Received',
+    'PO Awaited',
   ];
 
   // Follow-up
@@ -80,7 +80,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
 
   // Inquiry Intelligence
   double _probability = 50.0;
-  int _dealScore = 0;
+  int _inquiryReadinessScore = 0;
   List<String> _tags = [];
 
   final AddInquiryControllers _controllers = AddInquiryControllers();
@@ -95,7 +95,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     'Customer & Contacts': true,
     'Inquiry Basics': true,
     'Inquiry Items & Engineering Scope': true,
-    'Commercial & Intelligence': true,
+    'Commercial & Project Information': true,
     'Follow-up & Activity': false,
     'Notes & Attachments': false,
   };
@@ -157,7 +157,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     }
     _hydrateFromInquiry();
     await _loadExtraData();
-    _calculateDealScore();
+    _calculateInquiryReadiness();
   }
 
   @override
@@ -231,10 +231,10 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
 
   String _statusForStage(String stage) {
     switch (stage) {
-      case 'Won':
-        return 'Won';
-      case 'Lost':
-        return 'Lost';
+      case 'PO Received':
+        return 'PO Received';
+      case 'PO Awaited':
+        return 'PO Awaited';
       default:
         return 'Open';
     }
@@ -299,16 +299,16 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     final toIndex = _pipelineStages.indexOf(toStage);
     if (fromIndex == -1 || toIndex == -1) return 'Invalid stage selection.';
 
-    if (fromStage == 'Won' || fromStage == 'Lost') {
+    if (fromStage == 'PO Received' || fromStage == 'PO Awaited') {
       return 'Closed inquiries cannot be moved back into the pipeline from this screen.';
     }
 
-    if (toStage == 'Lost') {
+    if (toStage == 'PO Awaited') {
       return null;
     }
 
-    if (toStage == 'Won') {
-      if (!(fromStage == 'Negotiation' || fromStage == 'Proposal')) {
+    if (toStage == 'PO Received') {
+      if (!(fromStage == 'Discussion' || fromStage == 'Quoted')) {
         return 'You can mark an inquiry as Won only from Proposal or Negotiation.';
       }
       return null;
@@ -332,15 +332,15 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     setState(() {
       _selectedStage = stage;
       _selectedStatus = _statusForStage(stage);
-      if (stage == 'Won' || stage == 'Lost') {
+      if (stage == 'PO Received' || stage == 'PO Awaited') {
         _nextFollowUpDate = null;
       }
-      if (stage != 'Lost') {
+      if (stage != 'PO Awaited') {
         _controllers.lossReason.clear();
       }
       _formMessage = null;
     });
-    _calculateDealScore();
+    _calculateInquiryReadiness();
   }
 
   void _hydrateFromInquiry() {
@@ -495,8 +495,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         _selectedPriority =
             _firstNonEmptyString([data['priority'], _selectedPriority]) ??
             'Warm';
-        _selectedStage =
-            _firstNonEmptyString([data['stage'], 'Lead']) ?? 'Lead';
+        _selectedStage = _firstNonEmptyString([data['stage'], 'RFQ']) ?? 'RFQ';
         _selectedStatus = _statusForStage(_selectedStage);
         _previousStage = _selectedStage;
         _followUpType =
@@ -548,14 +547,14 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       if (_assignedToUid != null) {
         await _loadAssignedUserData(_assignedToUid!);
       }
-      _calculateDealScore();
+      _calculateInquiryReadiness();
       if (mounted) setState(() {});
     } catch (e, st) {
       _handleError('Failed to load existing data', e, st);
     }
   }
 
-  void _calculateDealScore() {
+  void _calculateInquiryReadiness() {
     int score = 0;
     double expectedVal =
         double.tryParse(_controllers.expectedValue.text.trim()) ?? 0;
@@ -603,10 +602,10 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       suggested = 'Warm';
     }
 
-    if (_dealScore != newScore || _suggestedPriority != suggested) {
+    if (_inquiryReadinessScore != newScore || _suggestedPriority != suggested) {
       if (mounted) {
         setState(() {
-          _dealScore = newScore;
+          _inquiryReadinessScore = newScore;
           _suggestedPriority = suggested;
         });
       }
@@ -782,8 +781,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       }
     }
 
-    if (_selectedStage != 'Won' &&
-        _selectedStage != 'Lost' &&
+    if (_selectedStage != 'PO Received' &&
+        _selectedStage != 'PO Awaited' &&
         _nextFollowUpDate == null) {
       _showValidationMessage(
         'Open pipeline stages require a next follow-up date.',
@@ -800,7 +799,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       return false;
     }
 
-    if (_selectedStage == 'Won') {
+    if (_selectedStage == 'PO Received') {
       if (_controllers.linkedQuotationId.text.trim().isEmpty) {
         _showValidationMessage('Won inquiries must be linked to a quotation.');
         return false;
@@ -813,7 +812,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       }
     }
 
-    if (_selectedStage == 'Lost' &&
+    if (_selectedStage == 'PO Awaited' &&
         _controllers.lossReason.text.trim().isEmpty) {
       _showValidationMessage(
         'Please capture a loss reason before closing the inquiry as Lost.',
@@ -823,8 +822,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
 
     if (_selectedPriority == 'Hot' &&
         _nextFollowUpDate == null &&
-        _selectedStage != 'Won' &&
-        _selectedStage != 'Lost') {
+        _selectedStage != 'PO Received' &&
+        _selectedStage != 'PO Awaited') {
       _showValidationMessage('Hot inquiries require a next follow-up date.');
       return false;
     }
@@ -875,7 +874,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     DateTime createdAtDate = createdAtTs?.toDate() ?? now;
 
     int? conversionTimeDays;
-    if (_selectedStage == 'Won' && _previousStage != 'Won') {
+    if (_selectedStage == 'PO Received' && _previousStage != 'PO Received') {
       conversionTimeDays = now.difference(createdAtDate).inDays;
     } else if (_isEditing) {
       conversionTimeDays = _existingRawData?['conversionTimeDays'] as int?;
@@ -888,7 +887,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       lastFollowUpGap = now.difference(lastActivityTs.toDate()).inDays;
     }
 
-    int dealVelocityDays = now.difference(createdAtDate).inDays;
+    int inquiryCycleDays = now.difference(createdAtDate).inDays;
 
     final subjectStr = _controllers.subject.text.trim();
     final subjectSearch = subjectStr.toLowerCase().trim().replaceAll(
@@ -950,15 +949,15 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       'stage': _selectedStage.trim(),
       'status': _selectedStatus,
       'probability': _probability,
-      'dealScore': _dealScore,
-      'qualificationGuidance': _suggestedPriority,
-      'leadQuality': _selectedPriority,
+      'inquiryReadinessScore': _inquiryReadinessScore,
+      'readinessGuidance': _suggestedPriority,
+      'inquiryQuality': _selectedPriority,
       'leadSourceType': _selectedSource,
-      'isConverted': _selectedStage == 'Won',
+      'isConverted': _selectedStage == 'PO Received',
 
       'conversionTimeDays': conversionTimeDays,
       'lastFollowUpGap': lastFollowUpGap,
-      'dealVelocityDays': dealVelocityDays,
+      'inquiryCycleDays': inquiryCycleDays,
 
       'followUpType': _followUpType,
       'nextFollowUpDate': _nextFollowUpDate == null
@@ -975,7 +974,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       'tags': _tags,
 
       'linkedQuotationId': _controllers.linkedQuotationId.text.trim(),
-      'convertedToQuotationId': _selectedStage == 'Won'
+      'convertedToQuotationId': _selectedStage == 'PO Received'
           ? _controllers.linkedQuotationId.text.trim()
           : '',
 
@@ -1113,7 +1112,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         return false;
       }
       final data = doc.data();
-      return data['isActive'] != false && (data['stage'] ?? '') != 'Lost';
+      return data['isActive'] != false && (data['stage'] ?? '') != 'PO Awaited';
     });
 
     if (duplicateExists) {
@@ -1681,7 +1680,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             prefixIcon: const Icon(Icons.title),
           ),
           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-          onChanged: (v) => _calculateDealScore(),
+          onChanged: (v) => _calculateInquiryReadiness(),
         ),
         const SizedBox(height: 16),
         _buildResponsiveFields([
@@ -2127,7 +2126,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                     child: _buildProductsSection(),
                   ),
                   _buildSection(
-                    title: 'Commercial & Intelligence',
+                    title: 'Commercial & Project Information',
                     icon: Icons.insights,
                     child: _buildCommercialSection(),
                   ),

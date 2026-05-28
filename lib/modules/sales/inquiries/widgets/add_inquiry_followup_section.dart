@@ -15,12 +15,12 @@ extension _AddInquiryFollowupSection on _ScreensAddInquiryState {
               initialValue: _nextFollowUpDate,
               onPicked: (d) => setState(() {
                 _nextFollowUpDate = d;
-                _calculateDealScore();
+                _calculateInquiryReadiness();
               }),
             ),
             onClear: () => setState(() {
               _nextFollowUpDate = null;
-              _calculateDealScore();
+              _calculateInquiryReadiness();
             }),
           ),
           DropdownButtonFormField<String>(
@@ -69,7 +69,7 @@ extension _AddInquiryFollowupSection on _ScreensAddInquiryState {
                 onSelected: (v) {
                   if (v) {
                     setState(() => _selectedPriority = p);
-                    _calculateDealScore();
+                    _calculateInquiryReadiness();
                   }
                 },
                 selectedColor: color,
@@ -84,7 +84,7 @@ extension _AddInquiryFollowupSection on _ScreensAddInquiryState {
             );
           }).toList(),
         ),
-        if (_dealScore > 70 &&
+        if (_inquiryReadinessScore > 70 &&
             _selectedPriority != 'Hot' &&
             _suggestedPriority == 'Hot')
           Padding(
@@ -98,7 +98,7 @@ extension _AddInquiryFollowupSection on _ScreensAddInquiryState {
               ),
             ),
           ),
-        if (_dealScore < 40 &&
+        if (_inquiryReadinessScore < 40 &&
             _selectedPriority != 'Cold' &&
             _structuredProducts.isNotEmpty)
           Padding(
@@ -150,13 +150,13 @@ extension _AddInquiryFollowupSection on _ScreensAddInquiryState {
             onPicked: (d) {
               setState(() {
                 _expectedClosureDate = d;
-                _calculateDealScore();
+                _calculateInquiryReadiness();
               });
             },
           ),
           onClear: () => setState(() {
             _expectedClosureDate = null;
-            _calculateDealScore();
+            _calculateInquiryReadiness();
           }),
         ),
         if (_isEditing && _existingRawData?['activityLog'] != null) ...[

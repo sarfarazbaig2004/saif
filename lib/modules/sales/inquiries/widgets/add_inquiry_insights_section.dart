@@ -61,11 +61,11 @@ extension _AddInquiryInsightsSection on _ScreensAddInquiryState {
                   children: [
                     _buildInsightMetric(
                       'Inquiry Readiness',
-                      '$_dealScore/100',
+                      '$_inquiryReadinessScore/100',
                       Icons.score,
-                      _dealScore > 70
+                      _inquiryReadinessScore > 70
                           ? Colors.greenAccent
-                          : (_dealScore > 40
+                          : (_inquiryReadinessScore > 40
                                 ? Colors.orangeAccent
                                 : Colors.redAccent),
                     ),

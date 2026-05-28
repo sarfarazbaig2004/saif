@@ -35,7 +35,7 @@ extension _AddInquiryCommercialSection on _ScreensAddInquiryState {
                   'Estimated Project Value (₹)',
                   prefixIcon: const Icon(Icons.monetization_on_outlined),
                 ),
-                onChanged: (v) => _calculateDealScore(),
+                onChanged: (v) => _calculateInquiryReadiness(),
               ),
             ),
             const SizedBox(width: 16),
@@ -75,7 +75,7 @@ extension _AddInquiryCommercialSection on _ScreensAddInquiryState {
                     inactiveColor: const Color(0xFFE2E8F0),
                     onChanged: (v) {
                       setState(() => _probability = v);
-                      _calculateDealScore();
+                      _calculateInquiryReadiness();
                     },
                   ),
                 ],
@@ -103,7 +103,7 @@ extension _AddInquiryCommercialSection on _ScreensAddInquiryState {
                   'Decision Maker Name / Info',
                   prefixIcon: const Icon(Icons.how_to_reg_outlined),
                 ),
-                onChanged: (v) => _calculateDealScore(),
+                onChanged: (v) => _calculateInquiryReadiness(),
               ),
             ),
             const SizedBox(width: 16),
