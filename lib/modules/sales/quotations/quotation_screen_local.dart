@@ -4,6 +4,12 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
+import 'package:QUIK/modules/customer_po/models/customer_po_item_model.dart';
+import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
+import 'package:QUIK/modules/customer_po/repositories/customer_po_repository.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_number_service.dart';
+import 'package:QUIK/modules/sales/shared/enums/customer_po_status.dart';
+import 'package:QUIK/modules/sales/shared/models/sales_commercial_terms_model.dart';
 import 'quotation_pdf_generator.dart';
 
 const Color primaryColor = Color(0xFF1E3A8A);
@@ -1468,6 +1474,139 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _convertToCustomerPo() async {
+    if (_isLoading) return;
+    if (_items.isEmpty) {
+      _setError('Add quotation items before converting to Customer PO.');
+      return;
+    }
+    if (_tenantId.isEmpty) {
+      _setError('Missing company workspace. Customer PO was not created.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final repository = CustomerPoRepository();
+      final poId = repository.newPoId(_tenantId);
+      final poNumber = await CustomerPoNumberService.nextPoNumber(
+        companyId: _tenantId,
+        customerName: _clientNameController.text.trim(),
+        projectName: _subjectController.text.trim(),
+      );
+      final poItems = _items.map(_quotationItemToCustomerPoItem).toList();
+
+      final po = CustomerPoModel(
+        id: poId,
+        companyId: _tenantId,
+        customerPoNo: poNumber,
+        linkedQuotationId: widget.quotationId ?? '',
+        linkedQuotationRevisionId: _currentVersion.toString(),
+        customerId: _selectedCustomerId ?? '',
+        customerName: _clientNameController.text.trim(),
+        status: CustomerPoStatus.draft,
+        items: poItems,
+        commercialTerms: SalesCommercialTermsModel(
+          freightIncluded: false,
+          packingIncluded: !_packingChargesExtra,
+          insuranceIncluded: false,
+          gstExtra: true,
+          ldApplicable: false,
+          paymentTerms: _extractLegacyTerm('payment'),
+          deliveryTerms: _extractLegacyTerm('delivery'),
+          warrantyTerms: _extractLegacyTerm('warranty'),
+        ),
+        totalBasic: _cachedSubtotal,
+        totalTax: _cachedCgst + _cachedSgst + _cachedIgst,
+        grandTotal: _cachedFinalTotal,
+        createdBy: _currentUserUid ?? '',
+        updatedBy: _currentUserUid ?? '',
+        poDate: DateTime.now(),
+        customerEmail: _emailController.text.trim(),
+        customerMobile: _mobileController.text.trim(),
+        customerAddress: _addressController.text.trim(),
+        customerGstNumber: _gstController.text.trim(),
+        projectName: _subjectController.text.trim(),
+        subject: _subjectController.text.trim(),
+        gstPercent: _items.isEmpty
+            ? 0
+            : _items.first.cgstPercent +
+                  _items.first.sgstPercent +
+                  _items.first.igstPercent,
+        warranty: _extractLegacyTerm('warranty'),
+        quotationFormat: _quotationFormat,
+        bomMetadata: _buildCustomerPoBomMetadata(),
+      );
+
+      await repository.createCustomerPo(po);
+      if (!mounted) return;
+      _showSnack('Customer PO draft created: $poNumber');
+    } catch (e) {
+      if (mounted) {
+        _showSnack('Failed to create Customer PO: $e', isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  CustomerPoItemModel _quotationItemToCustomerPoItem(QuotationLineItem item) {
+    final effectiveQty =
+        item.quotationLineType == 'bomDetailed' && item.bomWeight > 0
+        ? item.bomWeight
+        : item.quantity;
+    return CustomerPoItemModel(
+      id: item.id,
+      quotationItemId: item.id,
+      itemName: item.name,
+      description: item.description,
+      quantity: effectiveQty,
+      uom: item.quotationLineType == 'bomDetailed' ? 'KG' : item.uom,
+      unitRate: item.unitPrice,
+      gstPercent: item.cgstPercent + item.sgstPercent + item.igstPercent,
+      weightKg: item.bomWeight,
+      material: item.bomMaterial,
+      finish: '',
+      remarks: item.quotationLineType == 'bomDetailed'
+          ? 'Section: ${item.bomSection}; Length: ${item.bomLengthMm} mm'
+          : '',
+      quotationLineType: item.quotationLineType,
+      bomSection: item.bomSection,
+      bomMaterial: item.bomMaterial,
+      bomLengthMm: item.bomLengthMm,
+      bomWeight: item.bomWeight,
+    );
+  }
+
+  Map<String, dynamic> _buildCustomerPoBomMetadata() {
+    final bomLines = _items
+        .where((item) => item.quotationLineType == 'bomDetailed')
+        .map(
+          (item) => {
+            'quotationItemId': item.id,
+            'section': item.bomSection,
+            'material': item.bomMaterial,
+            'qty': item.quantity,
+            'lengthMm': item.bomLengthMm,
+            'weightKg': item.bomWeight,
+            'rate': item.unitPrice,
+            'amount': item.subtotal,
+          },
+        )
+        .toList(growable: false);
+
+    return {
+      'quotationFormat': _quotationFormat,
+      'quotationId': widget.quotationId ?? '',
+      'quotationNumber': _quoteNumberController.text.trim(),
+      'totalWeightKg': _items.fold<double>(
+        0,
+        (total, item) => total + item.bomWeight,
+      ),
+      'lines': bomLines,
+    };
   }
 
   Future<void> _convertToInvoice() async {
@@ -3140,6 +3279,18 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                             ),
                             child: const Text('Convert to SO'),
                           ),
+                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: _isReadOnly || _isLoading
+                              ? null
+                              : _convertToCustomerPo,
+                          icon: const Icon(Icons.assignment_turned_in_outlined),
+                          label: const Text('Convert to Customer PO'),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: primaryColor),
+                            foregroundColor: primaryColor,
+                          ),
+                        ),
                         const SizedBox(width: 8),
                         ElevatedButton.icon(
                           onPressed: _isReadOnly || _isLoading

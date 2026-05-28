@@ -15,6 +15,8 @@ class CustomerPoRepository {
         .collection(SalesCollections.customerPos);
   }
 
+  String newPoId(String companyId) => _collection(companyId).doc().id;
+
   Future<void> save({required String companyId, required CustomerPoModel po}) {
     return _collection(companyId).doc(po.id).set(po.toMap());
   }

@@ -48,6 +48,8 @@ class CustomerPoModel {
   final String? poDocumentUrl;
   final String? poFileName;
   final DateTime? uploadedAt;
+  final String quotationFormat;
+  final Map<String, dynamic> bomMetadata;
 
   const CustomerPoModel({
     required this.id,
@@ -106,6 +108,8 @@ class CustomerPoModel {
     this.poDocumentUrl,
     this.poFileName,
     this.uploadedAt,
+    this.quotationFormat = 'commercial',
+    this.bomMetadata = const {},
   }) : customerPoNo = customerPoNo ?? poNumber ?? '',
        totalBasic = totalBasic ?? basicValue ?? 0,
        totalTax = totalTax ?? gstAmount ?? 0,
@@ -183,6 +187,8 @@ class CustomerPoModel {
       poDocumentUrl: map['poDocumentUrl']?.toString(),
       poFileName: map['poFileName']?.toString(),
       uploadedAt: _toDate(map['uploadedAt']),
+      quotationFormat: (map['quotationFormat'] ?? 'commercial').toString(),
+      bomMetadata: _map(map['bomMetadata']),
     );
   }
 
@@ -235,6 +241,8 @@ class CustomerPoModel {
       'poDocumentUrl': poDocumentUrl,
       'poFileName': poFileName,
       'uploadedAt': uploadedAt,
+      'quotationFormat': quotationFormat,
+      'bomMetadata': bomMetadata,
     };
   }
 

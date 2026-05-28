@@ -11,6 +11,11 @@ class CustomerPoItemModel {
   final String material;
   final String finish;
   final String remarks;
+  final String quotationLineType;
+  final String bomSection;
+  final String bomMaterial;
+  final double bomLengthMm;
+  final double bomWeight;
 
   const CustomerPoItemModel({
     required this.id,
@@ -25,6 +30,11 @@ class CustomerPoItemModel {
     required this.material,
     required this.finish,
     required this.remarks,
+    this.quotationLineType = 'commercial',
+    this.bomSection = '',
+    this.bomMaterial = '',
+    this.bomLengthMm = 0,
+    this.bomWeight = 0,
   });
 
   factory CustomerPoItemModel.fromMap(Map<String, dynamic> map) {
@@ -41,6 +51,11 @@ class CustomerPoItemModel {
       material: (map['material'] ?? '').toString(),
       finish: (map['finish'] ?? '').toString(),
       remarks: (map['remarks'] ?? '').toString(),
+      quotationLineType: (map['quotationLineType'] ?? 'commercial').toString(),
+      bomSection: (map['bomSection'] ?? '').toString(),
+      bomMaterial: (map['bomMaterial'] ?? '').toString(),
+      bomLengthMm: _toDouble(map['bomLengthMm']),
+      bomWeight: _toDouble(map['bomWeight']),
     );
   }
 
@@ -67,6 +82,11 @@ class CustomerPoItemModel {
       'material': material,
       'finish': finish,
       'remarks': remarks,
+      'quotationLineType': quotationLineType,
+      'bomSection': bomSection,
+      'bomMaterial': bomMaterial,
+      'bomLengthMm': bomLengthMm,
+      'bomWeight': bomWeight,
     };
   }
 
