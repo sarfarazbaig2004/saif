@@ -77,6 +77,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   DateTime? _nextFollowUpDate;
   String _followUpType = 'Call';
   DateTime? _expectedClosureDate;
+  DateTime? _requiredDispatchDate;
 
   // Inquiry Intelligence
   double _probability = 50.0;
@@ -1672,31 +1673,102 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 16),
+
+        _buildResponsiveFields([
+          _buildDateSelector(
+            label: 'Inquiry Date',
+            value: _existingRawData?['createdAt'] != null
+                ? (_existingRawData!['createdAt'] as Timestamp).toDate()
+                : DateTime.now(),
+            onTap: () {},
+          ),
+
+          _buildDateSelector(
+            label: 'RFQ Received Date',
+            value: _nextFollowUpDate,
+            onTap: () async {
+              await _pickDate(
+                initialValue: _nextFollowUpDate,
+                onPicked: (date) {
+                  setState(() => _nextFollowUpDate = date);
+                  _calculateInquiryReadiness();
+                },
+              );
+            },
+            onClear: () {
+              setState(() => _nextFollowUpDate = null);
+              _calculateInquiryReadiness();
+            },
+          ),
+        ]),
+
+        const SizedBox(height: 16),
+
+        _buildResponsiveFields([
+          _buildDateSelector(
+            label: 'Expected PO Date',
+            value: _expectedClosureDate,
+            onTap: () async {
+              await _pickDate(
+                initialValue: _expectedClosureDate,
+                onPicked: (date) {
+                  setState(() => _expectedClosureDate = date);
+                  _calculateInquiryReadiness();
+                },
+              );
+            },
+            onClear: () {
+              setState(() => _expectedClosureDate = null);
+              _calculateInquiryReadiness();
+            },
+          ),
+
+          _buildDateSelector(
+            label: 'Required Dispatch Date',
+            value: _requiredDispatchDate,
+            onTap: () async {
+              await _pickDate(
+                initialValue: _requiredDispatchDate,
+                onPicked: (date) {
+                  setState(() => _requiredDispatchDate = date);
+                },
+              );
+            },
+            onClear: () {
+              setState(() => _requiredDispatchDate = null);
+            },
+          ),
+        ]),
+
+        const SizedBox(height: 16),
+
         TextFormField(
           controller: _controllers.subject,
           decoration: _dec(
             'Inquiry Subject *',
-            hint: 'E.g. Requirement for 50 Laptops',
+            hint: 'E.g. Solar Structure Fabrication RFQ',
             prefixIcon: const Icon(Icons.title),
           ),
           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
           onChanged: (v) => _calculateInquiryReadiness(),
         ),
+
         const SizedBox(height: 16),
+
         _buildResponsiveFields([
           Builder(
             builder: (context) {
               final sourceOptions = <String>{
                 'Phone Call',
-                'Whatsapp',
                 'WhatsApp',
-                'E-mail',
                 'Email',
                 'Website',
                 'Referral',
                 'Cold Call',
                 'Exhibition',
                 'IndiaMART',
+                'Tender Portal',
                 'Other',
                 if ((_selectedSource ?? '').trim().isNotEmpty)
                   (_selectedSource ?? '').trim(),
@@ -1720,18 +1792,23 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
               );
             },
           ),
+
           TextFormField(
             controller: _controllers.sourceRef,
             decoration: _dec(
               'Source Reference',
-              hint: 'E.g. Referral Name',
+              hint: 'E.g. Tender No / Referral Name',
               prefixIcon: const Icon(Icons.link),
             ),
           ),
         ]),
+
         const SizedBox(height: 16),
+
         _buildAssignUserDropdown(),
+
         const SizedBox(height: 16),
+
         _buildTagsInput(),
       ],
     );
