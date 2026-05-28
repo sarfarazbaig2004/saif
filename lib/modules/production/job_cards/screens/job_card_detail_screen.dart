@@ -5,6 +5,7 @@ import 'package:QUIK/modules/production/job_cards/models/job_card_model.dart';
 import 'package:QUIK/modules/production/job_cards/screens/job_card_form_screen.dart';
 import 'package:QUIK/modules/production/material_requirements/models/material_requirement_model.dart';
 import 'package:QUIK/modules/production/material_requirements/repositories/material_requirement_repository.dart';
+import 'package:QUIK/modules/production/material_requirements/services/inventory_availability_service.dart';
 
 class JobCardDetailScreen extends StatelessWidget {
   final String tenantId;
@@ -84,6 +85,50 @@ class JobCardDetailScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _checkInventoryAvailability(
+    BuildContext context,
+    String activeTenantId,
+  ) async {
+    final lines = _buildRequirementLines();
+    if (lines.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No material requirement lines found.')),
+      );
+      return;
+    }
+
+    final requirement = MaterialRequirementModel(
+      requirementId: 'preview-${jobCard.jobCardId}',
+      requirementNo: 'Preview',
+      jobCardId: jobCard.jobCardId,
+      jobCardNo: jobCard.jobCardNo,
+      customerName: jobCard.customerName,
+      projectCode: jobCard.projectCode,
+      poNumber: jobCard.poNumber,
+      status: 'draft',
+      lines: lines,
+      totalWeightKg: lines.fold<double>(
+        0,
+        (total, line) => total + line.requiredWeightKg,
+      ),
+      tenantId: activeTenantId,
+      companyId: activeTenantId,
+    );
+
+    try {
+      final result = await InventoryAvailabilityService(
+        tenantId: activeTenantId,
+      ).checkRequirement(requirement: requirement);
+      if (!context.mounted) return;
+      _showAvailabilityDialog(context, result);
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to check inventory: $e')));
+    }
+  }
+
   List<MaterialRequirementLineModel> _buildRequirementLines() {
     if (jobCard.sourcePoItems.isNotEmpty) {
       return jobCard.sourcePoItems
@@ -159,6 +204,12 @@ class JobCardDetailScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(jobCard.jobCardNo),
         actions: [
+          TextButton.icon(
+            onPressed: () =>
+                _checkInventoryAvailability(context, activeTenantId),
+            icon: const Icon(Icons.fact_check_outlined),
+            label: const Text('Check Inventory Availability'),
+          ),
           TextButton.icon(
             onPressed: () =>
                 _generateMaterialRequirement(context, activeTenantId),
@@ -291,6 +342,72 @@ class JobCardDetailScreen extends StatelessWidget {
     if (value is num) return value.toDouble();
     return double.tryParse(value?.toString() ?? '') ?? 0;
   }
+
+  void _showAvailabilityDialog(
+    BuildContext context,
+    InventoryAvailabilityResult result,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Inventory Status: ${_availabilityLabel(result.status)}'),
+        content: SizedBox(
+          width: 720,
+          child: SingleChildScrollView(
+            child: DataTable(
+              columns: const [
+                DataColumn(label: Text('Material')),
+                DataColumn(label: Text('Required')),
+                DataColumn(label: Text('Available')),
+                DataColumn(label: Text('Shortage')),
+              ],
+              rows: result.lines
+                  .map((line) {
+                    final requirement = line.requirementLine;
+                    final material = _firstNonEmpty([
+                      requirement.material,
+                      requirement.section,
+                    ]);
+                    return DataRow(
+                      cells: [
+                        DataCell(Text(material.isEmpty ? '-' : material)),
+                        DataCell(Text(_kg(_requiredQty(requirement)))),
+                        DataCell(Text(_kg(line.availableQty))),
+                        DataCell(Text(_kg(line.shortageQty))),
+                      ],
+                    );
+                  })
+                  .toList(growable: false),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _availabilityLabel(InventoryAvailabilityStatus status) {
+    switch (status) {
+      case InventoryAvailabilityStatus.available:
+        return 'Available';
+      case InventoryAvailabilityStatus.partial:
+        return 'Partial';
+      case InventoryAvailabilityStatus.shortage:
+        return 'Shortage';
+    }
+  }
+
+  double _requiredQty(MaterialRequirementLineModel line) {
+    if (line.requiredWeightKg > 0) return line.requiredWeightKg;
+    return line.requiredQty;
+  }
+
+  String _kg(double value) => '${value.toStringAsFixed(2)} kg';
 }
 
 class _SummaryCard extends StatelessWidget {

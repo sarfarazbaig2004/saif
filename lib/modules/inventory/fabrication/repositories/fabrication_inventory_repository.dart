@@ -99,6 +99,14 @@ class FabricationInventoryRepository {
     });
   }
 
+  Future<List<RawMaterialStockSummaryModel>> fetchStockSummary() async {
+    final snapshot = await _transactionsRef.get();
+    final transactions = snapshot.docs
+        .map(RawMaterialTransactionModel.fromFirestore)
+        .toList(growable: false);
+    return _buildStockSummary(transactions);
+  }
+
   Stream<List<RawMaterialTransactionModel>> watchTransactions({
     RawMaterialTransactionType? type,
     int limit = 50,
