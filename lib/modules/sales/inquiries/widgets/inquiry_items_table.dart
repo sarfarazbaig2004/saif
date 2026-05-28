@@ -4,11 +4,13 @@ class _InquiryItemsTable extends StatelessWidget {
   final List<Map<String, dynamic>> items;
   final ValueChanged<int> onEdit;
   final ValueChanged<int> onDelete;
+  final ValueChanged<Map<String, dynamic>>? onCreateBom;
 
   const _InquiryItemsTable({
     required this.items,
     required this.onEdit,
     required this.onDelete,
+    this.onCreateBom,
   });
 
   @override
@@ -23,6 +25,7 @@ class _InquiryItemsTable extends StatelessWidget {
           DataColumn(label: Text('Qty')),
           DataColumn(label: Text('Unit')),
           DataColumn(label: Text('Rate')),
+          DataColumn(label: Text('BOM')),
           DataColumn(label: Text('')),
         ],
         rows: List.generate(items.length, (index) {
@@ -39,6 +42,15 @@ class _InquiryItemsTable extends StatelessWidget {
               DataCell(Text(InquiryItemsGrid._numberText(item['quantity']))),
               DataCell(Text(_value(item['unit']))),
               DataCell(Text(InquiryItemsGrid._numberText(item['price']))),
+              DataCell(
+                OutlinedButton.icon(
+                  onPressed: onCreateBom == null
+                      ? null
+                      : () => onCreateBom!(Map<String, dynamic>.from(item)),
+                  icon: const Icon(Icons.account_tree_outlined, size: 16),
+                  label: const Text('Create BOM'),
+                ),
+              ),
               DataCell(
                 Row(
                   mainAxisSize: MainAxisSize.min,

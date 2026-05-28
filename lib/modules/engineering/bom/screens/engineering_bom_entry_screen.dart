@@ -8,8 +8,21 @@ import 'package:QUIK/modules/engineering/bom/services/bom_weight_engine.dart';
 
 class EngineeringBomEntryScreen extends StatefulWidget {
   final String tenantId;
+  final String? initialInquiryId;
+  final String? initialCustomer;
+  final String? initialProject;
+  final String? initialItemDescription;
+  final double? initialQty;
 
-  const EngineeringBomEntryScreen({super.key, required this.tenantId});
+  const EngineeringBomEntryScreen({
+    super.key,
+    required this.tenantId,
+    this.initialInquiryId,
+    this.initialCustomer,
+    this.initialProject,
+    this.initialItemDescription,
+    this.initialQty,
+  });
 
   @override
   State<EngineeringBomEntryScreen> createState() =>
@@ -25,7 +38,7 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
   final _customer = TextEditingController();
   final _project = TextEditingController();
   final _revision = TextEditingController(text: 'R0');
-  final _lines = <_BomLineDraft>[_BomLineDraft()];
+  final _lines = <_BomLineDraft>[];
   final _gridScrollController = ScrollController();
 
   late final String _bomId;
@@ -39,6 +52,15 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
     super.initState();
     _bomId = widget.tenantId.trim().isEmpty ? '' : _repository.newBomId();
     _bomNo.text = widget.tenantId.trim().isEmpty ? '' : _repository.nextBomNo();
+    _inquiryId.text = (widget.initialInquiryId ?? '').trim();
+    _customer.text = (widget.initialCustomer ?? '').trim();
+    _project.text = (widget.initialProject ?? '').trim();
+    _lines.add(
+      _BomLineDraft(
+        itemDescription: widget.initialItemDescription,
+        qty: widget.initialQty,
+      ),
+    );
   }
 
   double get _totalWeight {
@@ -421,6 +443,13 @@ class _BomLineDraft {
   final galvanizingMicron = TextEditingController();
   final grade = TextEditingController();
 
+  _BomLineDraft({String? itemDescription, double? qty}) {
+    this.itemDescription.text = (itemDescription ?? '').trim();
+    if (qty != null && qty > 0) {
+      this.qty.text = _formatNumber(qty);
+    }
+  }
+
   bool get isBlank {
     return itemDescription.text.trim().isEmpty &&
         section.text.trim().isEmpty &&
@@ -465,6 +494,11 @@ class _BomLineDraft {
 
   static double _toDouble(String value) {
     return double.tryParse(value.trim()) ?? 0;
+  }
+
+  static String _formatNumber(double value) {
+    if (value == value.roundToDouble()) return value.toInt().toString();
+    return value.toString();
   }
 }
 
