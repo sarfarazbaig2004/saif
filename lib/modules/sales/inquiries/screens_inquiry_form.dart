@@ -1158,7 +1158,7 @@ class _ScreensInquiryFormState extends State<ScreensInquiryForm> {
                           ),
                           right: _field(
                             controller: _expectedValueController,
-                            label: 'Expected Deal Value',
+                            label: 'Estimated Project Value',
                             hint: 'Example: 250000',
                             keyboardType: TextInputType.number,
                             prefixIcon: const Icon(

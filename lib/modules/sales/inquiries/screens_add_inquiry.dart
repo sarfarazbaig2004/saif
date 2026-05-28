@@ -78,7 +78,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   String _followUpType = 'Call';
   DateTime? _expectedClosureDate;
 
-  // Deal Intelligence
+  // Inquiry Intelligence
   double _probability = 50.0;
   int _dealScore = 0;
   List<String> _tags = [];
@@ -1063,7 +1063,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             payload['activityLog'] = [
               {
                 'action': 'Created',
-                'description': 'Deal pipeline initiated.',
+                'description': 'Inquiry pipeline initiated.',
                 'by': widget.currentUserUid,
                 'timestamp': Timestamp.now(),
               },
@@ -1149,8 +1149,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         SnackBar(
           content: Text(
             _isEditing
-                ? 'Deal successfully updated.'
-                : 'Deal successfully created.',
+                ? 'Inquiry successfully updated.'
+                : 'Inquiry successfully created.',
           ),
           backgroundColor: Colors.green.shade700,
           behavior: SnackBarBehavior.floating,
@@ -1676,7 +1676,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         TextFormField(
           controller: _controllers.subject,
           decoration: _dec(
-            'Deal / Inquiry Subject *',
+            'Inquiry Subject *',
             hint: 'E.g. Requirement for 50 Laptops',
             prefixIcon: const Icon(Icons.title),
           ),
@@ -2036,7 +2036,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                       ),
                     ),
                     child: const Text(
-                      'Save & Quote',
+                      'Generate Quotation',
                       style: TextStyle(
                         color: Color(0xFF2563EB),
                         fontWeight: FontWeight.w600,
@@ -2069,7 +2069,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                           )
                         : const Icon(Icons.check),
                     label: Text(
-                      _isEditing ? 'Update Deal' : 'Save Deal',
+                      _isEditing ? 'Update Inquiry' : 'Save Inquiry',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
@@ -2088,7 +2088,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       backgroundColor: const Color(0xFFF1F5F9),
       appBar: AppBar(
         title: Text(
-          _isEditing ? 'Edit Deal / Inquiry' : 'Create Deal / Inquiry',
+          _isEditing ? 'Edit Inquiry' : 'Create Inquiry',
           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
         ),
         backgroundColor: Colors.white,

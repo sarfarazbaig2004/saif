@@ -47,7 +47,7 @@ extension _AddInquiryInsightsSection on _ScreensAddInquiryState {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Deal Intelligence',
+                  'Inquiry Intelligence',
                   style: TextStyle(
                     color: Colors.blueAccent,
                     fontSize: 12,
@@ -60,7 +60,7 @@ extension _AddInquiryInsightsSection on _ScreensAddInquiryState {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _buildInsightMetric(
-                      'Deal Score',
+                      'Inquiry Readiness',
                       '$_dealScore/100',
                       Icons.score,
                       _dealScore > 70

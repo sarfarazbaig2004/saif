@@ -32,7 +32,7 @@ extension _AddInquiryCommercialSection on _ScreensAddInquiryState {
                   decimal: true,
                 ),
                 decoration: _dec(
-                  'Expected Deal Value (₹)',
+                  'Estimated Project Value (₹)',
                   prefixIcon: const Icon(Icons.monetization_on_outlined),
                 ),
                 onChanged: (v) => _calculateDealScore(),
