@@ -17,7 +17,7 @@ extension _AddInquiryInsightsSection on _ScreensAddInquiryState {
       warnings.add('🔥 High value deal');
     }
     if (_structuredProducts.isEmpty) {
-      warnings.add('⚠ No products linked');
+      warnings.add('⚠ No inquiry items linked');
     }
 
     return Container(

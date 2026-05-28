@@ -5,7 +5,7 @@ import 'dart:developer' as developer;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-import 'widgets/erp_product_search_dialog.dart';
+import 'widgets/inquiry_items_grid.dart';
 import 'package:intl/intl.dart';
 
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
@@ -16,7 +16,6 @@ import 'package:QUIK/modules/sales/inquiries/controllers/add_inquiry_controllers
 
 part 'widgets/add_inquiry_insights_section.dart';
 part 'widgets/add_inquiry_products_section.dart';
-part 'widgets/add_inquiry_product_detail_entry.dart';
 part 'widgets/add_inquiry_commercial_section.dart';
 part 'widgets/add_inquiry_followup_section.dart';
 part 'widgets/add_inquiry_activity_timeline.dart';
@@ -85,7 +84,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
 
   final AddInquiryControllers _controllers = AddInquiryControllers();
 
-  // Structured Products (ERP Grade Inventory Connection)
+  // Inquiry items become the shared source for quotation, BOM, production, and dispatch.
   List<Map<String, dynamic>> _structuredProducts = [];
 
   // State Flags
@@ -94,7 +93,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   final Map<String, bool> _sectionExpanded = {
     'Customer & Contacts': true,
     'Inquiry Basics': true,
-    'Products & Scope': true,
+    'Inquiry Items & Engineering Scope': true,
     'Commercial & Intelligence': true,
     'Follow-up & Activity': false,
     'Notes & Attachments': false,
@@ -746,7 +745,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
 
     if (_structuredProducts.isEmpty) {
       _showValidationMessage(
-        'Add at least one product or requirement before saving.',
+        'Add at least one inquiry item or engineering requirement before saving.',
       );
       return false;
     }
@@ -755,7 +754,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       double qty = double.tryParse(item['quantity'].toString()) ?? 0.0;
       if (qty <= 0) {
         _showValidationMessage(
-          'Product "${item['name']}" must have a quantity greater than zero.',
+          'Inquiry item "${item['name']}" must have a quantity greater than zero.',
         );
         return false;
       }
@@ -2122,8 +2121,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                     child: _buildInquiryBasicsSection(),
                   ),
                   _buildSection(
-                    title: 'Products & Scope',
-                    icon: Icons.inventory_2_outlined,
+                    title: 'Inquiry Items & Engineering Scope',
+                    icon: Icons.precision_manufacturing_outlined,
                     child: _buildProductsSection(),
                   ),
                   _buildSection(
