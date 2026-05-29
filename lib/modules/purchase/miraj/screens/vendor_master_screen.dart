@@ -3,7 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
-class MirajVendorMasterScreen extends StatelessWidget {
+class MirajVendorMasterScreen extends StatefulWidget {
   final String tenantId;
   final String currentUserUid;
 
@@ -13,10 +13,18 @@ class MirajVendorMasterScreen extends StatelessWidget {
     required this.currentUserUid,
   });
 
+  @override
+  State<MirajVendorMasterScreen> createState() =>
+      _MirajVendorMasterScreenState();
+}
+
+class _MirajVendorMasterScreenState extends State<MirajVendorMasterScreen> {
+  final _searchController = TextEditingController();
+
   CollectionReference<Map<String, dynamic>> get _vendorsRef => FirebaseFirestore
       .instance
       .collection('companies')
-      .doc(tenantId)
+      .doc(widget.tenantId)
       .collection('vendors');
 
   void _openForm(
@@ -28,13 +36,19 @@ class MirajVendorMasterScreen extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (_) => MirajVendorFormScreen(
-          tenantId: tenantId,
-          currentUserUid: currentUserUid,
+          tenantId: widget.tenantId,
+          currentUserUid: widget.currentUserUid,
           vendorId: vendorId,
           initialData: data,
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -49,14 +63,45 @@ class MirajVendorMasterScreen extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _vendorsRef.orderBy('nameLower').snapshots(),
         builder: (context, snapshot) {
-          final vendors = (snapshot.data?.docs ?? [])
-              .where((doc) => doc.data()['isDeleted'] != true)
-              .toList();
+          final searchText = _searchController.text.trim().toLowerCase();
+
+          final vendors = (snapshot.data?.docs ?? []).where((doc) {
+            final data = doc.data();
+
+            if (data['isDeleted'] == true) return false;
+
+            if (searchText.isEmpty) return true;
+
+            final searchableText = [
+              data['name'],
+              data['contactPerson'],
+              data['phone'],
+              data['email'],
+              data['gstNo'],
+            ].map((value) => (value ?? '').toString().toLowerCase()).join(' ');
+
+            return searchableText.contains(searchText);
+          }).toList();
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const _VendorHeader(),
+              const SizedBox(height: 14),
+
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    hintText: 'Search vendors...',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 14),
               Expanded(
                 child:
@@ -215,6 +260,43 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
     }
 
     return true;
+  }
+
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Vendor?'),
+        content: const Text(
+          'This vendor will be hidden from the system. Existing purchase records will remain intact.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    await _vendorsRef.doc(widget.vendorId).update({
+      'isDeleted': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'updatedBy': widget.currentUserUid,
+    });
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Vendor deleted')));
+
+    Navigator.pop(context);
   }
 
   Future<void> _save() async {
@@ -387,6 +469,15 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
                   : const Icon(Icons.save_outlined),
               label: Text(_isSaving ? 'Saving...' : 'Save Vendor'),
             ),
+
+            const SizedBox(height: 12),
+
+            if (_isEdit)
+              OutlinedButton.icon(
+                onPressed: _confirmDelete,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('Delete Vendor'),
+              ),
           ],
         ),
       ),
