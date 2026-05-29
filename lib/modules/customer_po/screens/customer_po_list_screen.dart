@@ -29,24 +29,6 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
     super.dispose();
   }
 
-  bool _matchesSearch(Map<String, dynamic> data) {
-    final search = _searchText.trim().toLowerCase();
-    if (search.isEmpty) return true;
-
-    final values = [
-      data['internalPoNo'],
-      data['poNumber'],
-      data['customerPoNumber'],
-      data['customerName'],
-      data['projectName'],
-      data['siteLocation'],
-      data['subject'],
-      data['status'],
-    ].map((value) => (value ?? '').toString().toLowerCase()).join(' ');
-
-    return values.contains(search);
-  }
-
   DateTime _dateValue(dynamic value) {
     if (value is Timestamp) return value.toDate();
     if (value is DateTime) return value;
@@ -123,23 +105,24 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
             );
           }
 
-          final docs = snapshot.data!.docs.where((doc) {
-            return doc.data()['isDeleted'] != true;
-          }).toList();
-
-          final filteredDocs = docs.where((doc) {
-            final data = doc.data();
-            return _matchesSearch(data);
-          }).toList();
-          filteredDocs.sort((a, b) {
+          final rawDocs = snapshot.data!.docs;
+          final mappedDocs = rawDocs.toList();
+          final visibleDocs = mappedDocs.toList();
+          visibleDocs.sort((a, b) {
             final aDate = _dateValue(a.data()['createdAt']);
             final bDate = _dateValue(b.data()['createdAt']);
             return bDate.compareTo(aDate);
           });
+          debugPrint(
+            'CUSTOMER_PO_LIST_COUNTS rawCount=${rawDocs.length} '
+            'mappedCount=${mappedDocs.length} '
+            'filteredCount=${visibleDocs.length} '
+            'searchText="${_searchText.trim()}"',
+          );
 
           return ListView.separated(
             padding: const EdgeInsets.all(16),
-            itemCount: filteredDocs.length + 1,
+            itemCount: visibleDocs.length + 1,
             separatorBuilder: (_, __) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               if (index == 0) {
@@ -149,7 +132,7 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                 );
               }
 
-              final poDoc = filteredDocs[index - 1];
+              final poDoc = visibleDocs[index - 1];
               final data = poDoc.data();
 
               final internalPoNo =
