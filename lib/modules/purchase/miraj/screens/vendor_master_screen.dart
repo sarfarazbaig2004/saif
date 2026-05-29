@@ -199,6 +199,24 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
     return null;
   }
 
+  Future<bool> _vendorNameExists(String name) async {
+    final normalizedName = name.trim().toLowerCase();
+
+    final snapshot = await _vendorsRef
+        .where('nameLower', isEqualTo: normalizedName)
+        .where('isDeleted', isEqualTo: false)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isEmpty) return false;
+
+    if (_isEdit && snapshot.docs.first.id == widget.vendorId) {
+      return false;
+    }
+
+    return true;
+  }
+
   Future<void> _save() async {
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
@@ -206,6 +224,19 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
     setState(() => _isSaving = true);
     try {
       final name = _nameController.text.trim();
+      if (await _vendorNameExists(name)) {
+        if (!mounted) return;
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Vendor already exists'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+
+        setState(() => _isSaving = false);
+        return;
+      }
       final data = {
         'tenantId': widget.tenantId,
         'name': name,
