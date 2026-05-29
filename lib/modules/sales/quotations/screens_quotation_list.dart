@@ -548,7 +548,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
 
       if (!canProceed) return;
 
-      final poNumber = await CustomerPoNumberService.nextInternalPoNumber(
+      final poNumber = await CustomerPoNumberService.nextPoNumber(
         companyId: _companyId!,
       );
       final customerPoData = {
@@ -842,6 +842,47 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       if (mounted) setState(() {});
     } catch (e) {
       _showSnack('Failed to delete quotation: $e', isError: true);
+    }
+  }
+
+  Future<void> _resetCustomerPoConversion(String quotationId) async {
+    final companyId = _companyId;
+    if (companyId == null || companyId.trim().isEmpty) {
+      _showSnack(
+        'Missing company workspace. Conversion was not reset.',
+        isError: true,
+      );
+      return;
+    }
+
+    final confirm = await _showConfirmDialog(
+      'Reset Customer PO Conversion',
+      'Testing only: unlink Customer PO conversion and return this quotation to Approved?',
+    );
+    if (confirm != true) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection(_kCollectionCompanies)
+          .doc(companyId)
+          .collection(_kCollectionQuotations)
+          .doc(quotationId)
+          .update({
+            'status': 'Approved',
+            'approvalStatus': 'Approved',
+            'convertedToCustomerPo': false,
+            'convertedToCustomerPoId': '',
+            'customerPoNo': '',
+            'internalPoNo': '',
+            'convertedAt': null,
+            'updatedAt': FieldValue.serverTimestamp(),
+            'updatedBy': _currentUserUid ?? '',
+          });
+
+      _showSnack('Customer PO conversion reset.');
+      if (mounted) setState(() {});
+    } catch (e) {
+      _showSnack('Failed to reset conversion: $e', isError: true);
     }
   }
 
@@ -1431,6 +1472,11 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                                 doc.id,
                                                 data,
                                               );
+                                            } else if (val ==
+                                                'resetCustomerPo') {
+                                              _resetCustomerPoConversion(
+                                                doc.id,
+                                              );
                                             } else if (val == 'revision') {
                                               _createRevision(doc.id, data);
                                             } else if (val == 'cancel') {
@@ -1498,6 +1544,17 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                                     value: 'convert',
                                                     child: Text(
                                                       'Convert to Customer PO',
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+
+                                              if (hasCustomerPo) {
+                                                items.add(
+                                                  const PopupMenuItem(
+                                                    value: 'resetCustomerPo',
+                                                    child: Text(
+                                                      'Reset Customer PO Conversion',
                                                     ),
                                                   ),
                                                 );
