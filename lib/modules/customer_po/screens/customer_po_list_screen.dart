@@ -120,119 +120,144 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
             'searchText="${_searchText.trim()}"',
           );
 
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: visibleDocs.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return CustomerPoSearchBar(
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+                child: CustomerPoSearchBar(
                   controller: _searchController,
                   onChanged: (value) => setState(() => _searchText = value),
-                );
-              }
-
-              final poDoc = visibleDocs[index - 1];
-              final data = poDoc.data();
-
-              final internalPoNo =
-                  (data['internalPoNo'] ?? data['poNumber'] ?? '').toString();
-              final customerPoNumber = (data['customerPoNumber'] ?? '')
-                  .toString()
-                  .trim();
-              final customerName = (data['customerName'] ?? '').toString();
-              final projectName = (data['projectName'] ?? '').toString();
-              final status = (data['status'] ?? 'draft').toString();
-              final totalValue = (data['totalValue'] is num)
-                  ? (data['totalValue'] as num).toDouble()
-                  : 0.0;
-
-              return Card(
-                child: ListTile(
-                  isThreeLine: true,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CustomerPoDetailScreen(
-                        companyId: activeCompanyId,
-                        docId: poDoc.id,
-                      ),
-                    ),
-                  ),
-                  title: Text(
-                    internalPoNo.isEmpty
-                        ? 'Internal PO No Missing'
-                        : 'Internal PO No : $internalPoNo',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: Text(
-                    [
-                      if (customerPoNumber.isNotEmpty)
-                        'Customer PO No : $customerPoNumber',
-                      'Customer : $customerName',
-                      if (projectName.isNotEmpty) projectName,
-                    ].join('\n'),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: SizedBox(
-                    width: 150,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerRight,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                currency.format(totalValue),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              CustomerPoStatusChip(status: status),
-                            ],
-                          ),
-                          const SizedBox(width: 6),
-                          PopupMenuButton<String>(
-                            onSelected: (value) async {
-                              if (value != 'duplicate') return;
-
-                              await CustomerPoRecordStatusService.markAsDuplicate(
-                                companyId: activeCompanyId,
-                                docId: poDoc.id,
-                                reason: 'Created twice by mistake',
-                              );
-
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Duplicate Customer PO deleted from active list',
-                                  ),
-                                ),
-                              );
-                            },
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(
-                                value: 'duplicate',
-                                child: Text('Delete Duplicate Entry'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
                 ),
-              );
-            },
+              ),
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  itemCount: visibleDocs.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final poDoc = visibleDocs[index];
+                    final data = poDoc.data();
+
+                    final internalPoNo =
+                        (data['internalPoNo'] ??
+                                data['customerPoNo'] ??
+                                data['poNumber'] ??
+                                '')
+                            .toString();
+                    final customerPoNumber = (data['customerPoNumber'] ?? '')
+                        .toString()
+                        .trim();
+                    final customerName = (data['customerName'] ?? '')
+                        .toString();
+                    final projectName =
+                        (data['subject'] ?? data['projectName'] ?? '')
+                            .toString();
+                    final status = (data['status'] ?? 'Draft').toString();
+                    final totalValue =
+                        (data['grandTotal'] ??
+                        data['totalValue'] ??
+                        data['finalTotal'] ??
+                        0);
+                    final totalAmount = totalValue is num
+                        ? totalValue.toDouble()
+                        : double.tryParse(totalValue.toString()) ?? 0.0;
+
+                    debugPrint(
+                      'CUSTOMER_PO_RENDER_CARD index=$index '
+                      'docId=${poDoc.id} '
+                      'internalPoNo=$internalPoNo '
+                      'customerName=$customerName',
+                    );
+
+                    return Card(
+                      child: ListTile(
+                        isThreeLine: true,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CustomerPoDetailScreen(
+                              companyId: activeCompanyId,
+                              docId: poDoc.id,
+                            ),
+                          ),
+                        ),
+                        title: Text(
+                          internalPoNo.isEmpty
+                              ? 'Internal PO No Missing'
+                              : 'Internal PO No : $internalPoNo',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Text(
+                          [
+                            if (customerPoNumber.isNotEmpty)
+                              'Customer PO No : $customerPoNumber',
+                            'Customer : $customerName',
+                            if (projectName.isNotEmpty) projectName,
+                          ].join('\n'),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: SizedBox(
+                          width: 150,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      currency.format(totalAmount),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    CustomerPoStatusChip(status: status),
+                                  ],
+                                ),
+                                const SizedBox(width: 6),
+                                PopupMenuButton<String>(
+                                  onSelected: (value) async {
+                                    if (value != 'duplicate') return;
+
+                                    await CustomerPoRecordStatusService.markAsDuplicate(
+                                      companyId: activeCompanyId,
+                                      docId: poDoc.id,
+                                      reason: 'Created twice by mistake',
+                                    );
+
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Duplicate Customer PO deleted from active list',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  itemBuilder: (_) => const [
+                                    PopupMenuItem(
+                                      value: 'duplicate',
+                                      child: Text('Delete Duplicate Entry'),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           );
         },
       ),
