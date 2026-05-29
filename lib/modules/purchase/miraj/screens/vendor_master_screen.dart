@@ -156,8 +156,46 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
     super.dispose();
   }
 
-  String? _required(String? value) {
-    if (value == null || value.trim().isEmpty) return 'Required';
+  String? _validateName(String? value) {
+    final name = value?.trim() ?? '';
+
+    if (name.isEmpty) return 'Vendor name is required';
+    if (name.length < 3) return 'Vendor name must be at least 3 characters';
+    if (name.length > 100) return 'Vendor name cannot exceed 100 characters';
+
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    final phone = value?.trim() ?? '';
+    if (phone.isEmpty) return null;
+
+    if (!RegExp(r'^[0-9]{10}$').hasMatch(phone)) {
+      return 'Enter valid 10 digit phone number';
+    }
+
+    return null;
+  }
+
+  String? _validateEmail(String? value) {
+    final email = value?.trim() ?? '';
+    if (email.isEmpty) return null;
+
+    if (!RegExp(r'^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(email)) {
+      return 'Enter valid email address';
+    }
+
+    return null;
+  }
+
+  String? _validateGst(String? value) {
+    final gst = value?.trim().toUpperCase() ?? '';
+    if (gst.isEmpty) return null;
+
+    if (!RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][A-Z0-9]{3}$').hasMatch(gst)) {
+      return 'Enter valid 15 character GST number';
+    }
+
     return null;
   }
 
@@ -175,7 +213,7 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
         'contactPerson': _contactController.text.trim(),
         'phone': _phoneController.text.trim(),
         'email': _emailController.text.trim(),
-        'gstNo': _gstController.text.trim(),
+        'gstNo': _gstController.text.trim().toUpperCase(),
         'address': _addressController.text.trim(),
         'notes': _notesController.text.trim(),
         'isActive': _isActive,
@@ -232,7 +270,8 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
                 children: [
                   TextFormField(
                     controller: _nameController,
-                    validator: _required,
+                    validator: _validateName,
+                    maxLength: 100,
                     decoration: const InputDecoration(
                       labelText: 'Vendor Name *',
                       prefixIcon: Icon(Icons.business_outlined),
@@ -250,6 +289,8 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
                   TextFormField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
+                    validator: _validatePhone,
+                    maxLength: 10,
                     decoration: const InputDecoration(
                       labelText: 'Phone',
                       prefixIcon: Icon(Icons.call_outlined),
@@ -259,6 +300,7 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
+                    validator: _validateEmail,
                     decoration: const InputDecoration(
                       labelText: 'Email',
                       prefixIcon: Icon(Icons.email_outlined),
@@ -267,6 +309,9 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _gstController,
+                    validator: _validateGst,
+                    maxLength: 15,
+                    textCapitalization: TextCapitalization.characters,
                     decoration: const InputDecoration(
                       labelText: 'GST No.',
                       prefixIcon: Icon(Icons.receipt_long_outlined),
