@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/customer_po/screens/customer_po_detail_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/customer_po_search_bar.dart';
@@ -46,8 +47,24 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
     return values.contains(search);
   }
 
+  DateTime _dateValue(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    return DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final activeCompanyId = context.watchTenant.selectedTenantId.trim().isEmpty
+        ? widget.companyId
+        : context.watchTenant.selectedTenantId.trim();
+    final collectionPath =
+        'companies/$activeCompanyId/${SalesCollections.customerPos}';
+    debugPrint(
+      'CUSTOMER_PO_LIST_QUERY widgetCompanyId=${widget.companyId} '
+      'activeCompanyId=$activeCompanyId path=$collectionPath',
+    );
+
     final currency = NumberFormat.currency(
       locale: 'en_IN',
       symbol: '₹ ',
@@ -64,7 +81,7 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (_) =>
-                      CustomerPoFormScreen(companyId: widget.companyId),
+                      CustomerPoFormScreen(companyId: activeCompanyId),
                 ),
               );
             },
@@ -77,9 +94,8 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
             .collection('companies')
-            .doc(widget.companyId)
+            .doc(activeCompanyId)
             .collection(SalesCollections.customerPos)
-            .orderBy('createdAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -92,24 +108,34 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
+          debugPrint(
+            'CUSTOMER_PO_LIST_RESULT path=$collectionPath count=${snapshot.data!.docs.length}',
+          );
+          for (final doc in snapshot.data!.docs) {
+            final data = doc.data();
+            debugPrint(
+              'CUSTOMER_PO_LIST_DOC path=$collectionPath/${doc.id} '
+              'docId=${doc.id} '
+              'internalPoNo=${data['internalPoNo'] ?? data['poNumber'] ?? ''} '
+              'customerName=${data['customerName'] ?? ''} '
+              'status=${data['status'] ?? ''} '
+              'linkedQuotationId=${data['linkedQuotationId'] ?? data['quotationId'] ?? ''}',
+            );
+          }
+
           final docs = snapshot.data!.docs.where((doc) {
             return doc.data()['isDeleted'] != true;
           }).toList();
 
-          final seenKeys = <String>{};
           final filteredDocs = docs.where((doc) {
             final data = doc.data();
-            if (!_matchesSearch(data)) return false;
-
-            final key = [
-              data['customerId'] ?? '',
-              data['internalPoNo'] ?? data['poNumber'] ?? '',
-            ].join('|');
-
-            if (seenKeys.contains(key)) return false;
-            seenKeys.add(key);
-            return true;
+            return _matchesSearch(data);
           }).toList();
+          filteredDocs.sort((a, b) {
+            final aDate = _dateValue(a.data()['createdAt']);
+            final bDate = _dateValue(b.data()['createdAt']);
+            return bDate.compareTo(aDate);
+          });
 
           return ListView.separated(
             padding: const EdgeInsets.all(16),
@@ -145,7 +171,7 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => CustomerPoDetailScreen(
-                        companyId: widget.companyId,
+                        companyId: activeCompanyId,
                         docId: poDoc.id,
                       ),
                     ),
@@ -196,7 +222,7 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                               if (value != 'duplicate') return;
 
                               await CustomerPoRecordStatusService.markAsDuplicate(
-                                companyId: widget.companyId,
+                                companyId: activeCompanyId,
                                 docId: poDoc.id,
                                 reason: 'Created twice by mistake',
                               );
