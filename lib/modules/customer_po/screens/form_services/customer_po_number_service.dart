@@ -21,14 +21,8 @@ class CustomerPoNumberService {
 
   static Future<String> nextPoNumber({
     required String companyId,
-    required String customerName,
-    required String projectName,
-  }) async {
-    return nextInternalPoNumber(companyId: companyId);
-  }
-
-  static Future<String> nextInternalPoNumber({
-    required String companyId,
+    String customerName = '',
+    String projectName = '',
   }) async {
     final fy = financialYear(DateTime.now());
     final counterRef = FirebaseFirestore.instance
@@ -52,5 +46,9 @@ class CustomerPoNumberService {
 
       return 'AID/PO/$serial/$fy';
     });
+  }
+
+  static Future<String> nextInternalPoNumber({required String companyId}) {
+    return nextPoNumber(companyId: companyId);
   }
 }

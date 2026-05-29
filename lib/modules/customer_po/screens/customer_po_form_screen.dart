@@ -87,7 +87,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   }
 
   Future<void> _assignInternalPoNo() async {
-    final internalPoNo = await CustomerPoNumberService.nextInternalPoNumber(
+    final internalPoNo = await CustomerPoNumberService.nextPoNumber(
       companyId: widget.companyId,
     );
     if (!mounted) return;

@@ -1499,7 +1499,7 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     try {
       final repository = CustomerPoRepository();
       final poId = repository.newPoId(_tenantId);
-      final poNumber = await CustomerPoNumberService.nextInternalPoNumber(
+      final poNumber = await CustomerPoNumberService.nextPoNumber(
         companyId: _tenantId,
       );
       final poItems = _items.map(_quotationItemToCustomerPoItem).toList();
