@@ -224,27 +224,26 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                                 const SizedBox(width: 6),
                                 PopupMenuButton<String>(
                                   onSelected: (value) async {
-                                    if (value != 'duplicate') return;
+                                    if (value != 'delete') return;
 
-                                    await CustomerPoRecordStatusService.markAsDuplicate(
+                                    await CustomerPoRecordStatusService.deleteForTesting(
                                       companyId: activeCompanyId,
                                       docId: poDoc.id,
-                                      reason: 'Created twice by mistake',
                                     );
 
                                     if (!context.mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text(
-                                          'Duplicate Customer PO deleted from active list',
+                                          'Customer PO deleted successfully',
                                         ),
                                       ),
                                     );
                                   },
                                   itemBuilder: (_) => const [
                                     PopupMenuItem(
-                                      value: 'duplicate',
-                                      child: Text('Delete Duplicate Entry'),
+                                      value: 'delete',
+                                      child: Text('Delete Customer PO'),
                                     ),
                                   ],
                                 ),

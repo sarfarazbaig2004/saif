@@ -18,18 +18,15 @@ class CustomerPoDetailActions extends StatelessWidget {
     required this.docId,
   });
 
-  Future<void> _markDuplicate(BuildContext context) async {
-    await CustomerPoRecordStatusService.markAsDuplicate(
+  Future<void> _deleteCustomerPo(BuildContext context) async {
+    await CustomerPoRecordStatusService.deleteForTesting(
       companyId: companyId,
       docId: docId,
-      reason: 'Created twice by mistake',
     );
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Duplicate Customer PO deleted from active list'),
-      ),
+      const SnackBar(content: Text('Customer PO deleted successfully')),
     );
     Navigator.pop(context);
   }
@@ -199,13 +196,10 @@ class CustomerPoDetailActions extends StatelessWidget {
         ),
         PopupMenuButton<String>(
           onSelected: (value) {
-            if (value == 'duplicate') _markDuplicate(context);
+            if (value == 'delete') _deleteCustomerPo(context);
           },
           itemBuilder: (_) => const [
-            PopupMenuItem(
-              value: 'duplicate',
-              child: Text('Delete Duplicate Entry'),
-            ),
+            PopupMenuItem(value: 'delete', child: Text('Delete Customer PO')),
           ],
         ),
       ],
