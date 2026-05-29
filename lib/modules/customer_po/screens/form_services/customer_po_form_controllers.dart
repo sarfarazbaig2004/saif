@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class CustomerPoFormControllers {
-  final poNumber = TextEditingController();
+  final internalPoNo = TextEditingController();
+  final customerPoNumber = TextEditingController();
   final gstPercent = TextEditingController(text: '18');
 
   final projectName = TextEditingController();
@@ -15,7 +16,8 @@ class CustomerPoFormControllers {
   final ldClause = TextEditingController();
 
   void dispose() {
-    poNumber.dispose();
+    internalPoNo.dispose();
+    customerPoNumber.dispose();
     gstPercent.dispose();
     projectName.dispose();
     siteLocation.dispose();

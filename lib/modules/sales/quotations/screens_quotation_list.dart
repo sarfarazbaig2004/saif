@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_number_service.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
 import 'quotation_pdf_generator.dart';
 
@@ -547,12 +548,15 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
 
       if (!canProceed) return;
 
-      final poNumber =
-          'PO-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+      final poNumber = await CustomerPoNumberService.nextInternalPoNumber(
+        companyId: _companyId!,
+      );
       final customerPoData = {
         'id': newPoRef.id,
         'companyId': _companyId,
         'tenantId': _companyId,
+        'internalPoNo': poNumber,
+        'customerPoNumber': '',
         'customerPoNo': poNumber,
         'poNumber': poNumber,
         'linkedQuotationId': docId,
@@ -612,6 +616,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
         'status': 'Converted',
         'convertedToCustomerPo': true,
         'convertedToCustomerPoId': newPoRef.id,
+        'internalPoNo': poNumber,
         'convertedAt': FieldValue.serverTimestamp(),
         'convertedBy': _currentUserUid,
         'isConverting': false,

@@ -33,7 +33,9 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
     if (search.isEmpty) return true;
 
     final values = [
+      data['internalPoNo'],
       data['poNumber'],
+      data['customerPoNumber'],
       data['customerName'],
       data['projectName'],
       data['siteLocation'],
@@ -101,7 +103,7 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
 
             final key = [
               data['customerId'] ?? '',
-              data['poNumber'] ?? '',
+              data['internalPoNo'] ?? data['poNumber'] ?? '',
             ].join('|');
 
             if (seenKeys.contains(key)) return false;
@@ -124,7 +126,11 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
               final poDoc = filteredDocs[index - 1];
               final data = poDoc.data();
 
-              final poNumber = (data['poNumber'] ?? '').toString();
+              final internalPoNo =
+                  (data['internalPoNo'] ?? data['poNumber'] ?? '').toString();
+              final customerPoNumber = (data['customerPoNumber'] ?? '')
+                  .toString()
+                  .trim();
               final customerName = (data['customerName'] ?? '').toString();
               final projectName = (data['projectName'] ?? '').toString();
               final status = (data['status'] ?? 'draft').toString();
@@ -145,12 +151,19 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                     ),
                   ),
                   title: Text(
-                    poNumber.isEmpty ? 'PO Number Missing' : poNumber,
+                    internalPoNo.isEmpty
+                        ? 'Internal PO No Missing'
+                        : 'Internal PO No : $internalPoNo',
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   subtitle: Text(
-                    '$customerName\n$projectName',
-                    maxLines: 2,
+                    [
+                      if (customerPoNumber.isNotEmpty)
+                        'Customer PO No : $customerPoNumber',
+                      'Customer : $customerName',
+                      if (projectName.isNotEmpty) projectName,
+                    ].join('\n'),
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                   trailing: SizedBox(

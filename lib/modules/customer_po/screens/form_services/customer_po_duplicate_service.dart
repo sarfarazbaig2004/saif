@@ -7,7 +7,7 @@ class CustomerPoDuplicateService {
   static Future<String?> findDuplicatePoId({
     required String companyId,
     required String customerId,
-    required String poNumber,
+    required String customerPoNumber,
     String? currentDocId,
   }) async {
     final snap = await FirebaseFirestore.instance
@@ -15,7 +15,7 @@ class CustomerPoDuplicateService {
         .doc(companyId)
         .collection(SalesCollections.customerPos)
         .where('customerId', isEqualTo: customerId)
-        .where('poNumber', isEqualTo: poNumber.trim())
+        .where('customerPoNumber', isEqualTo: customerPoNumber.trim())
         .limit(5)
         .get();
 

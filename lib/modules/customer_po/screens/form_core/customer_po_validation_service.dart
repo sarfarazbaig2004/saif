@@ -1,10 +1,10 @@
 class CustomerPoValidationService {
-  static String? validatePoNumber(String value) {
+  static String? validateInternalPoNo(String value) {
     if (value.trim().isEmpty) {
-      return 'PO Number is required';
+      return 'Internal PO number is required';
     }
     if (value.length < 3) {
-      return 'PO Number too short';
+      return 'Internal PO number too short';
     }
     return null;
   }

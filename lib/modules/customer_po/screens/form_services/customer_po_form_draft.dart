@@ -3,7 +3,8 @@ import 'package:QUIK/modules/customer_po/widgets/customer_po_item_row.dart';
 class CustomerPoFormDraft {
   final String id;
   final String companyId;
-  final String poNumber;
+  final String internalPoNo;
+  final String customerPoNumber;
   final DateTime poDate;
   final String customerId;
   final String customerName;
@@ -32,7 +33,8 @@ class CustomerPoFormDraft {
   const CustomerPoFormDraft({
     required this.id,
     required this.companyId,
-    required this.poNumber,
+    required this.internalPoNo,
+    required this.customerPoNumber,
     required this.poDate,
     required this.customerId,
     required this.customerName,

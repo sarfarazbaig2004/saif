@@ -36,7 +36,8 @@ class CustomerPoFormDraftFactory {
       CustomerPoFormDraft(
         id: id,
         companyId: companyId,
-        poNumber: controllers.poNumber.text.trim(),
+        internalPoNo: controllers.internalPoNo.text.trim(),
+        customerPoNumber: controllers.customerPoNumber.text.trim(),
         poDate: poDate,
         customerId: customerId,
         customerName: customerName,

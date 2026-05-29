@@ -9,7 +9,8 @@ class CustomerPoFormBuilder {
     return CustomerPoModel(
       id: draft.id,
       companyId: draft.companyId,
-      poNumber: draft.poNumber,
+      internalPoNo: draft.internalPoNo,
+      customerPoNumber: draft.customerPoNumber,
       poDate: draft.poDate,
       customerId: draft.customerId,
       customerName: draft.customerName,

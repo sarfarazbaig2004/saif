@@ -4,7 +4,8 @@ class CustomerPoFormData {
   final String id;
   final String status;
   final DateTime poDate;
-  final String poNumber;
+  final String internalPoNo;
+  final String customerPoNumber;
   final String customerId;
   final String customerName;
   final String customerEmail;
@@ -29,7 +30,8 @@ class CustomerPoFormData {
     required this.id,
     required this.status,
     required this.poDate,
-    required this.poNumber,
+    required this.internalPoNo,
+    required this.customerPoNumber,
     required this.customerId,
     required this.customerName,
     required this.customerEmail,

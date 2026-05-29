@@ -5,10 +5,13 @@ import 'package:QUIK/modules/sales/shared/models/sales_commercial_terms_model.da
 import 'package:QUIK/modules/sales/shared/models/sales_document_attachment_model.dart';
 import 'package:QUIK/modules/sales/shared/models/sales_revision_model.dart';
 
+part 'customer_po_model_helpers.dart';
+
 class CustomerPoModel {
   final String id;
   final String companyId;
-  final String customerPoNo;
+  final String internalPoNo;
+  final String customerPoNumber;
   final int revisionNo;
   final String revisionId;
   final String linkedQuotationId;
@@ -54,8 +57,10 @@ class CustomerPoModel {
   const CustomerPoModel({
     required this.id,
     required this.companyId,
+    String? internalPoNo,
     String? customerPoNo,
     String? poNumber,
+    this.customerPoNumber = '',
     this.revisionNo = 0,
     this.revisionId = '',
     this.linkedQuotationId = '',
@@ -110,12 +115,13 @@ class CustomerPoModel {
     this.uploadedAt,
     this.quotationFormat = 'commercial',
     this.bomMetadata = const {},
-  }) : customerPoNo = customerPoNo ?? poNumber ?? '',
+  }) : internalPoNo = internalPoNo ?? customerPoNo ?? poNumber ?? '',
        totalBasic = totalBasic ?? basicValue ?? 0,
        totalTax = totalTax ?? gstAmount ?? 0,
        grandTotal = grandTotal ?? totalValue ?? 0;
 
-  String get poNumber => customerPoNo;
+  String get customerPoNo => internalPoNo;
+  String get poNumber => internalPoNo;
   double get basicValue => totalBasic;
   double get gstAmount => totalTax;
   double get totalValue => grandTotal;
@@ -141,7 +147,10 @@ class CustomerPoModel {
     return CustomerPoModel(
       id: (map['id'] ?? '').toString(),
       companyId: (map['companyId'] ?? '').toString(),
-      customerPoNo: (map['customerPoNo'] ?? map['poNumber'] ?? '').toString(),
+      internalPoNo:
+          (map['internalPoNo'] ?? map['customerPoNo'] ?? map['poNumber'] ?? '')
+              .toString(),
+      customerPoNumber: (map['customerPoNumber'] ?? '').toString(),
       revisionNo: _toInt(map['revisionNo']),
       revisionId: (map['revisionId'] ?? '').toString(),
       linkedQuotationId: (map['linkedQuotationId'] ?? '').toString(),
@@ -176,7 +185,8 @@ class CustomerPoModel {
       customerEmail: (map['customerEmail'] ?? '').toString(),
       customerMobile: (map['customerMobile'] ?? '').toString(),
       customerAddress: (map['customerAddress'] ?? '').toString(),
-      customerGstNumber: (map['customerGstNumber'] ?? '').toString(),
+      customerGstNumber:
+          (map['customerGstNumber'] ?? map['customerGstin'] ?? '').toString(),
       projectName: (map['projectName'] ?? '').toString(),
       siteLocation: (map['siteLocation'] ?? '').toString(),
       subject: (map['subject'] ?? '').toString(),
@@ -196,8 +206,10 @@ class CustomerPoModel {
     return {
       'id': id,
       'companyId': companyId,
-      'customerPoNo': customerPoNo,
-      'poNumber': poNumber,
+      'internalPoNo': internalPoNo,
+      'customerPoNumber': customerPoNumber,
+      'customerPoNo': internalPoNo,
+      'poNumber': internalPoNo,
       'revisionNo': revisionNo,
       'revisionId': revisionId,
       'linkedQuotationId': linkedQuotationId,
@@ -229,6 +241,7 @@ class CustomerPoModel {
       'customerMobile': customerMobile,
       'customerAddress': customerAddress,
       'customerGstNumber': customerGstNumber,
+      'customerGstin': customerGstNumber,
       'projectName': projectName,
       'siteLocation': siteLocation,
       'subject': subject,
@@ -267,30 +280,5 @@ class CustomerPoModel {
       }
       return CustomerPoItemModel.fromMap({});
     }).toList();
-  }
-
-  static int _toInt(dynamic value) {
-    if (value is num) return value.toInt();
-    return int.tryParse(value?.toString() ?? '') ?? 0;
-  }
-
-  static double _toDouble(dynamic value) {
-    if (value is num) return value.toDouble();
-    return double.tryParse(value?.toString() ?? '') ?? 0;
-  }
-
-  static DateTime? _toDate(dynamic value) {
-    if (value is DateTime) return value;
-    return null;
-  }
-
-  static Map<String, dynamic> _map(dynamic value) {
-    if (value is Map<String, dynamic>) return value;
-    return {};
-  }
-
-  static List<Map<String, dynamic>> _list(dynamic value) {
-    if (value is List) return value.whereType<Map<String, dynamic>>().toList();
-    return [];
   }
 }

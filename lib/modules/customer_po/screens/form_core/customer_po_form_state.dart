@@ -1,5 +1,6 @@
 class CustomerPoFormState {
-  String poNumber = '';
+  String internalPoNo = '';
+  String customerPoNumber = '';
   String status = 'Draft';
   String customerId = '';
   String customerName = '';
@@ -8,7 +9,8 @@ class CustomerPoFormState {
   bool isSaving = false;
 
   void reset() {
-    poNumber = '';
+    internalPoNo = '';
+    customerPoNumber = '';
     status = 'Draft';
     customerId = '';
     customerName = '';

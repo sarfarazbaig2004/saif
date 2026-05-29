@@ -1499,17 +1499,16 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     try {
       final repository = CustomerPoRepository();
       final poId = repository.newPoId(_tenantId);
-      final poNumber = await CustomerPoNumberService.nextPoNumber(
+      final poNumber = await CustomerPoNumberService.nextInternalPoNumber(
         companyId: _tenantId,
-        customerName: _clientNameController.text.trim(),
-        projectName: _subjectController.text.trim(),
       );
       final poItems = _items.map(_quotationItemToCustomerPoItem).toList();
 
       final po = CustomerPoModel(
         id: poId,
         companyId: _tenantId,
-        customerPoNo: poNumber,
+        internalPoNo: poNumber,
+        customerPoNumber: '',
         linkedQuotationId: widget.quotationId ?? '',
         linkedQuotationRevisionId: _currentVersion.toString(),
         customerId: _selectedCustomerId ?? '',
@@ -1559,7 +1558,7 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
               'status': 'Converted',
               'convertedToCustomerPo': true,
               'convertedToCustomerPoId': poId,
-              'customerPoNo': poNumber,
+              'internalPoNo': poNumber,
               'updatedAt': FieldValue.serverTimestamp(),
               'updatedBy': _currentUserUid ?? '',
             });

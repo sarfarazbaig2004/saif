@@ -6,7 +6,7 @@ class CustomerPoNumberService {
   static String financialYear(DateTime date) {
     final startYear = date.month >= 4 ? date.year : date.year - 1;
     final endYear = startYear + 1;
-    return '${startYear % 100}-${endYear % 100}';
+    return '$startYear-${(endYear % 100).toString().padLeft(2, '0')}';
   }
 
   static String cleanCode(String value, {String fallback = 'GEN'}) {
@@ -24,12 +24,18 @@ class CustomerPoNumberService {
     required String customerName,
     required String projectName,
   }) async {
+    return nextInternalPoNumber(companyId: companyId);
+  }
+
+  static Future<String> nextInternalPoNumber({
+    required String companyId,
+  }) async {
     final fy = financialYear(DateTime.now());
     final counterRef = FirebaseFirestore.instance
         .collection('companies')
         .doc(companyId)
         .collection('settings')
-        .doc('customer_po_counter_$fy');
+        .doc('internal_po_counter_$fy');
 
     return FirebaseFirestore.instance.runTransaction((transaction) async {
       final snap = await transaction.get(counterRef);
@@ -42,11 +48,9 @@ class CustomerPoNumberService {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      final customerCode = cleanCode(customerName, fallback: 'CUS');
-      final projectCode = cleanCode(projectName, fallback: 'PROJ');
-      final serial = next.toString().padLeft(4, '0');
+      final serial = next.toString().padLeft(3, '0');
 
-      return '$customerCode/$projectCode/$fy/$serial';
+      return 'AID/PO/$serial/$fy';
     });
   }
 }

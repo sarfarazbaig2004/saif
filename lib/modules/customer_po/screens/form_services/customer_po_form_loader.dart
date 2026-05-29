@@ -39,7 +39,10 @@ class CustomerPoFormLoader {
       id: doc.id,
       status: (d['status'] ?? 'Draft').toString(),
       poDate: _date(d['poDate']) ?? DateTime.now(),
-      poNumber: (d['poNumber'] ?? '').toString(),
+      internalPoNo:
+          (d['internalPoNo'] ?? d['customerPoNo'] ?? d['poNumber'] ?? '')
+              .toString(),
+      customerPoNumber: (d['customerPoNumber'] ?? '').toString(),
       customerId: (d['customerId'] ?? '').toString(),
       customerName: (d['customerName'] ?? '').toString(),
       customerEmail: (d['customerEmail'] ?? '').toString(),

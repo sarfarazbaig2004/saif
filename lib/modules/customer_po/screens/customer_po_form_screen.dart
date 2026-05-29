@@ -15,6 +15,7 @@ import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_form_
 import 'package:QUIK/modules/customer_po/models/customer_po_model.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_amendment_handler.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_loading_screen.dart';
+import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_number_service.dart';
 
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
@@ -61,8 +62,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   String? _poFileName;
   DateTime? _uploadedAt;
 
-  double get _basicValue =>
-      _items.fold<double>(0, (a, b) => a + b.amount);
+  double get _basicValue => _items.fold<double>(0, (a, b) => a + b.amount);
 
   double get _gstAmount =>
       _basicValue *
@@ -81,7 +81,17 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     if (_isEditMode) {
       _isLoadingExisting = true;
       _loadExistingData();
+    } else {
+      _assignInternalPoNo();
     }
+  }
+
+  Future<void> _assignInternalPoNo() async {
+    final internalPoNo = await CustomerPoNumberService.nextInternalPoNumber(
+      companyId: widget.companyId,
+    );
+    if (!mounted) return;
+    setState(() => _controllers.internalPoNo.text = internalPoNo);
   }
 
   Future<void> _loadCustomers() async {
@@ -126,7 +136,8 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
 
       _poDate = data.poDate;
 
-      _controllers.poNumber.text = data.poNumber;
+      _controllers.internalPoNo.text = data.internalPoNo;
+      _controllers.customerPoNumber.text = data.customerPoNumber;
 
       _customerId = data.customerId;
       _customerName = data.customerName;
@@ -159,10 +170,9 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       provider: _provider,
       companyId: widget.companyId,
       customerId: _customerId,
-      poNumber: _controllers.poNumber.text.trim(),
+      customerPoNumber: _controllers.customerPoNumber.text.trim(),
       currentDocId: _isEditMode ? _existingId : null,
-      showCustomerError: () =>
-          setState(() => _customerErrorVisible = true),
+      showCustomerError: () => setState(() => _customerErrorVisible = true),
       buildPo: _buildCustomerPo,
     );
   }
@@ -208,6 +218,8 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       formKey: _formKey,
       body: PoFormTabs(
         controllers: _controllers,
+        poDate: _poDate,
+        status: _existingStatus,
         isEditMode: _isEditMode,
         customerErrorVisible: _customerErrorVisible,
         customerId: _customerId,
@@ -219,7 +231,6 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
         customerAddress: _customerAddress,
 
         // NEW STATE PASSED
-
         showCustomerPicker: () => showDialog(
           context: context,
           builder: (_) => PoCustomerPickerDialog(
@@ -258,12 +269,12 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
         uploadAmendedPdf: !_isEditMode
             ? null
             : () => CustomerPoAmendmentHandler.uploadAmendedPo(
-                  context: context,
-                  companyId: widget.companyId,
-                  docId: _existingId,
-                  currentRevisionNo: 0,
-                  currentPoDocumentUrl: _poDocumentUrl,
-                ),
+                context: context,
+                companyId: widget.companyId,
+                docId: _existingId,
+                currentRevisionNo: 0,
+                currentPoDocumentUrl: _poDocumentUrl,
+              ),
       ),
     );
   }
@@ -272,8 +283,7 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     setState(() => _isUploading = true);
 
     try {
-      final uploaded =
-          await CustomerPoPdfUploadService.pickAndUpload(
+      final uploaded = await CustomerPoPdfUploadService.pickAndUpload(
         companyId: widget.companyId,
       );
 

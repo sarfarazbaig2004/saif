@@ -15,6 +15,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 class PoFormTabs extends StatelessWidget {
   final CustomerPoFormControllers controllers;
+  final DateTime poDate;
+  final String status;
   final bool isEditMode;
   final bool customerErrorVisible;
   final String customerId;
@@ -50,6 +52,8 @@ class PoFormTabs extends StatelessWidget {
   const PoFormTabs({
     super.key,
     required this.controllers,
+    required this.poDate,
+    required this.status,
     required this.isEditMode,
     required this.customerErrorVisible,
     required this.customerId,
@@ -81,9 +85,11 @@ class PoFormTabs extends StatelessWidget {
       children: [
         KeepAlivePage(
           child: PoOverviewTab(
-            poNumber: controllers.poNumber,
+            internalPoNo: controllers.internalPoNo,
+            customerPoNumber: controllers.customerPoNumber,
+            poDate: poDate,
             isEditMode: isEditMode,
-            status: 'Draft',
+            status: status,
             customerErrorVisible: customerErrorVisible,
             customerId: customerId,
             isLoadingCustomers: isLoadingCustomers,

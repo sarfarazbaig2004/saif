@@ -15,7 +15,7 @@ class CustomerPoFormOrchestrator {
     required CustomerPoProvider provider,
     required String companyId,
     required String customerId,
-    required String poNumber,
+    required String customerPoNumber,
     required String? currentDocId,
     required VoidCallback showCustomerError,
     required CustomerPoModel Function() buildPo,
@@ -30,12 +30,14 @@ class CustomerPoFormOrchestrator {
 
     if (!formKey.currentState!.validate()) return;
 
-    final duplicateId = await CustomerPoDuplicateService.findDuplicatePoId(
-      companyId: companyId,
-      customerId: customerId,
-      poNumber: poNumber,
-      currentDocId: currentDocId,
-    );
+    final duplicateId = customerPoNumber.trim().isEmpty
+        ? null
+        : await CustomerPoDuplicateService.findDuplicatePoId(
+            companyId: companyId,
+            customerId: customerId,
+            customerPoNumber: customerPoNumber,
+            currentDocId: currentDocId,
+          );
 
     if (duplicateId != null) {
       if (!mounted) return;

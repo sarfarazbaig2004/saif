@@ -8,8 +8,8 @@ class CustomerPoService {
     : _repository = repository ?? CustomerPoRepository();
 
   Future<void> createCustomerPo(CustomerPoModel po) async {
-    if (po.poNumber.trim().isEmpty) {
-      throw Exception('PO number is required');
+    if (po.internalPoNo.trim().isEmpty) {
+      throw Exception('Internal PO number is required');
     }
 
     if (po.customerName.trim().isEmpty) {
@@ -24,8 +24,8 @@ class CustomerPoService {
   }
 
   Future<void> updateCustomerPo(CustomerPoModel po) async {
-    if (po.poNumber.trim().isEmpty) {
-      throw Exception('PO number is required');
+    if (po.internalPoNo.trim().isEmpty) {
+      throw Exception('Internal PO number is required');
     }
 
     if (po.customerName.trim().isEmpty) {

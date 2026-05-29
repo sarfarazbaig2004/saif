@@ -55,7 +55,7 @@ class CustomerPoDetailActions extends StatelessWidget {
         0,
         (total, line) => total + line.quantity,
       );
-      final poNumber = _string(po['customerPoNo'] ?? po['poNumber']);
+      final poNumber = _string(po['internalPoNo'] ?? po['poNumber']);
       final projectName = _string(po['projectName'] ?? po['subject']);
 
       final jobCard = JobCardModel(
@@ -105,6 +105,12 @@ class CustomerPoDetailActions extends StatelessWidget {
       );
 
       await repository.saveJobCard(jobCard);
+      await poSnap.reference.update({
+        'status': 'In Production',
+        'jobCardCreated': true,
+        'jobCardId': jobCardId,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Production job card draft created.')),

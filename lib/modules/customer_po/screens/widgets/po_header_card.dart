@@ -48,30 +48,55 @@ class PoHeaderCard extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          formatValue(data['poNumber']).isEmpty
-              ? 'PO Number Missing'
-              : formatValue(data['poNumber']),
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
-            color: Color(0xFF0F172A),
-          ),
+        _labelValue(
+          'Internal PO No',
+          formatValue(data['internalPoNo']).isEmpty
+              ? formatValue(data['poNumber'])
+              : formatValue(data['internalPoNo']),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
+        _labelValue(
+          'Customer PO No',
+          formatValue(data['customerPoNumber']).isEmpty
+              ? 'Not entered'
+              : formatValue(data['customerPoNumber']),
+        ),
+        const SizedBox(height: 8),
+        _labelValue('Customer PO Date', formatDate(data['poDate'])),
+        const SizedBox(height: 10),
         PoRevisionBadge(
           revisionNo: numberValue(data['revisionNo']).toInt(),
           isAmended: data['isAmended'] == true,
         ),
         const SizedBox(height: 6),
         Text(
-          'Date: ${formatDate(data['poDate'])}',
-          style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-        ),
-        const SizedBox(height: 4),
-        Text(
           'Created: ${formatDate(data['createdAt'])}',
           style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+        ),
+      ],
+    );
+  }
+
+  Widget _labelValue(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: Color(0xFF64748B),
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF0F172A),
+          ),
         ),
       ],
     );
