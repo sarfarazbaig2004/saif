@@ -590,14 +590,19 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       final poNumber = await CustomerPoNumberService.nextPoNumber(
         companyId: _companyId!,
       );
+      final internalPoNo =
+          await CustomerPoNumberService.ensureValidInternalPoNo(
+            companyId: _companyId!,
+            currentValue: poNumber,
+          );
       final customerPoData = {
         'id': newPoRef.id,
         'companyId': _companyId,
         'tenantId': _companyId,
-        'internalPoNo': poNumber,
+        'internalPoNo': internalPoNo,
         'customerPoNumber': '',
-        'customerPoNo': poNumber,
-        'poNumber': poNumber,
+        'customerPoNo': internalPoNo,
+        'poNumber': internalPoNo,
         'linkedQuotationId': docId,
         'quotationId': docId,
         'quotationNumber': _parseSafeString(data['quoteNumber']),
@@ -654,7 +659,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
         'CUSTOMER_PO_CONVERT_CREATED quotationId=$docId '
         'customerPoId=${newPoRef.id} '
         'path=$poCollectionPath/${newPoRef.id} '
-        'internalPoNo=$poNumber '
+        'internalPoNo=$internalPoNo '
         'customerName=${customerPoData['customerName']}',
       );
 
@@ -662,7 +667,9 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
         'status': 'Converted',
         'convertedToCustomerPo': true,
         'convertedToCustomerPoId': newPoRef.id,
-        'internalPoNo': poNumber,
+        'internalPoNo': internalPoNo,
+        'customerPoNo': internalPoNo,
+        'poNumber': internalPoNo,
         'convertedAt': FieldValue.serverTimestamp(),
         'convertedBy': _currentUserUid,
         'isConverting': false,

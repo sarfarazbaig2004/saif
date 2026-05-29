@@ -1507,12 +1507,17 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
       final poNumber = await CustomerPoNumberService.nextPoNumber(
         companyId: _tenantId,
       );
+      final internalPoNo =
+          await CustomerPoNumberService.ensureValidInternalPoNo(
+            companyId: _tenantId,
+            currentValue: poNumber,
+          );
       final poItems = _items.map(_quotationItemToCustomerPoItem).toList();
 
       final po = CustomerPoModel(
         id: poId,
         companyId: _tenantId,
-        internalPoNo: poNumber,
+        internalPoNo: internalPoNo,
         customerPoNumber: '',
         linkedQuotationId: widget.quotationId ?? '',
         linkedQuotationRevisionId: _currentVersion.toString(),
@@ -1555,7 +1560,7 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
       await repository.createCustomerPo(po);
       debugPrint(
         'CUSTOMER_PO_DETAIL_CONVERT_CREATED quotationId=${widget.quotationId ?? ''} '
-        'customerPoId=$poId path=$poPath internalPoNo=$poNumber '
+        'customerPoId=$poId path=$poPath internalPoNo=$internalPoNo '
         'customerName=${_clientNameController.text.trim()}',
       );
       if (widget.quotationId != null && widget.quotationId!.trim().isNotEmpty) {
@@ -1574,14 +1579,16 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
               'status': 'Converted',
               'convertedToCustomerPo': true,
               'convertedToCustomerPoId': poId,
-              'internalPoNo': poNumber,
+              'internalPoNo': internalPoNo,
+              'customerPoNo': internalPoNo,
+              'poNumber': internalPoNo,
               'updatedAt': FieldValue.serverTimestamp(),
               'updatedBy': _currentUserUid ?? '',
             });
       }
 
       if (!mounted) return;
-      _showSnack('Customer PO draft created: $poNumber');
+      _showSnack('Customer PO draft created: $internalPoNo');
     } catch (e) {
       if (mounted) {
         _showSnack('Failed to create Customer PO: $e', isError: true);

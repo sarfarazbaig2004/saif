@@ -42,13 +42,30 @@ class CustomerPoNumberService {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      final serial = next.toString().padLeft(3, '0');
+      final serial = next.toString();
 
-      return 'AID/PO/$serial/$fy';
+      return 'AID/$serial/$fy';
     });
   }
 
   static Future<String> nextInternalPoNumber({required String companyId}) {
+    return nextPoNumber(companyId: companyId);
+  }
+
+  static bool isInvalidInternalPoNo(String value) {
+    final normalized = value.trim().toUpperCase();
+    return normalized.isEmpty ||
+        normalized.startsWith('PO-') ||
+        RegExp(r'^\d+$').hasMatch(normalized);
+  }
+
+  static Future<String> ensureValidInternalPoNo({
+    required String companyId,
+    required String currentValue,
+  }) {
+    if (!isInvalidInternalPoNo(currentValue)) {
+      return Future.value(currentValue.trim());
+    }
     return nextPoNumber(companyId: companyId);
   }
 }

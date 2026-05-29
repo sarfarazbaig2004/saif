@@ -162,6 +162,13 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   }
 
   Future<void> _save() async {
+    final internalPoNo = await CustomerPoNumberService.ensureValidInternalPoNo(
+      companyId: widget.companyId,
+      currentValue: _controllers.internalPoNo.text,
+    );
+    if (!mounted) return;
+    _controllers.internalPoNo.text = internalPoNo;
+
     await CustomerPoFormOrchestrator.save(
       context: context,
       formKey: _formKey,
