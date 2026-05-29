@@ -74,6 +74,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   ];
 
   // Follow-up
+  DateTime? _inquiryDate;
   DateTime? _nextFollowUpDate;
   String _followUpType = 'Call';
   DateTime? _expectedClosureDate;
@@ -158,6 +159,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     }
     _hydrateFromInquiry();
     await _loadExtraData();
+    _inquiryDate ??= DateTime.now();
     _calculateInquiryReadiness();
   }
 
@@ -766,20 +768,6 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     if (_controllers.expectedValue.text.trim().isNotEmpty && expVal <= 0) {
       _showValidationMessage('Expected value must be greater than zero.');
       return false;
-    }
-
-    if (_nextFollowUpDate != null) {
-      final today = DateTime.now();
-      final todayDate = DateTime(today.year, today.month, today.day);
-      final followupDate = DateTime(
-        _nextFollowUpDate!.year,
-        _nextFollowUpDate!.month,
-        _nextFollowUpDate!.day,
-      );
-      if (followupDate.isBefore(todayDate)) {
-        _showValidationMessage('Next follow-up date cannot be in the past.');
-        return false;
-      }
     }
 
     if (_selectedStage != 'PO Received' &&
@@ -1678,10 +1666,18 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         _buildResponsiveFields([
           _buildDateSelector(
             label: 'Inquiry Date',
-            value: _existingRawData?['createdAt'] != null
-                ? (_existingRawData!['createdAt'] as Timestamp).toDate()
-                : DateTime.now(),
-            onTap: () {},
+            value: _inquiryDate,
+            onTap: () async {
+              await _pickDate(
+                initialValue: _inquiryDate,
+                onPicked: (date) {
+                  setState(() => _inquiryDate = date);
+                },
+              );
+            },
+            onClear: () {
+              setState(() => _inquiryDate = null);
+            },
           ),
 
           _buildDateSelector(

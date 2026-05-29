@@ -16,7 +16,7 @@ const Color backgroundLight = Color(0xFFF8FAFC);
 const String _kCollectionCompanies = 'companies';
 const String _kCollectionUsers = 'users';
 const String _kCollectionQuotations = 'quotations';
-const String _kCollectionSalesOrders = 'sales_orders';
+const String _kCollectionCustomerPos = 'customer_pos';
 
 class ScreensQuotationList extends StatefulWidget {
   final int userId;
@@ -225,6 +225,70 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
     return '₹ ${parsed.toStringAsFixed(2)}';
   }
 
+  double _number(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0.0;
+  }
+
+  String _firstText(List<dynamic> values) {
+    for (final value in values) {
+      final text = value?.toString().trim() ?? '';
+      if (text.isNotEmpty) return text;
+    }
+    return '';
+  }
+
+  List<Map<String, dynamic>> _mapQuotationItemsToCustomerPoItems(
+    List<dynamic> rawItems,
+  ) {
+    return rawItems
+        .whereType<Map>()
+        .map((raw) {
+          final item = Map<String, dynamic>.from(raw);
+          final quantity = _number(item['quantity']);
+          final rate = _number(
+            item['unitPrice'] ?? item['unitRate'] ?? item['rate'],
+          );
+          final amount = _number(
+            item['subtotal'] ??
+                item['basicAmount'] ??
+                item['totalAmount'] ??
+                quantity * rate,
+          );
+          final gstPercent =
+              _number(item['gstPercent']) +
+              _number(item['cgstPercent']) +
+              _number(item['sgstPercent']) +
+              _number(item['igstPercent']);
+
+          return {
+            ...item,
+            'id': item['id']?.toString() ?? '',
+            'quotationItemId': item['id']?.toString() ?? '',
+            'itemName': _firstText([item['itemName'], item['name']]),
+            'description': _firstText([
+              item['description'],
+              item['itemName'],
+              item['name'],
+            ]),
+            'quantity': quantity,
+            'uom': _firstText([item['uom'], item['unit']]).isEmpty
+                ? 'Nos'
+                : _firstText([item['uom'], item['unit']]),
+            'unit': _firstText([item['uom'], item['unit']]).isEmpty
+                ? 'Nos'
+                : _firstText([item['uom'], item['unit']]),
+            'unitRate': rate,
+            'rate': rate,
+            'gstPercent': gstPercent,
+            'basicAmount': amount,
+            'amount': amount,
+            'totalAmount': amount + (amount * gstPercent / 100),
+          };
+        })
+        .toList(growable: false);
+  }
+
   Future<String> _getUserName(String uid) async {
     if (uid.isEmpty) return 'Unknown';
     if (_userNameCache.containsKey(uid)) {
@@ -357,7 +421,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
     }
   }
 
-  Future<void> _convertToSalesOrder(
+  Future<void> _convertToCustomerPo(
     String docId,
     Map<String, dynamic> data,
   ) async {
@@ -371,8 +435,11 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       return;
     }
 
-    if ((data['status'] ?? '').toString().toLowerCase() == 'converted') {
-      _showSnack('Already converted to Sales Order.', isError: true);
+    final hasCustomerPo =
+        data['convertedToCustomerPo'] == true ||
+        _parseSafeString(data['convertedToCustomerPoId']).isNotEmpty;
+    if (hasCustomerPo) {
+      _showSnack('Already converted to Customer PO.', isError: true);
       return;
     }
 
@@ -382,22 +449,22 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
 
     if (!isApproved) {
       _showSnack(
-        'Quotation must be Approved before converting to SO.',
+        'Quotation must be Approved before converting to Customer PO.',
         isError: true,
       );
       return;
     }
     if ((_companyId ?? '').trim().isEmpty) {
       _showSnack(
-        'Missing company workspace. Sales Order was not created.',
+        'Missing company workspace. Customer PO was not created.',
         isError: true,
       );
       return;
     }
 
     final confirm = await _showConfirmDialog(
-      'Convert to Sales Order',
-      'Convert quotation ${data['quoteNumber']} to a Sales Order?',
+      'Convert to Customer PO',
+      'Convert quotation ${data['quoteNumber']} to a Customer PO draft?',
     );
     if (confirm != true) return;
 
@@ -412,12 +479,27 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
           .collection(_kCollectionQuotations)
           .doc(docId);
 
-      final soCollection = FirebaseFirestore.instance
+      final poCollection = FirebaseFirestore.instance
           .collection(_kCollectionCompanies)
           .doc(_companyId)
-          .collection(_kCollectionSalesOrders);
+          .collection(_kCollectionCustomerPos);
 
-      final newSoRef = soCollection.doc();
+      final existingPo = await poCollection
+          .where('linkedQuotationId', isEqualTo: docId)
+          .limit(1)
+          .get();
+      if (existingPo.docs.isNotEmpty) {
+        await docRef.update({
+          'convertedToCustomerPo': true,
+          'convertedToCustomerPoId': existingPo.docs.first.id,
+          'isConverting': false,
+          'convertingStartedAt': null,
+        });
+        _showSnack('Customer PO already exists for this quotation.');
+        return;
+      }
+
+      final newPoRef = poCollection.doc();
 
       bool canProceed = false;
 
@@ -428,12 +510,13 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
         }
 
         final docData = snapshot.data()!;
-        final isCurrentlyConverted =
-            (docData['status'] ?? '').toString().toLowerCase() == 'converted';
+        final isConvertedToCustomerPo =
+            docData['convertedToCustomerPo'] == true ||
+            _parseSafeString(docData['convertedToCustomerPoId']).isNotEmpty;
         final isConvertingFlag = docData['isConverting'] == true;
 
-        if (isCurrentlyConverted) {
-          throw Exception('Already converted by another user.');
+        if (isConvertedToCustomerPo) {
+          throw Exception('Already converted to Customer PO.');
         }
 
         if (isConvertingFlag) {
@@ -464,35 +547,71 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
 
       if (!canProceed) return;
 
-      final salesOrderData = {
-        ...data,
-        'id': newSoRef.id,
-        'sourceQuotationId': docId,
-        'status': 'draft',
-        'approvalStatus': 'pending',
-        'dispatchStatus': 'pending',
-        'documentType': 'sales_order',
+      final poNumber =
+          'PO-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+      final customerPoData = {
+        'id': newPoRef.id,
+        'companyId': _companyId,
+        'tenantId': _companyId,
+        'customerPoNo': poNumber,
+        'poNumber': poNumber,
+        'linkedQuotationId': docId,
+        'quotationId': docId,
+        'quotationNumber': _parseSafeString(data['quoteNumber']),
+        'linkedQuotationRevisionId': _parseSafeString(data['version']),
+        'customerId': _parseSafeString(data['customerId']),
+        'customerName': _parseSafeString(data['clientName']),
+        'customerEmail': _parseSafeString(data['clientEmail']),
+        'customerMobile': _parseSafeString(data['clientMobile']),
+        'customerAddress': _parseSafeString(data['clientAddress']),
+        'customerGstNumber': _parseSafeString(data['gstNo']),
+        'customerGstin': _parseSafeString(data['gstNo']),
+        'projectName': _parseSafeString(data['subject']),
+        'subject': _parseSafeString(data['subject']),
+        'siteLocation': _parseSafeString(data['siteLocation']),
+        'status': 'Draft',
+        'documentType': 'customer_po',
+        'items': _mapQuotationItemsToCustomerPoItems(
+          data['items'] as List? ?? [],
+        ),
+        'basicValue': _number(data['totalSubtotal'] ?? data['subtotal']),
+        'totalBasic': _number(data['totalSubtotal'] ?? data['subtotal']),
+        'gstAmount': _number(
+          data['totalTax'] ??
+              (_number(data['totalCgst']) +
+                  _number(data['totalSgst']) +
+                  _number(data['totalIgst'])),
+        ),
+        'totalTax': _number(
+          data['totalTax'] ??
+              (_number(data['totalCgst']) +
+                  _number(data['totalSgst']) +
+                  _number(data['totalIgst'])),
+        ),
+        'grandTotal': _number(data['grandTotal'] ?? data['finalTotal']),
+        'totalValue': _number(data['grandTotal'] ?? data['finalTotal']),
+        'poDate': FieldValue.serverTimestamp(),
         'createdAt': FieldValue.serverTimestamp(),
         'createdBy': _currentUserUid,
         'createdByName': _currentUserName,
-        'salesOrderNumber':
-            'SO-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}',
+        'updatedAt': FieldValue.serverTimestamp(),
+        'updatedBy': _currentUserUid,
         'activities': [
           {
             'type': 'Created',
-            'note': 'Sales Order automatically generated from Quotation $docId',
+            'note': 'Customer PO draft generated from Quotation $docId',
             'timestamp': Timestamp.now(),
             'byUid': _currentUserUid ?? 'system',
           },
         ],
       };
 
-      await newSoRef.set(salesOrderData);
+      await newPoRef.set(customerPoData);
 
       await docRef.update({
         'status': 'Converted',
-        'convertedToSalesOrder': true,
-        'convertedToSalesOrderId': newSoRef.id,
+        'convertedToCustomerPo': true,
+        'convertedToCustomerPoId': newPoRef.id,
         'convertedAt': FieldValue.serverTimestamp(),
         'convertedBy': _currentUserUid,
         'isConverting': false,
@@ -501,7 +620,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
           {
             'type': 'Converted',
             'quotationId': docId,
-            'salesOrderId': newSoRef.id,
+            'customerPoId': newPoRef.id,
             'timestamp': Timestamp.now(),
             'user': {
               'uid': _currentUserUid,
@@ -510,15 +629,15 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
             },
             'system': {
               'platform': 'flutter',
-              'module': 'quotation_to_so',
+              'module': 'quotation_to_customer_po',
               'version': '1.0',
             },
-            'note': 'Quotation successfully converted to Sales Order',
+            'note': 'Quotation successfully converted to Customer PO',
           },
         ]),
       });
 
-      _showSnack('Quotation successfully converted to Sales Order.');
+      _showSnack('Quotation successfully converted to Customer PO.');
     } catch (e) {
       _showSnack(
         'Conversion failed: ${e.toString().replaceAll('Exception: ', '')}',
@@ -687,6 +806,37 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       if (mounted) setState(() {});
     } catch (e) {
       _showSnack('Failed to cancel: $e', isError: true);
+    }
+  }
+
+  Future<void> _deleteQuotation(String quotationId) async {
+    final companyId = _companyId;
+    if (companyId == null || companyId.trim().isEmpty) {
+      _showSnack(
+        'Missing company workspace. Quotation was not deleted.',
+        isError: true,
+      );
+      return;
+    }
+
+    final confirm = await _showConfirmDialog(
+      'Delete Quotation',
+      'Delete this quotation permanently from Firestore?',
+    );
+    if (confirm != true) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(companyId)
+          .collection('quotations')
+          .doc(quotationId)
+          .delete();
+
+      _showSnack('Quotation deleted.');
+      if (mounted) setState(() {});
+    } catch (e) {
+      _showSnack('Failed to delete quotation: $e', isError: true);
     }
   }
 
@@ -1155,15 +1305,12 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                           bool isApproved =
                               status.toLowerCase() == 'approved' ||
                               approval.toLowerCase() == 'approved';
-                          bool isSent = status.toLowerCase() == 'sent';
-                          bool isConverted =
-                              status.toLowerCase() == 'converted';
+                          final hasCustomerPo =
+                              data['convertedToCustomerPo'] == true ||
+                              _parseSafeString(
+                                data['convertedToCustomerPoId'],
+                              ).isNotEmpty;
 
-                          bool canEdit =
-                              !isCancelled &&
-                              !isApproved &&
-                              !isSent &&
-                              !isConverted;
                           bool isConverting = _convertingDocs[doc.id] == true;
 
                           final String createdByUid = _parseSafeString(
@@ -1262,6 +1409,8 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                                 doc.id,
                                                 data,
                                               );
+                                            } else if (val == 'delete') {
+                                              _deleteQuotation(doc.id);
                                             } else if (val == 'approve') {
                                               _updateApproval(
                                                 doc.id,
@@ -1273,7 +1422,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                                 'Rejected',
                                               );
                                             } else if (val == 'convert') {
-                                              _convertToSalesOrder(
+                                              _convertToCustomerPo(
                                                 doc.id,
                                                 data,
                                               );
@@ -1294,14 +1443,24 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                                   ),
                                                 ];
 
-                                            if (canEdit) {
-                                              items.add(
-                                                const PopupMenuItem(
-                                                  value: 'edit',
-                                                  child: Text('Edit Quotation'),
+                                            items.add(
+                                              const PopupMenuItem(
+                                                value: 'edit',
+                                                child: Text('Edit Quotation'),
+                                              ),
+                                            );
+
+                                            items.add(
+                                              const PopupMenuItem(
+                                                value: 'delete',
+                                                child: Text(
+                                                  'Delete Quotation',
+                                                  style: TextStyle(
+                                                    color: Colors.red,
+                                                  ),
                                                 ),
-                                              );
-                                            }
+                                              ),
+                                            );
 
                                             if (!isCancelled) {
                                               items.add(
@@ -1326,14 +1485,14 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                                 );
                                               }
 
-                                              if (!isConverted &&
-                                                  isApproved &&
+                                              if (isApproved &&
+                                                  !hasCustomerPo &&
                                                   !isConverting) {
                                                 items.add(
                                                   const PopupMenuItem(
                                                     value: 'convert',
                                                     child: Text(
-                                                      'Convert to Sales Order',
+                                                      'Convert to Customer PO',
                                                     ),
                                                   ),
                                                 );

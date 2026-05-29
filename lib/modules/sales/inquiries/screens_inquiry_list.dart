@@ -301,6 +301,71 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     }
   }
 
+  Future<void> _deleteInquiry(String inquiryId) async {
+    final companyId = (_companyId ?? '').trim();
+    if (companyId.isEmpty) {
+      _showSnack(
+        'Missing company workspace. Inquiry was not deleted.',
+        isError: true,
+      );
+      return;
+    }
+
+    final confirm = await _showConfirmDialog(
+      'Delete Inquiry',
+      'Delete this inquiry permanently from Firestore?',
+    );
+    if (confirm != true) return;
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(companyId)
+          .collection('inquiries')
+          .doc(inquiryId)
+          .delete();
+
+      _showSnack('Inquiry deleted.');
+      if (mounted) setState(() {});
+    } catch (e) {
+      _showSnack('Failed to delete inquiry: $e', isError: true);
+    }
+  }
+
+  void _showSnack(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+      ),
+    );
+  }
+
+  Future<bool?> _showConfirmDialog(String title, String content) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- FIXED & UPGRADED: Inquiry -> Quotation Data Flow ---
   Future<void> _openQuotationFromInquiry({
     required BuildContext context,
@@ -846,6 +911,8 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                                     inquiry: inquiry,
                                                     inquiryData: doc.data(),
                                                   );
+                                                } else if (value == 'delete') {
+                                                  _deleteInquiry(doc.id);
                                                 }
                                               },
                                               itemBuilder: (context) => [
@@ -857,6 +924,15 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                                   value: 'quote',
                                                   child: Text(
                                                     'Create Quotation',
+                                                  ),
+                                                ),
+                                                const PopupMenuItem(
+                                                  value: 'delete',
+                                                  child: Text(
+                                                    'Delete Inquiry',
+                                                    style: TextStyle(
+                                                      color: Colors.red,
+                                                    ),
                                                   ),
                                                 ),
                                               ],

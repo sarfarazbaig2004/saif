@@ -1549,6 +1549,22 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
       );
 
       await repository.createCustomerPo(po);
+      if (widget.quotationId != null && widget.quotationId!.trim().isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('companies')
+            .doc(_tenantId)
+            .collection('quotations')
+            .doc(widget.quotationId)
+            .update({
+              'status': 'Converted',
+              'convertedToCustomerPo': true,
+              'convertedToCustomerPoId': poId,
+              'customerPoNo': poNumber,
+              'updatedAt': FieldValue.serverTimestamp(),
+              'updatedBy': _currentUserUid ?? '',
+            });
+      }
+
       if (!mounted) return;
       _showSnack('Customer PO draft created: $poNumber');
     } catch (e) {
@@ -1686,7 +1702,7 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
             'timestamp': Timestamp.now(),
             'byUid': _currentUserUid,
             'byName': _currentUserName,
-            'note': 'Converted to Invoice',
+            'note': 'Converted to Customer PO',
           },
         ]),
       });
