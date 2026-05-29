@@ -1499,6 +1499,11 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     try {
       final repository = CustomerPoRepository();
       final poId = repository.newPoId(_tenantId);
+      final poPath = 'companies/$_tenantId/customer_pos/$poId';
+      debugPrint(
+        'CUSTOMER_PO_DETAIL_CONVERT_START quotationId=${widget.quotationId ?? ''} '
+        'companyId=$_tenantId createPath=$poPath',
+      );
       final poNumber = await CustomerPoNumberService.nextPoNumber(
         companyId: _tenantId,
       );
@@ -1548,7 +1553,18 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
       );
 
       await repository.createCustomerPo(po);
+      debugPrint(
+        'CUSTOMER_PO_DETAIL_CONVERT_CREATED quotationId=${widget.quotationId ?? ''} '
+        'customerPoId=$poId path=$poPath internalPoNo=$poNumber '
+        'customerName=${_clientNameController.text.trim()}',
+      );
       if (widget.quotationId != null && widget.quotationId!.trim().isNotEmpty) {
+        final quotePath =
+            'companies/$_tenantId/quotations/${widget.quotationId}';
+        debugPrint(
+          'CUSTOMER_PO_DETAIL_CONVERT_UPDATE_QUOTATION path=$quotePath '
+          'convertedToCustomerPoId=$poId',
+        );
         await FirebaseFirestore.instance
             .collection('companies')
             .doc(_tenantId)

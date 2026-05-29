@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
+import 'package:QUIK/modules/customer_po/screens/customer_po_detail_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_number_service.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
 import 'quotation_pdf_generator.dart';
@@ -426,6 +427,11 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
     String docId,
     Map<String, dynamic> data,
   ) async {
+    debugPrint(
+      'CUSTOMER_PO_CONVERT_START quotationId=$docId '
+      'companyId=$_companyId '
+      'quotationPath=$_kCollectionCompanies/${_companyId ?? ''}/$_kCollectionQuotations/$docId',
+    );
     if (_companyId == null) {
       _showSnack('Company context missing. Cannot convert.', isError: true);
       return;
@@ -440,7 +446,17 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
         data['convertedToCustomerPo'] == true ||
         _parseSafeString(data['convertedToCustomerPoId']).isNotEmpty;
     if (hasCustomerPo) {
-      _showSnack('Already converted to Customer PO.', isError: true);
+      final linkedPoId = _parseSafeString(data['convertedToCustomerPoId']);
+      debugPrint(
+        'CUSTOMER_PO_CONVERT_ALREADY_FLAG quotationId=$docId '
+        'companyId=$_companyId linkedPoId=$linkedPoId '
+        'linkedPoPath=$_kCollectionCompanies/${_companyId ?? ''}/$_kCollectionCustomerPos/$linkedPoId',
+      );
+      if (linkedPoId.isNotEmpty) {
+        await _openLinkedCustomerPo(linkedPoId);
+      } else {
+        _showSnack('Already converted to Customer PO.', isError: true);
+      }
       return;
     }
 
@@ -484,12 +500,30 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
           .collection(_kCollectionCompanies)
           .doc(_companyId)
           .collection(_kCollectionCustomerPos);
+      final poCollectionPath =
+          '$_kCollectionCompanies/$_companyId/$_kCollectionCustomerPos';
+      debugPrint(
+        'CUSTOMER_PO_CONVERT_QUERY_EXISTING quotationId=$docId '
+        'companyId=$_companyId path=$poCollectionPath '
+        'where linkedQuotationId=$docId',
+      );
 
       final existingPo = await poCollection
           .where('linkedQuotationId', isEqualTo: docId)
           .limit(1)
           .get();
+      debugPrint(
+        'CUSTOMER_PO_CONVERT_EXISTING_RESULT quotationId=$docId '
+        'companyId=$_companyId path=$poCollectionPath '
+        'count=${existingPo.docs.length} '
+        'existingPoIds=${existingPo.docs.map((doc) => doc.id).join(',')}',
+      );
       if (existingPo.docs.isNotEmpty) {
+        debugPrint(
+          'CUSTOMER_PO_ALREADY_EXISTS quotationId=$docId '
+          'existingPoId=${existingPo.docs.first.id} '
+          'path=$poCollectionPath/${existingPo.docs.first.id}',
+        );
         await docRef.update({
           'convertedToCustomerPo': true,
           'convertedToCustomerPoId': existingPo.docs.first.id,
@@ -497,10 +531,15 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
           'convertingStartedAt': null,
         });
         _showSnack('Customer PO already exists for this quotation.');
+        await _openLinkedCustomerPo(existingPo.docs.first.id);
         return;
       }
 
       final newPoRef = poCollection.doc();
+      debugPrint(
+        'CUSTOMER_PO_CONVERT_CREATE_REF quotationId=$docId '
+        'companyId=$_companyId path=$poCollectionPath/${newPoRef.id}',
+      );
 
       bool canProceed = false;
 
@@ -611,6 +650,13 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       };
 
       await newPoRef.set(customerPoData);
+      debugPrint(
+        'CUSTOMER_PO_CONVERT_CREATED quotationId=$docId '
+        'customerPoId=${newPoRef.id} '
+        'path=$poCollectionPath/${newPoRef.id} '
+        'internalPoNo=$poNumber '
+        'customerName=${customerPoData['customerName']}',
+      );
 
       await docRef.update({
         'status': 'Converted',
@@ -842,6 +888,59 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       if (mounted) setState(() {});
     } catch (e) {
       _showSnack('Failed to delete quotation: $e', isError: true);
+    }
+  }
+
+  Future<void> _openLinkedCustomerPo(String customerPoId) async {
+    final companyId = _companyId;
+    if (companyId == null || companyId.trim().isEmpty) {
+      _showSnack(
+        'Missing company workspace. Customer PO cannot be opened.',
+        isError: true,
+      );
+      return;
+    }
+
+    final poId = customerPoId.trim();
+    if (poId.isEmpty) {
+      _showSnack('No linked Customer PO found.', isError: true);
+      return;
+    }
+
+    final poPath =
+        '$_kCollectionCompanies/$companyId/$_kCollectionCustomerPos/$poId';
+    debugPrint(
+      'CUSTOMER_PO_OPEN_LINKED companyId=$companyId customerPoId=$poId path=$poPath',
+    );
+
+    try {
+      final poDoc = await FirebaseFirestore.instance
+          .collection(_kCollectionCompanies)
+          .doc(companyId)
+          .collection(_kCollectionCustomerPos)
+          .doc(poId)
+          .get();
+      debugPrint(
+        'CUSTOMER_PO_OPEN_LINKED_RESULT path=$poPath exists=${poDoc.exists}',
+      );
+
+      if (!poDoc.exists) {
+        _showSnack(
+          'Linked Customer PO was not found. Reset conversion and convert again.',
+          isError: true,
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              CustomerPoDetailScreen(companyId: companyId, docId: poId),
+        ),
+      );
+    } catch (e) {
+      _showSnack('Failed to open Customer PO: $e', isError: true);
     }
   }
 
@@ -1356,6 +1455,9 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                               _parseSafeString(
                                 data['convertedToCustomerPoId'],
                               ).isNotEmpty;
+                          final linkedCustomerPoId = _parseSafeString(
+                            data['convertedToCustomerPoId'],
+                          );
 
                           bool isConverting = _convertingDocs[doc.id] == true;
 
@@ -1477,6 +1579,11 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                               _resetCustomerPoConversion(
                                                 doc.id,
                                               );
+                                            } else if (val ==
+                                                'openCustomerPo') {
+                                              _openLinkedCustomerPo(
+                                                linkedCustomerPoId,
+                                              );
                                             } else if (val == 'revision') {
                                               _createRevision(doc.id, data);
                                             } else if (val == 'cancel') {
@@ -1550,6 +1657,17 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                               }
 
                                               if (hasCustomerPo) {
+                                                if (linkedCustomerPoId
+                                                    .isNotEmpty) {
+                                                  items.add(
+                                                    const PopupMenuItem(
+                                                      value: 'openCustomerPo',
+                                                      child: Text(
+                                                        'Open Linked Customer PO',
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
                                                 items.add(
                                                   const PopupMenuItem(
                                                     value: 'resetCustomerPo',
