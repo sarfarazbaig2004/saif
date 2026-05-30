@@ -42,13 +42,20 @@ class EngineeringBomGridCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Align(
-            alignment: Alignment.centerRight,
-            child: OutlinedButton.icon(
-              onPressed: onCustomizeColumns,
-              icon: const Icon(Icons.view_column_outlined, size: 18),
-              label: const Text('Customize Fields'),
-            ),
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Structure BOM',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+              ),
+              OutlinedButton.icon(
+                onPressed: onCustomizeColumns,
+                icon: const Icon(Icons.view_column_outlined, size: 18),
+                label: const Text('Customize Fields'),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           EngineeringBomTable(

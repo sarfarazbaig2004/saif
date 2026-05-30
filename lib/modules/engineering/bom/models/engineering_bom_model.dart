@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:QUIK/modules/engineering/bom/helpers/bom_column_config.dart';
+import 'package:QUIK/modules/engineering/bom/models/engineering_fastener_line_model.dart';
 import 'package:QUIK/modules/engineering/bom/models/engineering_bom_line_model.dart';
 
 class EngineeringBomModel {
@@ -14,6 +15,7 @@ class EngineeringBomModel {
   final List<String> visibleColumns;
   final List<BomCustomField> customFields;
   final List<EngineeringBomLineModel> lines;
+  final List<EngineeringFastenerLineModel> fastenerLines;
   final double totalCalculatedWeight;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -29,6 +31,7 @@ class EngineeringBomModel {
     this.visibleColumns = const [],
     this.customFields = const [],
     required this.lines,
+    this.fastenerLines = const [],
     required this.totalCalculatedWeight,
     this.createdAt,
     this.updatedAt,
@@ -49,6 +52,17 @@ class EngineeringBomModel {
               )
               .toList(growable: false)
         : <EngineeringBomLineModel>[];
+    final rawFasteners = data['fastenerLines'];
+    final fasteners = rawFasteners is List
+        ? rawFasteners
+              .whereType<Map>()
+              .map(
+                (line) => EngineeringFastenerLineModel.fromMap(
+                  Map<String, dynamic>.from(line),
+                ),
+              )
+              .toList(growable: false)
+        : <EngineeringFastenerLineModel>[];
 
     return EngineeringBomModel(
       id: snapshot.id,
@@ -70,6 +84,7 @@ class EngineeringBomModel {
                 .toList()
           : const [],
       lines: lines,
+      fastenerLines: fasteners,
       totalCalculatedWeight: _toDouble(data['totalCalculatedWeight']),
       createdAt: _dateTime(data['createdAt']),
       updatedAt: _dateTime(data['updatedAt']),
@@ -88,6 +103,9 @@ class EngineeringBomModel {
       'visibleColumns': visibleColumns,
       'customFields': customFields.map((field) => field.toMap()).toList(),
       'lines': lines.map((line) => line.toMap()).toList(growable: false),
+      'fastenerLines': fastenerLines
+          .map((line) => line.toMap())
+          .toList(growable: false),
       'totalCalculatedWeight': totalCalculatedWeight,
       'updatedAt': FieldValue.serverTimestamp(),
       if (createdAt == null) 'createdAt': FieldValue.serverTimestamp(),

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/engineering/bom/helpers/bom_column_config.dart';
+import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_grid_header.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_header.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_material_lookup.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_models.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_table_cells.dart';
+import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_total_row.dart';
 import 'package:QUIK/modules/inventory/material_master/models/material_master_model.dart';
 
 class EngineeringBomTable extends StatelessWidget {
@@ -47,7 +49,10 @@ class EngineeringBomTable extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _BomGridHeader(columns: columns, customFields: customFields),
+              EngineeringBomGridHeader(
+                columns: columns,
+                customFields: customFields,
+              ),
               const Divider(height: 1, color: zBorder),
               for (var i = 0; i < lines.length; i++)
                 _BomLineRow(
@@ -61,38 +66,18 @@ class EngineeringBomTable extends StatelessWidget {
                   onChanged: onChanged,
                   onDelete: () => onDelete(i),
                 ),
+              if (columns.contains(BomColumnKey.projectWeight)) ...[
+                const Divider(height: 1, color: zBorder),
+                EngineeringBomTotalRow(
+                  lines: lines,
+                  columns: columns,
+                  customFields: customFields,
+                  projectQuantity: projectQuantity,
+                ),
+              ],
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _BomGridHeader extends StatelessWidget {
-  final List<String> columns;
-  final List<BomCustomField> customFields;
-
-  const _BomGridHeader({required this.columns, required this.customFields});
-
-  @override
-  Widget build(BuildContext context) {
-    const style = TextStyle(fontWeight: FontWeight.w800, color: zMuted);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          const SizedBox(width: 64, child: Text('Sl No', style: style)),
-          for (final key in columns)
-            SizedBox(
-              width: BomColumnConfig.definitionFor(key, customFields).width,
-              child: Text(
-                BomColumnConfig.definitionFor(key, customFields).label,
-                style: style,
-              ),
-            ),
-          const SizedBox(width: 60),
-        ],
       ),
     );
   }
@@ -181,11 +166,11 @@ class _BomLineRow extends StatelessWidget {
       case BomColumnKey.grade:
         return _cell(line.grade, 'Grade', width);
       case BomColumnKey.coating:
-        return _cell(line.coatingType, 'Material', width);
+        return bomTableText(line.coatingType.text, width);
       case BomColumnKey.coatingSpec:
-        return _cell(line.coatingSpec, 'Coating Spec', width);
+        return bomTableText(line.coatingSpec.text, width);
       case BomColumnKey.yieldStrength:
-        return _cell(line.yieldStrength, 'Yield Strength', width);
+        return bomTableText(line.yieldStrength.text, width);
       case BomColumnKey.micron:
         return _cell(line.galvanizingMicron, 'Micron', width, number: true);
       case BomColumnKey.remarks:
@@ -202,7 +187,7 @@ class _BomLineRow extends StatelessWidget {
           bold: true,
         );
       case BomColumnKey.formula:
-        return _cell(line.formulaType, 'Formula', width);
+        return bomTableText(line.formulaType.text, width);
       case BomColumnKey.steelWeight:
         return bomTableText(line.steelWeight.toStringAsFixed(2), width);
       case BomColumnKey.galvanisingWeight:

@@ -75,6 +75,12 @@ class BomLineDraft {
   }
 
   void applyMaterial(MaterialMasterModel selected) {
+    debugPrint(
+      'MATERIAL_SELECTED_FOR_BOM code=${selected.materialCode} '
+      'coatingType=${selected.coatingType} coatingSpec=${selected.coatingSpec} '
+      'grade=${selected.materialGrade} yieldStrength=${selected.yieldStrength} '
+      'kgm=${selected.standardWeightPerMeter}',
+    );
     materialMasterId = selected.id;
     sectionCode.text = selected.materialCode;
     materialCategory.text = _categoryFrom(selected);
@@ -82,33 +88,25 @@ class BomLineDraft {
         ? selected.displayName
         : selected.materialName;
     final selectedGrade = selected.materialGrade.trim();
-    if (selectedGrade.isNotEmpty) {
-      grade.text = selectedGrade;
-    }
+    grade.text = selectedGrade;
     final selectedYield = selected.yieldStrength.trim();
     if (selectedYield.isNotEmpty) {
       yieldStrength.text = selectedYield;
-    } else if (selectedGrade.isNotEmpty) {
+    } else {
       yieldStrength.text = selectedGrade;
     }
     final selectedCoating = selected.coatingType.trim().isNotEmpty
         ? selected.coatingType.trim()
         : selected.coating.trim();
-    if (selectedCoating.isNotEmpty) {
-      coatingType.text = selectedCoating;
-    }
-    if (selected.coatingSpec.trim().isNotEmpty) {
-      coatingSpec.text = selected.coatingSpec;
-    }
+    coatingType.text = selectedCoating;
+    coatingSpec.text = selected.coatingSpec.trim();
     final formula = selected.weightFormula.trim().isNotEmpty
         ? selected.weightFormula.trim()
         : selected.formulaType.trim();
-    if (formula.isNotEmpty) {
-      formulaType.text = formula;
-    }
-    if (selected.standardWeightPerMeter > 0) {
-      unitWeightKgPerMeter.text = _format(selected.standardWeightPerMeter);
-    }
+    formulaType.text = formula;
+    unitWeightKgPerMeter.text = selected.standardWeightPerMeter > 0
+        ? _format(selected.standardWeightPerMeter)
+        : '';
   }
 
   EngineeringBomLineModel toModel(
@@ -120,7 +118,7 @@ class BomLineDraft {
       lineNo: lineNo,
       itemDescription: itemDescription.text.trim(),
       section: sectionCode.text.trim(),
-      material: materialName.text.trim(),
+      material: coatingType.text.trim(),
       qty: qtyPerStructureValue,
       projectQuantity: projectQuantity,
       totalProjectQuantity: BomWeightCalculator.totalProjectQuantity(
@@ -148,6 +146,7 @@ class BomLineDraft {
       },
       materialMasterId: materialMasterId,
       materialType: materialCategory.text.trim(),
+      materialName: materialName.text.trim(),
       formulaType: formulaType.text.trim(),
     );
   }

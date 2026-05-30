@@ -52,6 +52,17 @@ class MaterialMasterRepository {
     return materials;
   }
 
+  Future<MaterialMasterModel?> findByMaterialCode(String materialCode) async {
+    final code = materialCode.trim();
+    if (code.isEmpty) return null;
+    final snapshot = await _ref
+        .where('materialCode', isEqualTo: code)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) return null;
+    return MaterialMasterModel.fromFirestore(snapshot.docs.first);
+  }
+
   Future<void> saveMaterial(MaterialMasterModel material) {
     return _ref.doc(material.id).set({
       ...material.toFirestore(),

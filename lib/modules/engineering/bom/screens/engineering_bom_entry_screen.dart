@@ -4,14 +4,18 @@ import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/engineering/bom/helpers/bom_column_config.dart';
 import 'package:QUIK/modules/engineering/bom/models/engineering_bom_line_model.dart';
 import 'package:QUIK/modules/engineering/bom/models/engineering_bom_model.dart';
+import 'package:QUIK/modules/engineering/bom/models/engineering_fastener_line_model.dart';
 import 'package:QUIK/modules/engineering/bom/repositories/engineering_bom_repository.dart';
 import 'package:QUIK/modules/engineering/bom/services/bom_weight_calculator.dart';
-import 'package:QUIK/modules/engineering/bom/services/engineering_bom_quotation_seed.dart';
+import 'package:QUIK/modules/engineering/bom/services/engineering_bom_draft_mapper.dart';
+import 'package:QUIK/modules/engineering/bom/services/engineering_bom_quotation_launcher.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/bom_column_selector_dialog.dart';
+import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_app_bar_actions.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_grid_card.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_header.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_models.dart';
-import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
+import 'package:QUIK/modules/engineering/bom/widgets/engineering_fastener_bom_models.dart';
+import 'package:QUIK/modules/engineering/bom/widgets/engineering_fastener_bom_table.dart';
 
 class EngineeringBomEntryScreen extends StatefulWidget {
   final String tenantId;
@@ -45,6 +49,7 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
   final _projectQuantity = TextEditingController(text: '1');
   final _revision = TextEditingController(text: 'R0');
   final _lines = <BomLineDraft>[];
+  final _fasteners = <FastenerBomLineDraft>[];
   final _gridScrollController = ScrollController();
   List<String> _visibleColumns =
       BomColumnConfig.presets['Customer BOM Format']!;
@@ -64,12 +69,11 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
     _inquiryId.text = (widget.initialInquiryId ?? '').trim();
     _customer.text = (widget.initialCustomer ?? '').trim();
     _project.text = (widget.initialProject ?? '').trim();
-    _lines.add(
-      BomLineDraft(
-        itemDescription: widget.initialItemDescription,
-        qty: widget.initialQty,
-      ),
-    );
+    if ((widget.initialQty ?? 0) > 0) {
+      _projectQuantity.text = widget.initialQty!.toStringAsFixed(0);
+    }
+    _lines.add(BomLineDraft());
+    _fasteners.add(FastenerBomLineDraft());
   }
 
   double get _projectQty => double.tryParse(_projectQuantity.text.trim()) ?? 1;
@@ -94,15 +98,23 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
     setState(() => _lines.removeAt(index).dispose());
   }
 
-  List<EngineeringBomLineModel> _lineModels() {
-    final models = <EngineeringBomLineModel>[];
-    for (var i = 0; i < _lines.length; i++) {
-      if (!_lines[i].isBlank) {
-        models.add(_lines[i].toModel(i + 1, _projectQty, _customFields));
-      }
-    }
-    return models;
+  void _addFastener() {
+    setState(() => _fasteners.add(FastenerBomLineDraft()));
   }
+
+  void _removeFastener(int index) {
+    if (_fasteners.length == 1) return;
+    setState(() => _fasteners.removeAt(index).dispose());
+  }
+
+  List<EngineeringBomLineModel> get _lineModels => structureBomModels(
+    lines: _lines,
+    projectQuantity: _projectQty,
+    customFields: _customFields,
+  );
+
+  List<EngineeringFastenerLineModel> get _fastenerModels =>
+      fastenerBomModels(lines: _fasteners, projectQuantity: _projectQty);
 
   Future<void> _customizeColumns() async {
     final result = await showDialog<BomFieldConfigResult>(
@@ -126,7 +138,7 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
       return;
     }
 
-    final lineModels = _lineModels();
+    final lineModels = _lineModels;
     if (lineModels.isEmpty) {
       _showMessage('Add at least one BOM line before saving.');
       return;
@@ -148,6 +160,7 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
           visibleColumns: _visibleColumns,
           customFields: _customFields,
           lines: lineModels,
+          fastenerLines: _fastenerModels,
           totalCalculatedWeight: _totalProjectWeight,
         ),
       );
@@ -182,6 +195,9 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
     for (final line in _lines) {
       line.dispose();
     }
+    for (final fastener in _fasteners) {
+      fastener.dispose();
+    }
     _gridScrollController.dispose();
     super.dispose();
   }
@@ -193,34 +209,10 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
       appBar: AppBar(
         title: const Text('Engineering BOM'),
         actions: [
-          PopupMenuButton<String>(
-            tooltip: 'Generate Quotation',
-            onSelected: _openQuotation,
-            itemBuilder: (context) => const [
-              PopupMenuItem(
-                value: 'commercial',
-                child: Text('Commercial Quotation'),
-              ),
-              PopupMenuItem(
-                value: 'bomDetailed',
-                child: Text('BOM Detailed Quotation'),
-              ),
-            ],
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  Icon(Icons.request_quote_outlined),
-                  SizedBox(width: 6),
-                  Text('Generate Quotation'),
-                ],
-              ),
-            ),
-          ),
-          TextButton.icon(
-            onPressed: _saving ? null : _saveBom,
-            icon: const Icon(Icons.save_outlined),
-            label: Text(_saving ? 'Saving' : 'Save BOM'),
+          EngineeringBomAppBarActions(
+            saving: _saving,
+            onGenerateQuotation: _openQuotation,
+            onSave: _saveBom,
           ),
         ],
       ),
@@ -259,6 +251,14 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
                   onCustomizeColumns: _customizeColumns,
                   onDelete: _removeLine,
                 ),
+                const SizedBox(height: 14),
+                EngineeringFastenerBomTable(
+                  lines: _fasteners,
+                  projectQuantity: _projectQty,
+                  onAddLine: _addFastener,
+                  onDelete: _removeFastener,
+                  onChanged: () => setState(() {}),
+                ),
               ],
             ),
           ),
@@ -268,29 +268,23 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
   }
 
   void _openQuotation(String format) {
-    final lineModels = _lineModels();
+    final lineModels = _lineModels;
     if (lineModels.isEmpty) {
       _showMessage('Add at least one BOM line before generating quotation.');
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => QuotationScreenLocal(
-          companyId: widget.tenantId,
-          inquirySeed: EngineeringBomQuotationSeed.build(
-            format: format,
-            bomId: _bomId,
-            bomNo: _bomNo.text.trim(),
-            inquiryId: _inquiryId.text.trim(),
-            customer: _customer.text.trim(),
-            project: _project.text.trim(),
-            totalProjectWeight: _totalProjectWeight,
-            lines: lineModels,
-          ),
-        ),
-      ),
+    openEngineeringBomQuotation(
+      context: context,
+      companyId: widget.tenantId,
+      format: format,
+      bomId: _bomId,
+      bomNo: _bomNo.text.trim(),
+      inquiryId: _inquiryId.text.trim(),
+      customer: _customer.text.trim(),
+      project: _project.text.trim(),
+      totalProjectWeight: _totalProjectWeight,
+      lines: lineModels,
     );
   }
 }

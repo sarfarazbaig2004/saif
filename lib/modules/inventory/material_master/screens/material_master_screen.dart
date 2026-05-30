@@ -293,12 +293,27 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
 
   Future<void> _loadStandardEngineeringLibrary() async {
     final created = <String>[];
+    final existingByCode = <String, MaterialMasterModel>{};
     debugPrint(
       'MATERIAL_MASTER_STANDARD_LIBRARY_START tenantId=${widget.tenantId} '
       'path=${_repository.collectionPath}',
     );
     for (final row in _seedRows) {
-      final material = _materialFromRow(row);
+      final code = (row['materialCode'] ?? '').trim();
+      final existing = await _repository.findByMaterialCode(code);
+      if (existing != null) existingByCode[code] = existing;
+    }
+    if (existingByCode.isNotEmpty) {
+      final update = await _confirmLibraryUpdate(existingByCode.keys.toList());
+      if (update != true) {
+        _snack('Standard engineering material library load cancelled.');
+        return;
+      }
+    }
+    for (final row in _seedRows) {
+      final code = (row['materialCode'] ?? '').trim();
+      final existing = existingByCode[code];
+      final material = _materialFromRow(row, existingId: existing?.id);
       await _repository.saveMaterial(material);
       created.add(material.materialCode);
     }
@@ -309,7 +324,33 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
     _snack('Standard engineering material library loaded.');
   }
 
-  MaterialMasterModel _materialFromRow(Map<String, String> row) {
+  Future<bool?> _confirmLibraryUpdate(List<String> codes) {
+    return showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Update Existing Materials?'),
+        content: Text(
+          'Standard library materials already exist and will be updated: '
+          '${codes.take(8).join(', ')}${codes.length > 8 ? '...' : ''}',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  MaterialMasterModel _materialFromRow(
+    Map<String, String> row, {
+    String? existingId,
+  }) {
     final category = (row['category'] ?? row['materialType'] ?? 'Plate').trim();
     final grade = (row['grade'] ?? row['materialGrade'] ?? 'MS').trim();
     final formula =
@@ -323,7 +364,9 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
     final coatingSpec = (row['coatingSpec'] ?? '').trim().isEmpty
         ? (coatingType.toUpperCase() == 'HDG' ? '80' : '')
         : row['coatingSpec']!.trim();
-    final id = row['id']?.trim().isNotEmpty == true
+    final id = existingId?.trim().isNotEmpty == true
+        ? existingId!.trim()
+        : row['id']?.trim().isNotEmpty == true
         ? row['id']!.trim()
         : (row['materialCode'] ?? _repository.newMaterialId()).trim();
     return MaterialMasterModel(
@@ -459,8 +502,8 @@ class _Header extends StatelessWidget {
 
 const _templateCsv =
     'materialCode,materialName,category,materialShape,standardWeightPerMeter,grade,coating,isActive,yieldStrength,coatingType,coatingSpec,weightFormula\n'
-    '100CS50X15X2,C Section 100CS50X15X2,C Section,C Section,3.54,MS,HDG,true\n'
-    '60CS40X15X1.6,C Section 60CS40X15X1.6,C Section,C Section,1.72,MS,HDG,true\n'
+    '100CS50X15X2,C Section 100CS50X15X2,C Section,C Section,3.54,YS350,HDG,true,YS350,HDG,80,Kg Per Meter\n'
+    '60CS40X15X1.6,C Section 60CS40X15X1.6,C Section,C Section,1.72,YS550,Galvalume,true,YS550,Galvalume,AZ150,Kg Per Meter\n'
     '80CS40X15X2,C Section 80CS40X15X2,C Section,C Section,2.85,MS,HDG,true\n'
     '120CS50X15X2,C Section 120CS50X15X2,C Section,C Section,4.15,MS,HDG,true\n'
     'ISA40X40X4,Angle ISA40X40X4,Angle,Equal Angle,2.42,MS,HDG,true\n'
@@ -477,7 +520,7 @@ const _templateCsv =
     'FLAT40X5,Flat 40X5,Flat,Flat,1.57,MS,HDG,true\n'
     'FLAT50X6,Flat 50X6,Flat,Flat,2.36,MS,HDG,true\n'
     'FLAT75X8,Flat 75X8,Flat,Flat,4.71,MS,HDG,true\n'
-    'PLATE50X5,Plate 50X5,Plate,Plate,0,MS,,true\n'
+    'PLATE50X5,Plate 50X5,Plate,Plate,0,YS550,HDG,true,YS550,HDG,80,Plate Volume\n'
     'PLATE75X6,Plate 75X6,Plate,Plate,0,MS,,true\n'
     'PLATE100X8,Plate 100X8,Plate,Plate,0,MS,,true\n'
     'PLATE150X10,Plate 150X10,Plate,Plate,0,MS,,true\n'
@@ -489,7 +532,7 @@ const _templateCsv =
     'SHS50X50X3,Hollow Section SHS50X50X3,Hollow Section,SHS,4.31,MS,HDG,true\n'
     'SHS75X75X4,Hollow Section SHS75X75X4,Hollow Section,SHS,8.86,MS,HDG,true\n'
     'RHS100X50X3,Hollow Section RHS100X50X3,Hollow Section,RHS,6.67,MS,HDG,true\n'
-    '1280X1063X0.5,Roofing Sheet 1280X1063X0.5,Roofing Sheet,Roofing Sheet,0,MS,Galvalume,true,YS550,Galvalume,AZ150,Sheet Area';
+    '1280X1063X0.5,Roofing Sheet 1280X1063X0.5,Roofing Sheet,Roofing Sheet,0,YS550,Galvalume,true,YS550,Galvalume,AZ150,Sheet Area';
 
 final _seedRows = _parseMaterialCsv(_templateCsv);
 
