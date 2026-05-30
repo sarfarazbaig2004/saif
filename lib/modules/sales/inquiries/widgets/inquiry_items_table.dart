@@ -5,12 +5,14 @@ class _InquiryItemsTable extends StatelessWidget {
   final ValueChanged<int> onEdit;
   final ValueChanged<int> onDelete;
   final InquiryBomAction? onOpenBom;
+  final InquiryBomGridActionCallback? onBomAction;
 
   const _InquiryItemsTable({
     required this.items,
     required this.onEdit,
     required this.onDelete,
     this.onOpenBom,
+    this.onBomAction,
   });
 
   @override
@@ -33,12 +35,13 @@ class _InquiryItemsTable extends StatelessWidget {
           final bomId = _value(item['bomId']);
           final bomStatus = _value(item['bomStatus']);
           final bomLinked = _bool(item['bomLinked']);
-          final approved = bomStatus.toLowerCase() == 'approved';
+          final normalizedStatus = bomStatus.toLowerCase();
+          final approved = normalizedStatus == 'approved';
           final state = !bomLinked
               ? 'Create BOM'
               : approved
-              ? 'View BOM'
-              : 'Edit BOM + View BOM';
+              ? 'View BOM + Create Revision'
+              : 'Edit BOM + View BOM + Delete';
           debugPrint(
             'BOM_BUTTON_STATE index=$index '
             'inquiryItemId=${_value(item['inquiryItemId'])} '
@@ -61,28 +64,66 @@ class _InquiryItemsTable extends StatelessWidget {
               DataCell(
                 !bomLinked
                     ? OutlinedButton.icon(
-                        onPressed: onOpenBom == null
+                        onPressed: !_hasAction
                             ? null
-                            : () => onOpenBom!(item, readOnly: false),
+                            : () => _handleAction(
+                                item,
+                                InquiryBomGridAction.edit,
+                              ),
                         icon: const Icon(Icons.account_tree_outlined, size: 16),
                         label: const Text('Create BOM'),
                       )
                     : Wrap(
                         spacing: 8,
                         children: [
-                          if (!approved)
+                          if (approved) ...[
                             OutlinedButton(
-                              onPressed: onOpenBom == null
+                              onPressed: !_hasAction
                                   ? null
-                                  : () => onOpenBom!(item, readOnly: false),
-                              child: const Text('Edit BOM'),
+                                  : () => _handleAction(
+                                      item,
+                                      InquiryBomGridAction.view,
+                                    ),
+                              child: const Text('View BOM'),
                             ),
-                          OutlinedButton(
-                            onPressed: onOpenBom == null
-                                ? null
-                                : () => onOpenBom!(item, readOnly: true),
-                            child: const Text('View BOM'),
-                          ),
+                            OutlinedButton(
+                              onPressed: !_hasAction
+                                  ? null
+                                  : () => _handleAction(
+                                      item,
+                                      InquiryBomGridAction.createRevision,
+                                    ),
+                              child: const Text('Create Revision'),
+                            ),
+                          ] else ...[
+                            OutlinedButton(
+                              onPressed: !_hasAction
+                                  ? null
+                                  : () => _handleAction(
+                                      item,
+                                      InquiryBomGridAction.edit,
+                                    ),
+                              child: const Text('Edit'),
+                            ),
+                            OutlinedButton(
+                              onPressed: !_hasAction
+                                  ? null
+                                  : () => _handleAction(
+                                      item,
+                                      InquiryBomGridAction.view,
+                                    ),
+                              child: const Text('View'),
+                            ),
+                            OutlinedButton(
+                              onPressed: !_hasAction
+                                  ? null
+                                  : () => _handleAction(
+                                      item,
+                                      InquiryBomGridAction.delete,
+                                    ),
+                              child: const Text('Delete'),
+                            ),
+                          ],
                         ],
                       ),
               ),
@@ -115,6 +156,26 @@ class _InquiryItemsTable extends StatelessWidget {
   }
 
   static String _value(dynamic value) => value?.toString().trim() ?? '';
+
+  bool get _hasAction => onBomAction != null || onOpenBom != null;
+
+  void _handleAction(Map<String, dynamic> item, InquiryBomGridAction action) {
+    if (onBomAction != null) {
+      onBomAction!(item, action);
+      return;
+    }
+    switch (action) {
+      case InquiryBomGridAction.edit:
+      case InquiryBomGridAction.createRevision:
+        onOpenBom?.call(item, readOnly: false);
+        break;
+      case InquiryBomGridAction.view:
+        onOpenBom?.call(item, readOnly: true);
+        break;
+      case InquiryBomGridAction.delete:
+        break;
+    }
+  }
 
   static bool _bool(dynamic value) {
     if (value is bool) return value;

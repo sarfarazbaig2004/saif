@@ -209,6 +209,35 @@ class EngineeringBomRepository {
     );
   }
 
+  Future<void> deleteDraftOrSavedBom(String bomId) async {
+    final id = bomId.trim();
+    if (id.isEmpty) {
+      throw StateError('BOM ID is required.');
+    }
+    final docRef = _ref.doc(id);
+    final snapshot = await docRef.get();
+    if (!snapshot.exists) {
+      throw StateError('BOM was not found.');
+    }
+    final data = snapshot.data() ?? const <String, dynamic>{};
+    final status = (data['status'] ?? '').toString().trim().toLowerCase();
+    if (status != 'draft' && status != 'saved') {
+      throw StateError('Only Draft or Saved BOM can be deleted.');
+    }
+    await docRef.delete();
+    await EngineeringBomInquiryLinker(
+      tenantId: tenantId,
+      firestore: _firestore,
+    ).unlink(
+      inquiryId: (data['inquiryId'] ?? '').toString(),
+      inquiryItemId: (data['inquiryItemId'] ?? '').toString(),
+      bomId: id,
+    );
+    debugPrint(
+      'BOM_DELETE companies/$tenantId/engineering_boms/$id status=$status',
+    );
+  }
+
   bool _isApproved(Object? status) {
     return status?.toString().trim().toLowerCase() == 'approved';
   }

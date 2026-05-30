@@ -14,7 +14,26 @@ extension _AddInquiryProductsSection on _ScreensAddInquiryState {
       onUploadBom: () => _showInquiryItemFutureMessage('BOM linkage'),
       onUploadDrawing: () => _showInquiryItemFutureMessage('drawing upload'),
       onOpenBom: _openBomForInquiryItem,
+      onBomAction: _handleBomAction,
     );
+  }
+
+  Future<void> _handleBomAction(
+    Map<String, dynamic> item,
+    InquiryBomGridAction action,
+  ) async {
+    switch (action) {
+      case InquiryBomGridAction.edit:
+      case InquiryBomGridAction.createRevision:
+        await _openBomForInquiryItem(item, readOnly: false);
+        break;
+      case InquiryBomGridAction.view:
+        await _openBomForInquiryItem(item, readOnly: true);
+        break;
+      case InquiryBomGridAction.delete:
+        await _deleteBomForInquiryItem(item);
+        break;
+    }
   }
 
   Future<void> _openBomForInquiryItem(
@@ -104,6 +123,54 @@ extension _AddInquiryProductsSection on _ScreensAddInquiryState {
     });
   }
 
+  Future<void> _deleteBomForInquiryItem(Map<String, dynamic> item) async {
+    final bomId = (item['bomId'] ?? '').toString().trim();
+    final status = (item['bomStatus'] ?? '').toString().trim();
+    final normalizedStatus = status.toLowerCase();
+    if (bomId.isEmpty) return;
+    if (normalizedStatus != 'draft' && normalizedStatus != 'saved') {
+      _showBomMessage('Only Draft or Saved BOM can be deleted.');
+      return;
+    }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete BOM'),
+        content: const Text(
+          'Delete this BOM and unlink it from the inquiry item?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await EngineeringBomRepository(
+        tenantId: _tenantId,
+      ).deleteDraftOrSavedBom(bomId);
+      if (!mounted) return;
+      setState(() {
+        item['bomLinked'] = false;
+        item['bomId'] = '';
+        item['bomNumber'] = '';
+        item['bomStatus'] = '';
+      });
+      await _persistInquiryProductsIfEditing();
+      _showBomMessage('BOM deleted and inquiry item unlinked.');
+    } catch (e) {
+      if (!mounted) return;
+      _showBomMessage('Failed to delete BOM: $e');
+    }
+  }
+
   String _currentProjectReference() {
     return _firstNonEmptyString([
           _controllers.subject.text,
@@ -128,6 +195,12 @@ extension _AddInquiryProductsSection on _ScreensAddInquiryState {
         content: Text('$feature will be connected in the engineering stage.'),
         behavior: SnackBarBehavior.floating,
       ),
+    );
+  }
+
+  void _showBomMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 }

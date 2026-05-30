@@ -11,6 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/models/inquiry_model.dart';
 import 'package:QUIK/modules/crm/customers/screens_add_customer.dart';
+import 'package:QUIK/modules/engineering/bom/repositories/engineering_bom_repository.dart';
 import 'package:QUIK/modules/engineering/bom/screens/engineering_bom_entry_screen.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
 import 'package:QUIK/modules/sales/inquiries/controllers/add_inquiry_controllers.dart';

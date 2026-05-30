@@ -54,6 +54,44 @@ class EngineeringBomInquiryLinker {
     );
   }
 
+  Future<void> unlink({
+    required String inquiryId,
+    required String inquiryItemId,
+    required String bomId,
+  }) async {
+    if (inquiryId.trim().isEmpty || inquiryItemId.trim().isEmpty) return;
+    final inquiryRef = TenantFirestore(
+      tenantId: tenantId,
+      firestore: firestore,
+    ).collection('inquiries').doc(inquiryId.trim());
+    final snapshot = await inquiryRef.get();
+    if (!snapshot.exists) return;
+    final data = snapshot.data() ?? const <String, dynamic>{};
+    final products = _unlinkItems(data['products'], inquiryItemId, bomId);
+    final linkedItems =
+        products?.where((item) => item['bomLinked'] == true).toList() ??
+        const <Map<String, dynamic>>[];
+    final hasLinkedBom = linkedItems.isNotEmpty;
+    final fallbackBom = hasLinkedBom ? linkedItems.first : null;
+    final update = <String, dynamic>{
+      if (products != null) 'products': products,
+      'bomPrepared': hasLinkedBom,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+    if ((data['bomId'] ?? '').toString() == bomId) {
+      update.addAll({
+        'bomId': fallbackBom?['bomId'] ?? FieldValue.delete(),
+        'bomNumber': fallbackBom?['bomNumber'] ?? FieldValue.delete(),
+        'bomStatus': fallbackBom?['bomStatus'] ?? 'BOM Required',
+      });
+    }
+    await inquiryRef.set(update, SetOptions(merge: true));
+    debugPrint(
+      'INQUIRY_BOM_UNLINK inquiryId=$inquiryId inquiryItemId=$inquiryItemId '
+      'bomLinked=false bomId=$bomId',
+    );
+  }
+
   List<Map<String, dynamic>>? _linkItems(
     Object? rawItems,
     String inquiryItemId,
@@ -75,6 +113,32 @@ class EngineeringBomInquiryLinker {
             'bomId': bomId,
             'bomNumber': bomNumber,
             'bomStatus': status,
+          };
+        })
+        .toList(growable: false);
+  }
+
+  List<Map<String, dynamic>>? _unlinkItems(
+    Object? rawItems,
+    String inquiryItemId,
+    String bomId,
+  ) {
+    if (rawItems is! List) return null;
+    return rawItems
+        .whereType<Map>()
+        .map((item) {
+          final map = Map<String, dynamic>.from(item);
+          final itemMatches =
+              (map['inquiryItemId'] ?? '').toString() == inquiryItemId;
+          final bomMatches =
+              bomId.trim().isEmpty || (map['bomId'] ?? '').toString() == bomId;
+          if (!itemMatches || !bomMatches) return map;
+          return {
+            ...map,
+            'bomLinked': false,
+            'bomId': '',
+            'bomNumber': '',
+            'bomStatus': '',
           };
         })
         .toList(growable: false);

@@ -6,6 +6,11 @@ part 'inquiry_items_empty.dart';
 typedef InquiryBomAction =
     void Function(Map<String, dynamic> item, {required bool readOnly});
 
+enum InquiryBomGridAction { edit, view, delete, createRevision }
+
+typedef InquiryBomGridActionCallback =
+    void Function(Map<String, dynamic> item, InquiryBomGridAction action);
+
 class InquiryItemsGrid extends StatelessWidget {
   final List<Map<String, dynamic>> items;
   final ValueChanged<List<Map<String, dynamic>>> onChanged;
@@ -13,6 +18,7 @@ class InquiryItemsGrid extends StatelessWidget {
   final VoidCallback? onUploadBom;
   final VoidCallback? onUploadDrawing;
   final InquiryBomAction? onOpenBom;
+  final InquiryBomGridActionCallback? onBomAction;
 
   const InquiryItemsGrid({
     super.key,
@@ -22,6 +28,7 @@ class InquiryItemsGrid extends StatelessWidget {
     this.onUploadBom,
     this.onUploadDrawing,
     this.onOpenBom,
+    this.onBomAction,
   });
 
   static const _borderColor = Color(0xFFE2E8F0);
@@ -68,6 +75,7 @@ class InquiryItemsGrid extends StatelessWidget {
             onEdit: (index) => _openItemDialog(context, editIndex: index),
             onDelete: _deleteItem,
             onOpenBom: onOpenBom,
+            onBomAction: onBomAction,
           ),
       ],
     );
