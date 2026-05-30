@@ -32,7 +32,20 @@ class _InquiryItemsTable extends StatelessWidget {
           final item = items[index];
           final bomId = _value(item['bomId']);
           final bomStatus = _value(item['bomStatus']);
+          final bomLinked = _bool(item['bomLinked']);
           final approved = bomStatus.toLowerCase() == 'approved';
+          final state = !bomLinked
+              ? 'Create BOM'
+              : approved
+              ? 'View BOM'
+              : 'Edit BOM + View BOM';
+          debugPrint(
+            'BOM_BUTTON_STATE index=$index '
+            'inquiryItemId=${_value(item['inquiryItemId'])} '
+            'bomLinked=$bomLinked bomId=$bomId '
+            'bomNumber=${_value(item['bomNumber'])} '
+            'bomStatus=$bomStatus state=$state',
+          );
           return DataRow(
             cells: [
               DataCell(
@@ -46,7 +59,7 @@ class _InquiryItemsTable extends StatelessWidget {
               DataCell(Text(_value(item['unit']))),
               DataCell(Text(InquiryItemsGrid._numberText(item['price']))),
               DataCell(
-                bomId.isEmpty
+                !bomLinked
                     ? OutlinedButton.icon(
                         onPressed: onOpenBom == null
                             ? null
@@ -102,4 +115,9 @@ class _InquiryItemsTable extends StatelessWidget {
   }
 
   static String _value(dynamic value) => value?.toString().trim() ?? '';
+
+  static bool _bool(dynamic value) {
+    if (value is bool) return value;
+    return value?.toString().trim().toLowerCase() == 'true';
+  }
 }

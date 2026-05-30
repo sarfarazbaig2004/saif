@@ -517,6 +517,16 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           _structuredProducts = List<Map<String, dynamic>>.from(
             data['products'],
           );
+          for (final item in _structuredProducts) {
+            debugPrint(
+              'INQUIRY_ITEM_LOADED inquiryId=${widget.existingDoc?.id ?? widget.existingInquiry?.id ?? ''} '
+              'inquiryItemId=${item['inquiryItemId'] ?? ''} '
+              'bomLinked=${item['bomLinked'] ?? false} '
+              'bomId=${item['bomId'] ?? ''} '
+              'bomNumber=${item['bomNumber'] ?? ''} '
+              'bomStatus=${item['bomStatus'] ?? ''}',
+            );
+          }
         } else if (data['requiredProducts'] != null &&
             data['requiredProducts'].toString().isNotEmpty) {
           _structuredProducts = [
@@ -529,6 +539,10 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
               'sku': '',
             },
           ];
+          debugPrint(
+            'INQUIRY_ITEM_LOADED inquiryId=${widget.existingDoc?.id ?? widget.existingInquiry?.id ?? ''} '
+            'inquiryItemId= bomLinked=false bomId= bomNumber= bomStatus=',
+          );
         }
 
         if (data['nextFollowUpDate'] != null &&

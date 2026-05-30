@@ -85,8 +85,13 @@ extension _AddInquiryProductsSection on _ScreensAddInquiryState {
         .get();
     if (query.docs.isEmpty || !mounted) return;
     final doc = query.docs.first;
-    debugPrint('BOM_FOUND bomId=${doc.id}');
     final data = doc.data();
+    debugPrint(
+      'BOM_LINK_FOUND inquiryId=${_currentInquiryReference()} '
+      'inquiryItemId=$inquiryItemId bomLinked=true bomId=${doc.id} '
+      'bomNumber=${data['bomNo'] ?? data['bomNumber'] ?? ''} '
+      'bomStatus=${data['status'] ?? ''}',
+    );
     setState(() {
       for (final item in _structuredProducts) {
         if ((item['inquiryItemId'] ?? '').toString() == inquiryItemId) {

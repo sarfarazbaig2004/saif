@@ -24,6 +24,11 @@ class EngineeringBomInquiryLinker {
       tenantId: tenantId,
       firestore: firestore,
     ).collection('inquiries').doc(inquiryId.trim());
+    debugPrint(
+      'BOM_LINK_FOUND path=companies/$tenantId/inquiries/${inquiryId.trim()} '
+      'inquiryItemId=${inquiryItemId.trim()} bomId=$bomId '
+      'bomNumber=$bomNumber bomStatus=$status',
+    );
     final snapshot = await inquiryRef.get();
     if (!snapshot.exists) return;
     final data = snapshot.data() ?? const <String, dynamic>{};
@@ -38,12 +43,15 @@ class EngineeringBomInquiryLinker {
       'bomId': bomId,
       'bomNumber': bomNumber,
       'bomPrepared': true,
-      'bomStatus': 'BOM Prepared',
+      'bomStatus': status,
       'updatedAt': FieldValue.serverTimestamp(),
     };
     if (products != null) update['products'] = products;
     await inquiryRef.set(update, SetOptions(merge: true));
-    debugPrint('INQUIRY_BOM_LINK inquiryId=$inquiryId bomId=$bomId');
+    debugPrint(
+      'INQUIRY_BOM_LINK inquiryId=$inquiryId inquiryItemId=$inquiryItemId '
+      'bomLinked=true bomId=$bomId bomNumber=$bomNumber bomStatus=$status',
+    );
   }
 
   List<Map<String, dynamic>>? _linkItems(

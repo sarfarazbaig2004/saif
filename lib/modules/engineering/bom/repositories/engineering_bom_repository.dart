@@ -76,6 +76,10 @@ class EngineeringBomRepository {
     String changedByName = '',
   }) async {
     final docRef = _ref.doc(bom.id);
+    debugPrint(
+      'BOM_SAVE_PATH companies/$tenantId/engineering_boms/${bom.id} '
+      'inquiryId=${bom.inquiryId} inquiryItemId=${bom.inquiryItemId}',
+    );
     final existing = await docRef.get();
     final now = FieldValue.serverTimestamp();
     final audit = EngineeringBomAuditHelper.entry(
@@ -130,6 +134,10 @@ class EngineeringBomRepository {
           ),
         ),
       }, SetOptions(merge: true));
+      debugPrint(
+        'BOM_SAVE_WRITTEN companies/$tenantId/engineering_boms/${newRef.id} '
+        'status=Draft',
+      );
       await _linkInquiryItem(
         inquiryId: revisedBom.inquiryId,
         inquiryItemId: revisedBom.inquiryItemId,
@@ -180,6 +188,10 @@ class EngineeringBomRepository {
               ],
       ),
     }, SetOptions(merge: true));
+    debugPrint(
+      'BOM_SAVE_WRITTEN companies/$tenantId/engineering_boms/${bom.id} '
+      'status=${bom.status}',
+    );
     await _linkInquiryItem(
       inquiryId: bom.inquiryId,
       inquiryItemId: bom.inquiryItemId,
