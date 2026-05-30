@@ -10,6 +10,7 @@ class EngineeringBomHeader extends StatelessWidget {
   final TextEditingController projectQuantity;
   final TextEditingController revision;
   final VoidCallback onChanged;
+  final bool readOnly;
 
   const EngineeringBomHeader({
     super.key,
@@ -20,6 +21,7 @@ class EngineeringBomHeader extends StatelessWidget {
     required this.projectQuantity,
     required this.revision,
     required this.onChanged,
+    this.readOnly = false,
   });
 
   @override
@@ -53,6 +55,7 @@ class EngineeringBomHeader extends StatelessWidget {
       width: 220,
       child: TextFormField(
         controller: controller,
+        readOnly: readOnly,
         decoration: bomInputDecoration(label),
         keyboardType: number
             ? const TextInputType.numberWithOptions(decimal: true)
@@ -73,12 +76,14 @@ class EngineeringBomSummary extends StatelessWidget {
   final double weightPerStructure;
   final double totalProjectWeight;
   final VoidCallback onAddLine;
+  final bool readOnly;
 
   const EngineeringBomSummary({
     super.key,
     required this.weightPerStructure,
     required this.totalProjectWeight,
     required this.onAddLine,
+    this.readOnly = false,
   });
 
   @override
@@ -98,7 +103,7 @@ class EngineeringBomSummary extends StatelessWidget {
             ),
           ),
           FilledButton.icon(
-            onPressed: onAddLine,
+            onPressed: readOnly ? null : onAddLine,
             icon: const Icon(Icons.add, size: 18),
             label: const Text('Add Line'),
           ),

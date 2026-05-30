@@ -4,13 +4,13 @@ class _InquiryItemsTable extends StatelessWidget {
   final List<Map<String, dynamic>> items;
   final ValueChanged<int> onEdit;
   final ValueChanged<int> onDelete;
-  final ValueChanged<Map<String, dynamic>>? onCreateBom;
+  final InquiryBomAction? onOpenBom;
 
   const _InquiryItemsTable({
     required this.items,
     required this.onEdit,
     required this.onDelete,
-    this.onCreateBom,
+    this.onOpenBom,
   });
 
   @override
@@ -30,6 +30,9 @@ class _InquiryItemsTable extends StatelessWidget {
         ],
         rows: List.generate(items.length, (index) {
           final item = items[index];
+          final bomId = _value(item['bomId']);
+          final bomStatus = _value(item['bomStatus']);
+          final approved = bomStatus.toLowerCase() == 'approved';
           return DataRow(
             cells: [
               DataCell(
@@ -43,13 +46,32 @@ class _InquiryItemsTable extends StatelessWidget {
               DataCell(Text(_value(item['unit']))),
               DataCell(Text(InquiryItemsGrid._numberText(item['price']))),
               DataCell(
-                OutlinedButton.icon(
-                  onPressed: onCreateBom == null
-                      ? null
-                      : () => onCreateBom!(Map<String, dynamic>.from(item)),
-                  icon: const Icon(Icons.account_tree_outlined, size: 16),
-                  label: const Text('Create BOM'),
-                ),
+                bomId.isEmpty
+                    ? OutlinedButton.icon(
+                        onPressed: onOpenBom == null
+                            ? null
+                            : () => onOpenBom!(item, readOnly: false),
+                        icon: const Icon(Icons.account_tree_outlined, size: 16),
+                        label: const Text('Create BOM'),
+                      )
+                    : Wrap(
+                        spacing: 8,
+                        children: [
+                          if (!approved)
+                            OutlinedButton(
+                              onPressed: onOpenBom == null
+                                  ? null
+                                  : () => onOpenBom!(item, readOnly: false),
+                              child: const Text('Edit BOM'),
+                            ),
+                          OutlinedButton(
+                            onPressed: onOpenBom == null
+                                ? null
+                                : () => onOpenBom!(item, readOnly: true),
+                            child: const Text('View BOM'),
+                          ),
+                        ],
+                      ),
               ),
               DataCell(
                 Row(

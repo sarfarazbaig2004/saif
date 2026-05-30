@@ -19,6 +19,7 @@ class EngineeringBomTable extends StatelessWidget {
   final ScrollController scrollController;
   final VoidCallback onChanged;
   final ValueChanged<int> onDelete;
+  final bool readOnly;
 
   const EngineeringBomTable({
     super.key,
@@ -30,6 +31,7 @@ class EngineeringBomTable extends StatelessWidget {
     required this.scrollController,
     required this.onChanged,
     required this.onDelete,
+    this.readOnly = false,
   });
 
   List<String> get _columns => BomColumnConfig.sanitize(visibleColumns);
@@ -62,9 +64,10 @@ class EngineeringBomTable extends StatelessWidget {
                   projectQuantity: projectQuantity,
                   lineNo: i + 1,
                   tenantId: tenantId,
-                  canDelete: lines.length > 1,
+                  canDelete: !readOnly && lines.length > 1,
                   onChanged: onChanged,
                   onDelete: () => onDelete(i),
+                  readOnly: readOnly,
                 ),
               if (columns.contains(BomColumnKey.projectWeight)) ...[
                 const Divider(height: 1, color: zBorder),
@@ -93,6 +96,7 @@ class _BomLineRow extends StatelessWidget {
   final bool canDelete;
   final VoidCallback onChanged;
   final VoidCallback onDelete;
+  final bool readOnly;
 
   const _BomLineRow({
     required this.line,
@@ -104,6 +108,7 @@ class _BomLineRow extends StatelessWidget {
     required this.canDelete,
     required this.onChanged,
     required this.onDelete,
+    required this.readOnly,
   });
 
   @override
@@ -119,7 +124,7 @@ class _BomLineRow extends StatelessWidget {
             width: 60,
             child: IconButton(
               tooltip: 'Delete line',
-              onPressed: canDelete ? onDelete : null,
+              onPressed: canDelete && !readOnly ? onDelete : null,
               icon: const Icon(Icons.delete_outline, color: zDanger),
             ),
           ),
@@ -194,6 +199,13 @@ class _BomLineRow extends StatelessWidget {
         return bomTableText(line.galvanisingWeight.toStringAsFixed(2), width);
       case BomColumnKey.weight:
       default:
+        if (line.weightFormulaMissing) {
+          return bomTableText(
+            'Weight formula missing for selected material.',
+            width,
+            bold: true,
+          );
+        }
         return bomTableText(
           line.lineWeight.toStringAsFixed(2),
           width,
@@ -224,12 +236,14 @@ class _BomLineRow extends StatelessWidget {
           suffixIcon: IconButton(
             tooltip: 'Select material',
             icon: const Icon(Icons.search, size: 18),
-            onPressed: () => EngineeringBomMaterialLookup.pick(
-              context: context,
-              tenantId: tenantId,
-              line: line,
-              onChanged: onChanged,
-            ),
+            onPressed: readOnly
+                ? null
+                : () => EngineeringBomMaterialLookup.pick(
+                    context: context,
+                    tenantId: tenantId,
+                    line: line,
+                    onChanged: onChanged,
+                  ),
           ),
         ),
         onChanged: (_) => onChanged(),
@@ -251,10 +265,12 @@ class _BomLineRow extends StatelessWidget {
         items: MaterialMasterModel.materialTypes
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
             .toList(),
-        onChanged: (value) {
-          line.materialCategory.text = value ?? '';
-          onChanged();
-        },
+        onChanged: readOnly
+            ? null
+            : (value) {
+                line.materialCategory.text = value ?? '';
+                onChanged();
+              },
       ),
     );
   }
@@ -270,6 +286,7 @@ class _BomLineRow extends StatelessWidget {
       width,
       TextFormField(
         controller: controller,
+        readOnly: readOnly,
         decoration: bomInputDecoration(label),
         keyboardType: number
             ? const TextInputType.numberWithOptions(decimal: true)

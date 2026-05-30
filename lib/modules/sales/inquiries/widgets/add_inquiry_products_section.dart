@@ -13,34 +13,90 @@ extension _AddInquiryProductsSection on _ScreensAddInquiryState {
       onImportBoq: () => _showInquiryItemFutureMessage('BOQ import'),
       onUploadBom: () => _showInquiryItemFutureMessage('BOM linkage'),
       onUploadDrawing: () => _showInquiryItemFutureMessage('drawing upload'),
-      onCreateBom: _openBomForInquiryItem,
+      onOpenBom: _openBomForInquiryItem,
     );
   }
 
-  void _openBomForInquiryItem(Map<String, dynamic> item) {
-    Navigator.push(
+  Future<void> _openBomForInquiryItem(
+    Map<String, dynamic> item, {
+    required bool readOnly,
+  }) async {
+    final itemId = _ensureInquiryItemId(item);
+    await _persistInquiryProductsIfEditing();
+    final bomId = (item['bomId'] ?? '').toString().trim();
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => EngineeringBomEntryScreen(
           tenantId: _tenantId,
           initialInquiryId: _currentInquiryReference(),
+          initialInquiryItemId: itemId,
+          initialBomId: bomId,
           initialCustomer: _customerNameSnapshot,
           initialProject: _currentProjectReference(),
           initialItemDescription: _inquiryItemDescription(item),
           initialQty: _inquiryItemQty(item),
+          readOnly: readOnly,
         ),
       ),
     );
+    await _refreshInquiryItemBomLink(itemId);
   }
 
   String _currentInquiryReference() {
     return _firstNonEmptyString([
+          widget.existingDoc?.id,
+          widget.existingInquiry?.id,
           _existingRawData?['inquiryNumber'],
           widget.existingInquiry?.inquiryNumber,
-          widget.existingInquiry?.id,
-          widget.existingDoc?.id,
         ]) ??
         '';
+  }
+
+  String _ensureInquiryItemId(Map<String, dynamic> item) {
+    var id = (item['inquiryItemId'] ?? '').toString().trim();
+    if (id.isNotEmpty) return id;
+    id = InquiryItemsGrid.newItemId();
+    final index = _structuredProducts.indexWhere((candidate) {
+      return identical(candidate, item) ||
+          _inquiryItemDescription(candidate) == _inquiryItemDescription(item);
+    });
+    if (index >= 0) {
+      setState(() => _structuredProducts[index]['inquiryItemId'] = id);
+    }
+    return id;
+  }
+
+  Future<void> _persistInquiryProductsIfEditing() async {
+    if (widget.existingDoc == null) return;
+    await widget.existingDoc!.set({
+      'products': _structuredProducts,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> _refreshInquiryItemBomLink(String inquiryItemId) async {
+    if (_tenantId.isEmpty || inquiryItemId.isEmpty) return;
+    final query = await TenantFirestore(tenantId: _tenantId)
+        .collection('engineering_boms')
+        .where('inquiryId', isEqualTo: _currentInquiryReference())
+        .where('inquiryItemId', isEqualTo: inquiryItemId)
+        .limit(1)
+        .get();
+    if (query.docs.isEmpty || !mounted) return;
+    final doc = query.docs.first;
+    debugPrint('BOM_FOUND bomId=${doc.id}');
+    final data = doc.data();
+    setState(() {
+      for (final item in _structuredProducts) {
+        if ((item['inquiryItemId'] ?? '').toString() == inquiryItemId) {
+          item['bomLinked'] = true;
+          item['bomId'] = doc.id;
+          item['bomNumber'] = data['bomNo'] ?? data['bomNumber'] ?? '';
+          item['bomStatus'] = data['status'] ?? '';
+        }
+      }
+    });
   }
 
   String _currentProjectReference() {

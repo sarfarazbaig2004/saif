@@ -8,9 +8,15 @@ class EngineeringBomModel {
   final String id;
   final String bomNo;
   final String inquiryId;
+  final String inquiryItemId;
   final String customer;
   final String project;
   final String revision;
+  final String status;
+  final String revisionReason;
+  final String createdBy;
+  final String approvedBy;
+  final List<Map<String, dynamic>> attachments;
   final double projectQuantity;
   final List<String> visibleColumns;
   final List<BomCustomField> customFields;
@@ -24,9 +30,15 @@ class EngineeringBomModel {
     required this.id,
     required this.bomNo,
     required this.inquiryId,
+    this.inquiryItemId = '',
     required this.customer,
     required this.project,
     required this.revision,
+    this.status = 'Saved',
+    this.revisionReason = '',
+    this.createdBy = '',
+    this.approvedBy = '',
+    this.attachments = const [],
     this.projectQuantity = 1,
     this.visibleColumns = const [],
     this.customFields = const [],
@@ -68,9 +80,15 @@ class EngineeringBomModel {
       id: snapshot.id,
       bomNo: (data['bomNo'] ?? '').toString(),
       inquiryId: (data['inquiryId'] ?? '').toString(),
+      inquiryItemId: (data['inquiryItemId'] ?? '').toString(),
       customer: (data['customer'] ?? '').toString(),
       project: (data['project'] ?? '').toString(),
-      revision: (data['revision'] ?? 'R0').toString(),
+      revision: (data['revision'] ?? 'A').toString(),
+      status: (data['status'] ?? 'Saved').toString(),
+      revisionReason: (data['revisionReason'] ?? '').toString(),
+      createdBy: (data['createdBy'] ?? '').toString(),
+      approvedBy: (data['approvedBy'] ?? '').toString(),
+      attachments: _mapList(data['attachments']),
       projectQuantity: _toDouble(
         data['projectQuantity'] ?? data['structureQuantity'],
       ),
@@ -94,10 +112,18 @@ class EngineeringBomModel {
   Map<String, dynamic> toFirestore() {
     return {
       'bomNo': bomNo,
+      'bomNumber': bomNo,
+      'bomId': id,
       'inquiryId': inquiryId,
+      'inquiryItemId': inquiryItemId,
       'customer': customer,
       'project': project,
       'revision': revision,
+      'status': status,
+      'revisionReason': revisionReason,
+      'createdBy': createdBy,
+      'approvedBy': approvedBy,
+      'attachments': attachments,
       'projectQuantity': projectQuantity,
       'structureQuantity': projectQuantity,
       'visibleColumns': visibleColumns,
@@ -109,7 +135,36 @@ class EngineeringBomModel {
       'totalCalculatedWeight': totalCalculatedWeight,
       'updatedAt': FieldValue.serverTimestamp(),
       if (createdAt == null) 'createdAt': FieldValue.serverTimestamp(),
+      if (createdAt == null) 'createdOn': FieldValue.serverTimestamp(),
     };
+  }
+
+  EngineeringBomModel copyForRevision({
+    required String id,
+    required String revision,
+    required String status,
+    String revisionReason = '',
+  }) {
+    return EngineeringBomModel(
+      id: id,
+      bomNo: bomNo,
+      inquiryId: inquiryId,
+      inquiryItemId: inquiryItemId,
+      customer: customer,
+      project: project,
+      revision: revision,
+      status: status,
+      revisionReason: revisionReason,
+      createdBy: createdBy,
+      approvedBy: '',
+      attachments: attachments,
+      projectQuantity: projectQuantity,
+      visibleColumns: visibleColumns,
+      customFields: customFields,
+      lines: lines,
+      fastenerLines: fastenerLines,
+      totalCalculatedWeight: totalCalculatedWeight,
+    );
   }
 
   static double _toDouble(dynamic value) {
@@ -121,5 +176,13 @@ class EngineeringBomModel {
     if (value is Timestamp) return value.toDate();
     if (value is DateTime) return value;
     return DateTime.tryParse(value?.toString() ?? '');
+  }
+
+  static List<Map<String, dynamic>> _mapList(dynamic value) {
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList(growable: false);
   }
 }

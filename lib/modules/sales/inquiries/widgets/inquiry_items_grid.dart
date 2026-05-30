@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 part 'inquiry_items_table.dart';
 part 'inquiry_items_empty.dart';
 
+typedef InquiryBomAction =
+    void Function(Map<String, dynamic> item, {required bool readOnly});
+
 class InquiryItemsGrid extends StatelessWidget {
   final List<Map<String, dynamic>> items;
   final ValueChanged<List<Map<String, dynamic>>> onChanged;
   final VoidCallback? onImportBoq;
   final VoidCallback? onUploadBom;
   final VoidCallback? onUploadDrawing;
-  final ValueChanged<Map<String, dynamic>>? onCreateBom;
+  final InquiryBomAction? onOpenBom;
 
   const InquiryItemsGrid({
     super.key,
@@ -18,7 +21,7 @@ class InquiryItemsGrid extends StatelessWidget {
     this.onImportBoq,
     this.onUploadBom,
     this.onUploadDrawing,
-    this.onCreateBom,
+    this.onOpenBom,
   });
 
   static const _borderColor = Color(0xFFE2E8F0);
@@ -64,7 +67,7 @@ class InquiryItemsGrid extends StatelessWidget {
             items: items,
             onEdit: (index) => _openItemDialog(context, editIndex: index),
             onDelete: _deleteItem,
-            onCreateBom: onCreateBom,
+            onOpenBom: onOpenBom,
           ),
       ],
     );
@@ -206,6 +209,10 @@ class InquiryItemsGrid extends StatelessWidget {
                   'costPrice': existing?['costPrice'] ?? 0.0,
                   'margin': existing?['margin'] ?? 0.0,
                   'estimatedWeight': existing?['estimatedWeight'],
+                  'inquiryItemId': existing?['inquiryItemId'] ?? newItemId(),
+                  'bomId': existing?['bomId'] ?? '',
+                  'bomNumber': existing?['bomNumber'] ?? '',
+                  'bomStatus': existing?['bomStatus'] ?? '',
                   'bomLinked': existing?['bomLinked'] ?? false,
                   'drawingRevision': existing?['drawingRevision'] ?? '',
                 };
@@ -241,6 +248,9 @@ class InquiryItemsGrid extends StatelessWidget {
   }
 
   static String _string(dynamic value) => value?.toString() ?? '';
+
+  static String newItemId() =>
+      'inq_item_${DateTime.now().microsecondsSinceEpoch}';
 
   static String _numberText(dynamic value) {
     final parsed = value is num

@@ -57,7 +57,14 @@ class BomLineDraft {
     thicknessMm: thicknessMmValue,
     unitWeightKgPerMeter: unitWeightKgPerMeterValue,
     materialCategory: materialCategory.text,
+    materialCode: sectionCode.text,
   );
+  bool get weightFormulaMissing {
+    return sectionCode.text.trim().isNotEmpty &&
+        qtyPerStructureValue > 0 &&
+        lengthMmValue > 0 &&
+        lineWeight == 0;
+  }
 
   TextEditingController customController(String fieldId) {
     return customValues.putIfAbsent(fieldId, TextEditingController.new);

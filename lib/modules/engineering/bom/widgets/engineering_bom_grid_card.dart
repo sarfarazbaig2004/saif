@@ -15,6 +15,7 @@ class EngineeringBomGridCard extends StatelessWidget {
   final VoidCallback onChanged;
   final VoidCallback onCustomizeColumns;
   final ValueChanged<int> onDelete;
+  final bool readOnly;
 
   const EngineeringBomGridCard({
     super.key,
@@ -27,6 +28,7 @@ class EngineeringBomGridCard extends StatelessWidget {
     required this.onChanged,
     required this.onCustomizeColumns,
     required this.onDelete,
+    this.readOnly = false,
   });
 
   @override
@@ -51,7 +53,7 @@ class EngineeringBomGridCard extends StatelessWidget {
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: onCustomizeColumns,
+                onPressed: readOnly ? null : onCustomizeColumns,
                 icon: const Icon(Icons.view_column_outlined, size: 18),
                 label: const Text('Customize Fields'),
               ),
@@ -67,6 +69,7 @@ class EngineeringBomGridCard extends StatelessWidget {
             scrollController: scrollController,
             onChanged: onChanged,
             onDelete: onDelete,
+            readOnly: readOnly,
           ),
         ],
       ),

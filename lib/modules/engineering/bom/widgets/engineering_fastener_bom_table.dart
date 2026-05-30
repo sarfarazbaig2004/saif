@@ -11,6 +11,7 @@ class EngineeringFastenerBomTable extends StatelessWidget {
   final VoidCallback onAddLine;
   final ValueChanged<int> onDelete;
   final VoidCallback onChanged;
+  final bool readOnly;
 
   const EngineeringFastenerBomTable({
     super.key,
@@ -19,6 +20,7 @@ class EngineeringFastenerBomTable extends StatelessWidget {
     required this.onAddLine,
     required this.onDelete,
     required this.onChanged,
+    this.readOnly = false,
   });
 
   @override
@@ -43,7 +45,7 @@ class EngineeringFastenerBomTable extends StatelessWidget {
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: onAddLine,
+                onPressed: readOnly ? null : onAddLine,
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Add Fastener'),
               ),
@@ -63,9 +65,10 @@ class EngineeringFastenerBomTable extends StatelessWidget {
                       line: lines[i],
                       lineNo: i + 1,
                       projectQuantity: projectQuantity,
-                      canDelete: lines.length > 1,
+                      canDelete: !readOnly && lines.length > 1,
                       onChanged: onChanged,
                       onDelete: () => onDelete(i),
+                      readOnly: readOnly,
                     ),
                 ],
               ),
@@ -113,6 +116,7 @@ class _FastenerRow extends StatelessWidget {
   final bool canDelete;
   final VoidCallback onChanged;
   final VoidCallback onDelete;
+  final bool readOnly;
 
   const _FastenerRow({
     required this.line,
@@ -121,6 +125,7 @@ class _FastenerRow extends StatelessWidget {
     required this.canDelete,
     required this.onChanged,
     required this.onDelete,
+    required this.readOnly,
   });
 
   @override
@@ -144,7 +149,7 @@ class _FastenerRow extends StatelessWidget {
             width: 60,
             child: IconButton(
               tooltip: 'Delete fastener',
-              onPressed: canDelete ? onDelete : null,
+              onPressed: canDelete && !readOnly ? onDelete : null,
               icon: const Icon(Icons.delete_outline, color: zDanger),
             ),
           ),
@@ -163,6 +168,7 @@ class _FastenerRow extends StatelessWidget {
       width,
       TextFormField(
         controller: controller,
+        readOnly: readOnly,
         decoration: bomInputDecoration(label),
         keyboardType: number
             ? const TextInputType.numberWithOptions(decimal: true)
