@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:QUIK/models/inquiry_model.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
+import 'package:QUIK/modules/sales/costing/screens/costing_sheet_screen.dart';
 import 'package:QUIK/modules/sales/inquiries/helpers/inquiry_list_helpers.dart';
 import 'package:QUIK/modules/sales/inquiries/screens_add_inquiry.dart';
 import 'package:QUIK/modules/sales/inquiries/widgets/inquiry_filter_sheet.dart';
@@ -505,6 +506,31 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     );
   }
 
+  Future<void> _openCostingSheet({
+    required BuildContext context,
+    required QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  }) async {
+    final targetCompanyId = (_companyId ?? '').trim();
+    if (targetCompanyId.isEmpty) {
+      _showSnack('Missing company workspace.', isError: true);
+      return;
+    }
+
+    final data = Map<String, dynamic>.from(doc.data());
+    data['id'] = doc.id;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CostingSheetScreen(
+          companyId: targetCompanyId,
+          currentUserUid: _currentUser?.uid ?? '',
+          inquiryData: data,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final firebaseUser = _currentUser;
@@ -911,6 +937,11 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                                     inquiry: inquiry,
                                                     inquiryData: doc.data(),
                                                   );
+                                                } else if (value == 'costing') {
+                                                  _openCostingSheet(
+                                                    context: context,
+                                                    doc: doc,
+                                                  );
                                                 } else if (value == 'delete') {
                                                   _deleteInquiry(doc.id);
                                                 }
@@ -924,6 +955,12 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                                   value: 'quote',
                                                   child: Text(
                                                     'Create Quotation',
+                                                  ),
+                                                ),
+                                                const PopupMenuItem(
+                                                  value: 'costing',
+                                                  child: Text(
+                                                    'Create Costing Sheet',
                                                   ),
                                                 ),
                                                 const PopupMenuItem(
@@ -970,6 +1007,19 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                               backgroundColor:
                                                   Colors.blue.shade50,
                                               textColor: Colors.blue.shade800,
+                                            ),
+                                          if (_getString(
+                                            doc.data(),
+                                            'bomStatus',
+                                          ).isNotEmpty)
+                                            _InfoChip(
+                                              label: _getString(
+                                                doc.data(),
+                                                'bomStatus',
+                                              ),
+                                              backgroundColor:
+                                                  Colors.green.shade50,
+                                              textColor: Colors.green.shade800,
                                             ),
                                           if (inquiry.location.isNotEmpty)
                                             _InfoChip(

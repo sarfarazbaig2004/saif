@@ -62,6 +62,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   String _suggestedPriority = 'Warm';
   String _selectedStage = 'RFQ';
   String _selectedStatus = 'Open';
+  String _bomStatus = 'BOM Required';
   String? _previousStage;
 
   final List<String> _pipelineStages = [
@@ -411,6 +412,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
         _customerNameSnapshot = (data['customerName'] ?? '').toString();
         _customerIndustrySnapshot = (data['customerIndustry'] ?? '').toString();
         _customerCitySnapshot = (data['customerCity'] ?? '').toString();
+        _bomStatus = _firstNonEmptyString([data['bomStatus'], _bomStatus])!;
 
         _controllers.subject.text =
             _firstNonEmptyString([
@@ -922,6 +924,10 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       'inquiryType': (_selectedType ?? '').trim(),
 
       'products': _structuredProducts,
+      'bomStatus': _bomStatus,
+      'bomAvailable': _bomStatus == 'BOM Available',
+      'bomRequired': _bomStatus == 'BOM Required',
+      'bomPrepared': _bomStatus == 'BOM Prepared',
       'quantityScope': totalQuantity.toString(),
       'totalQuantity': totalQuantity,
 
@@ -1748,6 +1754,34 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           ),
           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
           onChanged: (v) => _calculateInquiryReadiness(),
+        ),
+
+        const SizedBox(height: 16),
+
+        DropdownButtonFormField<String>(
+          initialValue: _bomStatus,
+          decoration: _dec(
+            'BOM Status',
+            prefixIcon: const Icon(Icons.account_tree_outlined),
+          ),
+          items: const [
+            DropdownMenuItem(
+              value: 'BOM Available',
+              child: Text('BOM Available'),
+            ),
+            DropdownMenuItem(
+              value: 'BOM Required',
+              child: Text('BOM Required'),
+            ),
+            DropdownMenuItem(
+              value: 'BOM Prepared',
+              child: Text('BOM Prepared'),
+            ),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() => _bomStatus = value);
+          },
         ),
 
         const SizedBox(height: 16),
