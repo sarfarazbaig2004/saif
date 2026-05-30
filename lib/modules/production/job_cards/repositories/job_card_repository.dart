@@ -54,6 +54,7 @@ class JobCardRepository {
 
   Future<void> saveJobCard(JobCardModel jobCard) async {
     final normalizedTenantId = TenantFirestore.requireTenantId(tenantId);
+    await _validateApprovedBomRevision(jobCard.bomId);
     final isAvailable = await isJobCardNoAvailable(
       jobCardNo: jobCard.jobCardNo,
       excludingJobCardId: jobCard.jobCardId,
@@ -70,4 +71,21 @@ class JobCardRepository {
   }
 
   String newJobCardId() => _ref.doc().id;
+
+  Future<void> _validateApprovedBomRevision(String bomId) async {
+    final id = bomId.trim();
+    if (id.isEmpty) return;
+    final snapshot = await _firestore
+        .collection('companies')
+        .doc(TenantFirestore.requireTenantId(tenantId))
+        .collection('engineering_boms')
+        .doc(id)
+        .get();
+    final status = (snapshot.data()?['status'] ?? '').toString().toLowerCase();
+    if (!snapshot.exists || status != 'approved') {
+      throw StateError(
+        'Production Job Card requires an approved BOM revision.',
+      );
+    }
+  }
 }

@@ -18,6 +18,9 @@ class CostingSheetModel {
   final double totalCost;
   final double sellingPrice;
   final double ratePerUnit;
+  final String bomId;
+  final String bomRevision;
+  final String bomRevisionId;
 
   const CostingSheetModel({
     this.id = '',
@@ -37,6 +40,9 @@ class CostingSheetModel {
     required this.totalCost,
     required this.sellingPrice,
     required this.ratePerUnit,
+    this.bomId = '',
+    this.bomRevision = '',
+    this.bomRevisionId = '',
   });
 
   Map<String, dynamic> toMap() {
@@ -57,6 +63,9 @@ class CostingSheetModel {
       'totalCost': totalCost,
       'sellingPrice': sellingPrice,
       'ratePerUnit': ratePerUnit,
+      'bomId': bomId,
+      'bomRevision': bomRevision,
+      'bomRevisionId': bomRevisionId,
       'updatedAt': FieldValue.serverTimestamp(),
     };
   }
@@ -103,6 +112,9 @@ class CostingSheetModel {
       totalCost: value(data['totalCost']),
       sellingPrice: value(data['sellingPrice']),
       ratePerUnit: value(data['ratePerUnit']),
+      bomId: (data['bomId'] ?? '').toString(),
+      bomRevision: (data['bomRevision'] ?? '').toString(),
+      bomRevisionId: (data['bomRevisionId'] ?? '').toString(),
     );
   }
 }

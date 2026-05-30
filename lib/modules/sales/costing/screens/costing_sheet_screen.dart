@@ -155,6 +155,9 @@ class _CostingSheetScreenState extends State<CostingSheetScreen> {
       totalCost: totalCost,
       sellingPrice: selling,
       ratePerUnit: qty <= 0 ? 0 : selling / qty,
+      bomId: (widget.inquiryData['bomId'] ?? '').toString(),
+      bomRevision: (widget.inquiryData['bomRevision'] ?? '').toString(),
+      bomRevisionId: (widget.inquiryData['bomRevisionId'] ?? '').toString(),
     );
   }
 

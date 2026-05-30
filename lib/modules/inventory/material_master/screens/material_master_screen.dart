@@ -520,7 +520,7 @@ const _templateCsv =
     'FLAT40X5,Flat 40X5,Flat,Flat,1.57,MS,HDG,true\n'
     'FLAT50X6,Flat 50X6,Flat,Flat,2.36,MS,HDG,true\n'
     'FLAT75X8,Flat 75X8,Flat,Flat,4.71,MS,HDG,true\n'
-    'PLATE50X5,Plate 50X5,Plate,Plate,0,YS550,HDG,true,YS550,HDG,80,Plate Volume\n'
+    'PLATE50X5,Plate 50X5,Plate,Plate,2.059829,YS550,HDG,true,YS550,HDG,80,Kg Per Meter\n'
     'PLATE75X6,Plate 75X6,Plate,Plate,0,MS,,true\n'
     'PLATE100X8,Plate 100X8,Plate,Plate,0,MS,,true\n'
     'PLATE150X10,Plate 150X10,Plate,Plate,0,MS,,true\n'
@@ -532,7 +532,7 @@ const _templateCsv =
     'SHS50X50X3,Hollow Section SHS50X50X3,Hollow Section,SHS,4.31,MS,HDG,true\n'
     'SHS75X75X4,Hollow Section SHS75X75X4,Hollow Section,SHS,8.86,MS,HDG,true\n'
     'RHS100X50X3,Hollow Section RHS100X50X3,Hollow Section,RHS,6.67,MS,HDG,true\n'
-    '1280X1063X0.5,Roofing Sheet 1280X1063X0.5,Roofing Sheet,Roofing Sheet,0,YS550,Galvalume,true,YS550,Galvalume,AZ150,Sheet Area';
+    '1280X1063X0.5,Roofing Sheet 1280X1063X0.5,Roofing Sheet,Roofing Sheet,4.171875,YS550,Galvalume,true,YS550,Galvalume,AZ150,Kg Per Meter';
 
 final _seedRows = _parseMaterialCsv(_templateCsv);
 
