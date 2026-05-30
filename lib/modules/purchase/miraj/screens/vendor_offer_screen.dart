@@ -6,7 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class MirajVendorOfferScreen extends StatelessWidget {
+class MirajVendorOfferScreen extends StatefulWidget {
   final String tenantId;
   final String currentUserUid;
 
@@ -16,11 +16,24 @@ class MirajVendorOfferScreen extends StatelessWidget {
     required this.currentUserUid,
   });
 
+  @override
+  State<MirajVendorOfferScreen> createState() => _MirajVendorOfferScreenState();
+}
+
+class _MirajVendorOfferScreenState extends State<MirajVendorOfferScreen> {
+  final _searchController = TextEditingController();
+
   CollectionReference<Map<String, dynamic>> get _offersRef => FirebaseFirestore
       .instance
       .collection('companies')
-      .doc(tenantId)
+      .doc(widget.tenantId)
       .collection('vendor_offers');
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,8 +44,8 @@ class MirajVendorOfferScreen extends StatelessWidget {
           context,
           MaterialPageRoute(
             builder: (_) => MirajVendorOfferFormScreen(
-              tenantId: tenantId,
-              currentUserUid: currentUserUid,
+              tenantId: widget.tenantId,
+              currentUserUid: widget.currentUserUid,
             ),
           ),
         ),
@@ -42,7 +55,24 @@ class MirajVendorOfferScreen extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _offersRef.orderBy('createdAt', descending: true).snapshots(),
         builder: (context, snapshot) {
+          final searchText = _searchController.text.trim().toLowerCase();
+
           final docs = snapshot.data?.docs ?? [];
+
+          final filteredDocs = docs.where((doc) {
+            if (searchText.isEmpty) return true;
+
+            final data = doc.data();
+
+            final searchableText = [
+              data['vendorName'],
+              data['subject'],
+              data['offerNo'],
+              data['status'],
+            ].map((value) => (value ?? '').toString().toLowerCase()).join(' ');
+
+            return searchableText.contains(searchText);
+          }).toList();
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,6 +82,19 @@ class MirajVendorOfferScreen extends StatelessWidget {
                 subtitle:
                     'Upload vendor quotations, review item rates, and convert accepted offers into purchase orders.',
                 icon: Icons.attach_file_outlined,
+              ),
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: const InputDecoration(
+                    hintText: 'Search vendor offers...',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
               ),
               const SizedBox(height: 14),
               Expanded(
@@ -66,17 +109,24 @@ class MirajVendorOfferScreen extends StatelessWidget {
                         message:
                             'Add supplier quotations here. An offer attachment is required before saving.',
                       )
+                    : filteredDocs.isEmpty
+                    ? const _EmptyPurchaseState(
+                        icon: Icons.search_off_outlined,
+                        title: 'No matching offers',
+                        message:
+                            'Try searching by vendor name, subject, offer number, or status.',
+                      )
                     : ListView.separated(
-                        itemCount: docs.length,
+                        itemCount: filteredDocs.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
-                          final doc = docs[index];
+                          final doc = filteredDocs[index];
                           final data = doc.data();
                           return _VendorOfferCard(
-                            tenantId: tenantId,
+                            tenantId: widget.tenantId,
                             offerId: doc.id,
                             data: data,
-                            currentUserUid: currentUserUid,
+                            currentUserUid: widget.currentUserUid,
                           );
                         },
                       ),
@@ -359,31 +409,62 @@ class _MirajVendorOfferFormScreenState
   }
 
   Future<void> _addLine() async {
-  final material = await showDialog<_SelectedRawMaterial>(
-    context: context,
-    builder: (_) => _RawMaterialPickerDialog(
-      rawMaterialsRef: _rawMaterialsRef,
-    ),
-  );
-
-  if (material == null) return;
-
-  setState(() {
-    _lines.add(
-      _VendorOfferLineInput(
-        productId: material.id,
-        productName: material.materialCode,
-        uom: material.uom,
-        addToProductCost: false,
-      )..descriptionController.text =
-          '${material.description} • ${material.grade}',
+    final material = await showDialog<_SelectedRawMaterial>(
+      context: context,
+      builder: (_) =>
+          _RawMaterialPickerDialog(rawMaterialsRef: _rawMaterialsRef),
     );
-  });
+
+    if (material == null) return;
+
+    setState(() {
+      _lines.add(
+        _VendorOfferLineInput(
+            productId: material.id,
+            productName: material.materialCode,
+            uom: material.uom,
+            addToProductCost: false,
+          )
+          ..descriptionController.text =
+              '${material.description} • ${material.grade}',
+      );
+    });
+  }
+
+  Future<bool> _offerNoExists(String offerNo) async {
+    final normalizedOfferNo = offerNo.trim().toLowerCase();
+
+    final snapshot = await _offersRef
+        .where('offerNoLower', isEqualTo: normalizedOfferNo)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isEmpty) return false;
+
+    if (_isEditMode && snapshot.docs.first.id == widget.offerId) {
+      return false;
+    }
+
+    return true;
   }
 
   Future<void> _save() async {
     final state = _formKey.currentState;
     if (state == null || !state.validate()) return;
+    final offerNo = _offerNoController.text.trim();
+
+    if (await _offerNoExists(offerNo)) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Offer number already exists'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+
+      return;
+    }
 
     if (_offerAttachments.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -440,6 +521,7 @@ class _MirajVendorOfferFormScreenState
         'vendorName': _vendorController.text.trim(),
         'subject': _subjectController.text.trim(),
         'offerNo': _offerNoController.text.trim(),
+        'offerNoLower': _offerNoController.text.trim().toLowerCase(),
         'offerDate': Timestamp.fromDate(_offerDate),
         'validUntil': _validUntil == null
             ? null
@@ -1007,7 +1089,9 @@ class _OfferLineEditor extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             value: line.addToProductCost,
             title: const Text('Update raw material purchase rate'),
-            subtitle: const Text('Applied when converting this offer into Purchase Order'),
+            subtitle: const Text(
+              'Applied when converting this offer into Purchase Order',
+            ),
             onChanged: (value) {
               line.addToProductCost = value;
               onChanged();
@@ -1064,9 +1148,7 @@ class _VendorOfferLineInput {
 class _RawMaterialPickerDialog extends StatelessWidget {
   final CollectionReference<Map<String, dynamic>> rawMaterialsRef;
 
-  const _RawMaterialPickerDialog({
-    required this.rawMaterialsRef,
-  });
+  const _RawMaterialPickerDialog({required this.rawMaterialsRef});
 
   @override
   Widget build(BuildContext context) {
@@ -1080,48 +1162,34 @@ class _RawMaterialPickerDialog extends StatelessWidget {
           builder: (context, snapshot) {
             final docs = snapshot.data?.docs ?? [];
 
-            if (snapshot.connectionState ==
-                    ConnectionState.waiting &&
+            if (snapshot.connectionState == ConnectionState.waiting &&
                 !snapshot.hasData) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
+              return const Center(child: CircularProgressIndicator());
             }
 
             if (docs.isEmpty) {
-              return const Center(
-                child: Text('No raw materials found'),
-              );
+              return const Center(child: Text('No raw materials found'));
             }
 
             return ListView.separated(
               itemCount: docs.length,
-              separatorBuilder: (_, __) =>
-                  const Divider(height: 1),
+              separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final doc = docs[index];
                 final data = doc.data();
 
                 final material = _SelectedRawMaterial(
                   id: doc.id,
-                  materialCode:
-                      (data['materialCode'] ?? '').toString(),
-                  description:
-                      (data['description'] ?? '').toString(),
-                  grade:
-                      (data['grade'] ?? '').toString(),
-                  uom:
-                      (data['uom'] ?? 'KG').toString(),
+                  materialCode: (data['materialCode'] ?? '').toString(),
+                  description: (data['description'] ?? '').toString(),
+                  grade: (data['grade'] ?? '').toString(),
+                  uom: (data['uom'] ?? 'KG').toString(),
                 );
 
                 return ListTile(
-                  leading: const Icon(
-                    Icons.inventory_2_outlined,
-                  ),
+                  leading: const Icon(Icons.inventory_2_outlined),
                   title: Text(material.materialCode),
-                  subtitle: Text(
-                    '${material.description} • ${material.grade}',
-                  ),
+                  subtitle: Text('${material.description} • ${material.grade}'),
                   trailing: Text(material.uom),
                   onTap: () {
                     Navigator.pop(context, material);
