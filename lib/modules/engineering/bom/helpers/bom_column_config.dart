@@ -1,5 +1,3 @@
-import 'package:QUIK/modules/engineering/bom/widgets/bom_dimension_visibility.dart';
-
 class BomColumnKey {
   static const description = 'description';
   static const sectionCode = 'sectionCode';
@@ -15,8 +13,15 @@ class BomColumnKey {
   static const kgPerM = 'kgPerM';
   static const grade = 'grade';
   static const coating = 'coating';
+  static const coatingSpec = 'coatingSpec';
+  static const yieldStrength = 'yieldStrength';
   static const micron = 'micron';
   static const weight = 'weight';
+  static const projectQty = 'projectQty';
+  static const projectWeight = 'projectWeight';
+  static const formula = 'formula';
+  static const steelWeight = 'steelWeight';
+  static const galvanisingWeight = 'galvanisingWeight';
   static const remarks = 'remarks';
 }
 
@@ -64,14 +69,14 @@ class BomColumnDefinition {
   final String key;
   final String label;
   final double width;
-  final bool mandatory;
 
   const BomColumnDefinition({
     required this.key,
     required this.label,
     required this.width,
-    this.mandatory = false,
   });
+
+  bool get mandatory => BomColumnConfig.mandatory.contains(key);
 }
 
 class BomColumnConfig {
@@ -82,15 +87,13 @@ class BomColumnConfig {
   static const all = [
     BomColumnDefinition(
       key: BomColumnKey.description,
-      label: 'Description',
+      label: 'Drawing Name',
       width: 220,
-      mandatory: true,
     ),
     BomColumnDefinition(
       key: BomColumnKey.sectionCode,
-      label: 'Section Code',
+      label: 'Section',
       width: 150,
-      mandatory: true,
     ),
     BomColumnDefinition(
       key: BomColumnKey.category,
@@ -99,20 +102,18 @@ class BomColumnConfig {
     ),
     BomColumnDefinition(
       key: BomColumnKey.materialName,
-      label: 'Material',
+      label: 'Material Name',
       width: 180,
     ),
     BomColumnDefinition(
       key: BomColumnKey.qtyPerStructure,
-      label: 'Qty/Structure',
+      label: 'Qty/Table',
       width: 100,
-      mandatory: true,
     ),
     BomColumnDefinition(
       key: BomColumnKey.lengthMm,
       label: 'Length mm',
       width: 120,
-      mandatory: true,
     ),
     BomColumnDefinition(key: BomColumnKey.widthMm, label: 'Width', width: 100),
     BomColumnDefinition(
@@ -131,15 +132,49 @@ class BomColumnConfig {
     BomColumnDefinition(key: BomColumnKey.grade, label: 'Grade', width: 120),
     BomColumnDefinition(
       key: BomColumnKey.coating,
-      label: 'Coating',
+      label: 'Material',
       width: 130,
+    ),
+    BomColumnDefinition(
+      key: BomColumnKey.coatingSpec,
+      label: 'Galvanisation Thickness / Coating Spec',
+      width: 220,
+    ),
+    BomColumnDefinition(
+      key: BomColumnKey.yieldStrength,
+      label: 'Yield Strength as per IS 2062-2011',
+      width: 230,
     ),
     BomColumnDefinition(key: BomColumnKey.micron, label: 'Micron', width: 110),
     BomColumnDefinition(
       key: BomColumnKey.weight,
-      label: 'Weight',
-      width: 140,
-      mandatory: true,
+      label: 'Weight per structure including galvanising (kg)',
+      width: 240,
+    ),
+    BomColumnDefinition(
+      key: BomColumnKey.projectQty,
+      label: 'Qty for Project',
+      width: 130,
+    ),
+    BomColumnDefinition(
+      key: BomColumnKey.projectWeight,
+      label: 'Weight for Project (kg)',
+      width: 170,
+    ),
+    BomColumnDefinition(
+      key: BomColumnKey.formula,
+      label: 'Formula',
+      width: 160,
+    ),
+    BomColumnDefinition(
+      key: BomColumnKey.steelWeight,
+      label: 'Steel Weight',
+      width: 130,
+    ),
+    BomColumnDefinition(
+      key: BomColumnKey.galvanisingWeight,
+      label: 'Galvanising Weight',
+      width: 160,
     ),
     BomColumnDefinition(
       key: BomColumnKey.remarks,
@@ -157,45 +192,19 @@ class BomColumnConfig {
   ];
 
   static const presets = {
-    'Solar Structure': [
+    'Customer BOM Format': [
       BomColumnKey.description,
       BomColumnKey.sectionCode,
-      BomColumnKey.materialName,
-      BomColumnKey.qtyPerStructure,
-      BomColumnKey.lengthMm,
-      BomColumnKey.kgPerM,
-      BomColumnKey.grade,
       BomColumnKey.coating,
-      BomColumnKey.micron,
-      BomColumnKey.weight,
-    ],
-    'Plate/Fabrication': [
-      BomColumnKey.description,
-      BomColumnKey.sectionCode,
-      BomColumnKey.category,
-      BomColumnKey.materialName,
+      BomColumnKey.coatingSpec,
+      BomColumnKey.yieldStrength,
       BomColumnKey.qtyPerStructure,
       BomColumnKey.lengthMm,
-      BomColumnKey.widthMm,
-      BomColumnKey.thicknessMm,
-      BomColumnKey.grade,
       BomColumnKey.weight,
-      BomColumnKey.remarks,
+      BomColumnKey.projectQty,
+      BomColumnKey.projectWeight,
     ],
-    'Pipe': [
-      BomColumnKey.description,
-      BomColumnKey.sectionCode,
-      BomColumnKey.category,
-      BomColumnKey.materialName,
-      BomColumnKey.qtyPerStructure,
-      BomColumnKey.lengthMm,
-      BomColumnKey.odMm,
-      BomColumnKey.thicknessMm,
-      BomColumnKey.kgPerM,
-      BomColumnKey.grade,
-      BomColumnKey.weight,
-    ],
-    'Tower/Angle': [
+    'Internal Engineering Format': [
       BomColumnKey.description,
       BomColumnKey.sectionCode,
       BomColumnKey.category,
@@ -205,9 +214,11 @@ class BomColumnConfig {
       BomColumnKey.kgPerM,
       BomColumnKey.grade,
       BomColumnKey.coating,
+      BomColumnKey.coatingSpec,
       BomColumnKey.weight,
+      BomColumnKey.projectWeight,
     ],
-    'Custom': [
+    'Advanced Format': [
       BomColumnKey.description,
       BomColumnKey.sectionCode,
       BomColumnKey.category,
@@ -221,9 +232,15 @@ class BomColumnConfig {
       BomColumnKey.heightMm,
       BomColumnKey.kgPerM,
       BomColumnKey.grade,
+      BomColumnKey.yieldStrength,
       BomColumnKey.coating,
-      BomColumnKey.micron,
+      BomColumnKey.coatingSpec,
       BomColumnKey.weight,
+      BomColumnKey.projectQty,
+      BomColumnKey.projectWeight,
+      BomColumnKey.formula,
+      BomColumnKey.steelWeight,
+      BomColumnKey.galvanisingWeight,
       BomColumnKey.remarks,
     ],
   };
@@ -234,29 +251,16 @@ class BomColumnConfig {
 
   static List<String> sanitize(List<String> columns) {
     final known = all.map((c) => c.key).toSet();
-    final next = <String>{
-      ...mandatory,
-      ...columns.where((key) => known.contains(key) || isCustomKey(key)),
-    };
-    return [
-      ...all.where((c) => next.contains(c.key)).map((c) => c.key),
-      ...columns.where((key) => isCustomKey(key) && next.contains(key)),
-    ];
-  }
-
-  static List<String> withCategoryFields(
-    List<String> columns,
-    String category,
-  ) {
-    final visibility = BomDimensionVisibility.forCategory(category);
-    final auto = <String>[
-      if (visibility.width) BomColumnKey.widthMm,
-      if (visibility.thickness) BomColumnKey.thicknessMm,
-      if (visibility.od) BomColumnKey.odMm,
-      if (visibility.id) BomColumnKey.idMm,
-      if (visibility.height) BomColumnKey.heightMm,
-    ];
-    return sanitize([...columns, ...auto]);
+    final next = <String>[];
+    for (final key in columns) {
+      if ((known.contains(key) || isCustomKey(key)) && !next.contains(key)) {
+        next.add(key);
+      }
+    }
+    for (var i = 0; i < mandatory.length; i++) {
+      if (!next.contains(mandatory[i])) next.insert(i, mandatory[i]);
+    }
+    return next;
   }
 
   static double tableWidth(
@@ -264,7 +268,7 @@ class BomColumnConfig {
     List<BomCustomField> customFields,
   ) {
     final content = sanitize(columns).fold<double>(
-      42 + 60,
+      64 + 60,
       (total, key) => total + definitionFor(key, customFields).width,
     );
     return content < 2400 ? 2400 : content;

@@ -6,11 +6,13 @@ import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_header.dart
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_material_lookup.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_models.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_table_cells.dart';
+import 'package:QUIK/modules/inventory/material_master/models/material_master_model.dart';
 
 class EngineeringBomTable extends StatelessWidget {
   final List<BomLineDraft> lines;
   final List<String> visibleColumns;
   final List<BomCustomField> customFields;
+  final double projectQuantity;
   final String tenantId;
   final ScrollController scrollController;
   final VoidCallback onChanged;
@@ -21,22 +23,14 @@ class EngineeringBomTable extends StatelessWidget {
     required this.lines,
     required this.visibleColumns,
     required this.customFields,
+    required this.projectQuantity,
     required this.tenantId,
     required this.scrollController,
     required this.onChanged,
     required this.onDelete,
   });
 
-  List<String> get _columns {
-    var columns = BomColumnConfig.sanitize(visibleColumns);
-    for (final line in lines) {
-      columns = BomColumnConfig.withCategoryFields(
-        columns,
-        line.materialCategory.text,
-      );
-    }
-    return columns;
-  }
+  List<String> get _columns => BomColumnConfig.sanitize(visibleColumns);
 
   @override
   Widget build(BuildContext context) {
@@ -60,6 +54,7 @@ class EngineeringBomTable extends StatelessWidget {
                   line: lines[i],
                   columns: columns,
                   customFields: customFields,
+                  projectQuantity: projectQuantity,
                   lineNo: i + 1,
                   tenantId: tenantId,
                   canDelete: lines.length > 1,
@@ -87,7 +82,7 @@ class _BomGridHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          const SizedBox(width: 42, child: Text('#', style: style)),
+          const SizedBox(width: 64, child: Text('Sl No', style: style)),
           for (final key in columns)
             SizedBox(
               width: BomColumnConfig.definitionFor(key, customFields).width,
@@ -107,6 +102,7 @@ class _BomLineRow extends StatelessWidget {
   final BomLineDraft line;
   final List<String> columns;
   final List<BomCustomField> customFields;
+  final double projectQuantity;
   final int lineNo;
   final String tenantId;
   final bool canDelete;
@@ -117,6 +113,7 @@ class _BomLineRow extends StatelessWidget {
     required this.line,
     required this.columns,
     required this.customFields,
+    required this.projectQuantity,
     required this.lineNo,
     required this.tenantId,
     required this.canDelete,
@@ -131,7 +128,7 @@ class _BomLineRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          bomTableText('$lineNo', 42),
+          bomTableText('$lineNo', 64),
           for (final key in columns) _column(context, key),
           SizedBox(
             width: 60,
@@ -184,15 +181,36 @@ class _BomLineRow extends StatelessWidget {
       case BomColumnKey.grade:
         return _cell(line.grade, 'Grade', width);
       case BomColumnKey.coating:
-        return _cell(line.coatingType, 'Coating', width);
+        return _cell(line.coatingType, 'Material', width);
+      case BomColumnKey.coatingSpec:
+        return _cell(line.coatingSpec, 'Coating Spec', width);
+      case BomColumnKey.yieldStrength:
+        return _cell(line.yieldStrength, 'Yield Strength', width);
       case BomColumnKey.micron:
         return _cell(line.galvanizingMicron, 'Micron', width, number: true);
       case BomColumnKey.remarks:
         return _cell(line.remarks, 'Remarks', width);
+      case BomColumnKey.projectQty:
+        return bomTableText(
+          line.totalProjectQuantity(projectQuantity).toStringAsFixed(2),
+          width,
+        );
+      case BomColumnKey.projectWeight:
+        return bomTableText(
+          line.totalProjectWeight(projectQuantity).toStringAsFixed(2),
+          width,
+          bold: true,
+        );
+      case BomColumnKey.formula:
+        return _cell(line.formulaType, 'Formula', width);
+      case BomColumnKey.steelWeight:
+        return bomTableText(line.steelWeight.toStringAsFixed(2), width);
+      case BomColumnKey.galvanisingWeight:
+        return bomTableText(line.galvanisingWeight.toStringAsFixed(2), width);
       case BomColumnKey.weight:
       default:
         return bomTableText(
-          line.lineWeight.toStringAsFixed(3),
+          line.lineWeight.toStringAsFixed(2),
           width,
           bold: true,
         );
@@ -203,7 +221,7 @@ class _BomLineRow extends StatelessWidget {
       _customCellFor(BomColumnConfig.customId(key), width);
 
   Widget _customCellFor(String id, double width) {
-    final field = customFields.where((field) => field.id == id).first;
+    final field = customFields.firstWhere((field) => field.id == id);
     return _cell(
       line.customController(id),
       field.name,
@@ -235,25 +253,17 @@ class _BomLineRow extends StatelessWidget {
   }
 
   Widget _categoryCell(double width) {
-    const options = [
-      'Plate',
-      'Roofing Sheet',
-      'Pipe',
-      'Round Bar',
-      'Angle',
-      'Channel',
-      'C Section',
-      'Flat',
-      'Custom',
-    ];
     return bomFieldBox(
       width,
       DropdownButtonFormField<String>(
-        initialValue: options.contains(line.materialCategory.text)
+        initialValue:
+            MaterialMasterModel.materialTypes.contains(
+              line.materialCategory.text,
+            )
             ? line.materialCategory.text
             : null,
         decoration: bomInputDecoration('Category'),
-        items: options
+        items: MaterialMasterModel.materialTypes
             .map((e) => DropdownMenuItem(value: e, child: Text(e)))
             .toList(),
         onChanged: (value) {

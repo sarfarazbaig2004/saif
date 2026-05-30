@@ -9,6 +9,7 @@ class EngineeringBomGridCard extends StatelessWidget {
   final List<BomLineDraft> lines;
   final List<String> visibleColumns;
   final List<BomCustomField> customFields;
+  final double projectQuantity;
   final String tenantId;
   final ScrollController scrollController;
   final VoidCallback onChanged;
@@ -20,6 +21,7 @@ class EngineeringBomGridCard extends StatelessWidget {
     required this.lines,
     required this.visibleColumns,
     required this.customFields,
+    required this.projectQuantity,
     required this.tenantId,
     required this.scrollController,
     required this.onChanged,
@@ -53,6 +55,7 @@ class EngineeringBomGridCard extends StatelessWidget {
             lines: lines,
             visibleColumns: visibleColumns,
             customFields: customFields,
+            projectQuantity: projectQuantity,
             tenantId: tenantId,
             scrollController: scrollController,
             onChanged: onChanged,

@@ -92,8 +92,8 @@ class EngineeringBomSummary extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Weight per structure: ${weightPerStructure.toStringAsFixed(3)} kg'
-              '  •  Total project weight: ${totalProjectWeight.toStringAsFixed(3)} kg',
+              'Weight per structure: ${weightPerStructure.toStringAsFixed(2)} kg'
+              '  •  Total project weight: ${totalProjectWeight.toStringAsFixed(2)} kg',
               style: const TextStyle(fontWeight: FontWeight.w800, color: zText),
             ),
           ),

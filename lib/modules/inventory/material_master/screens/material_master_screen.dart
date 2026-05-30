@@ -114,7 +114,17 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
     final name = TextEditingController(text: existing?.materialName ?? '');
     final shape = TextEditingController(text: existing?.materialShape ?? '');
     final grade = TextEditingController(text: existing?.materialGrade ?? 'MS');
-    final coating = TextEditingController(text: existing?.coating ?? '');
+    final yieldStrength = TextEditingController(
+      text: existing?.yieldStrength ?? '',
+    );
+    final coating = TextEditingController(
+      text: existing?.coatingType.trim().isNotEmpty == true
+          ? existing!.coatingType
+          : existing?.coating ?? '',
+    );
+    final coatingSpec = TextEditingController(
+      text: existing?.coatingSpec ?? '',
+    );
     final density = TextEditingController(
       text: _num(existing?.density ?? MaterialMasterModel.densities['MS']!),
     );
@@ -196,7 +206,17 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    _field(coating, 'Coating'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _field(yieldStrength, 'Yield Strength'),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(child: _field(coating, 'Coating Type')),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    _field(coatingSpec, 'Coating Spec'),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -239,9 +259,13 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
       materialType: type,
       materialShape: shape.text.trim(),
       materialGrade: grade.text.trim(),
+      yieldStrength: yieldStrength.text.trim(),
       coating: coating.text.trim(),
+      coatingType: coating.text.trim(),
+      coatingSpec: coatingSpec.text.trim(),
       density: double.tryParse(density.text.trim()) ?? 0,
       formulaType: formula,
+      weightFormula: formula,
       standardWeightPerMeter: double.tryParse(standardWeight.text.trim()) ?? 0,
       unit: unit.text.trim().isEmpty ? 'KG' : unit.text.trim(),
     );
@@ -288,6 +312,17 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
   MaterialMasterModel _materialFromRow(Map<String, String> row) {
     final category = (row['category'] ?? row['materialType'] ?? 'Plate').trim();
     final grade = (row['grade'] ?? row['materialGrade'] ?? 'MS').trim();
+    final formula =
+        (row['weightFormula'] ?? row['formulaType'] ?? '').trim().isEmpty
+        ? WeightFormulaService.formulaTypeForMaterial(category)
+        : (row['weightFormula'] ?? row['formulaType'] ?? '').trim();
+    final coatingType = (row['coatingType'] ?? row['coating'] ?? '').trim();
+    final yieldStrength = (row['yieldStrength'] ?? '').trim().isEmpty
+        ? (grade == 'MS' ? 'YS350' : grade)
+        : row['yieldStrength']!.trim();
+    final coatingSpec = (row['coatingSpec'] ?? '').trim().isEmpty
+        ? (coatingType.toUpperCase() == 'HDG' ? '80' : '')
+        : row['coatingSpec']!.trim();
     final id = row['id']?.trim().isNotEmpty == true
         ? row['id']!.trim()
         : (row['materialCode'] ?? _repository.newMaterialId()).trim();
@@ -296,11 +331,15 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
       materialCode: (row['materialCode'] ?? '').trim(),
       materialName: (row['materialName'] ?? '').trim(),
       materialType: category,
-      materialShape: (row['materialShape'] ?? category).trim(),
+      materialShape: (row['shape'] ?? row['materialShape'] ?? category).trim(),
       materialGrade: grade,
-      coating: (row['coating'] ?? '').trim(),
+      yieldStrength: yieldStrength,
+      coating: coatingType,
+      coatingType: coatingType,
+      coatingSpec: coatingSpec,
       density: MaterialMasterModel.densities[grade] ?? 7850,
-      formulaType: WeightFormulaService.formulaTypeForMaterial(category),
+      formulaType: formula,
+      weightFormula: formula,
       standardWeightPerMeter:
           double.tryParse(row['standardWeightPerMeter'] ?? '') ?? 0,
       unit: (row['unit'] ?? 'KG').trim(),
@@ -419,7 +458,7 @@ class _Header extends StatelessWidget {
 }
 
 const _templateCsv =
-    'materialCode,materialName,category,materialShape,standardWeightPerMeter,grade,coating,isActive\n'
+    'materialCode,materialName,category,materialShape,standardWeightPerMeter,grade,coating,isActive,yieldStrength,coatingType,coatingSpec,weightFormula\n'
     '100CS50X15X2,C Section 100CS50X15X2,C Section,C Section,3.54,MS,HDG,true\n'
     '60CS40X15X1.6,C Section 60CS40X15X1.6,C Section,C Section,1.72,MS,HDG,true\n'
     '80CS40X15X2,C Section 80CS40X15X2,C Section,C Section,2.85,MS,HDG,true\n'
@@ -450,7 +489,7 @@ const _templateCsv =
     'SHS50X50X3,Hollow Section SHS50X50X3,Hollow Section,SHS,4.31,MS,HDG,true\n'
     'SHS75X75X4,Hollow Section SHS75X75X4,Hollow Section,SHS,8.86,MS,HDG,true\n'
     'RHS100X50X3,Hollow Section RHS100X50X3,Hollow Section,RHS,6.67,MS,HDG,true\n'
-    '1280X1063X0.5,Roofing Sheet 1280X1063X0.5,Roofing Sheet,Roofing Sheet,0,MS,,true';
+    '1280X1063X0.5,Roofing Sheet 1280X1063X0.5,Roofing Sheet,Roofing Sheet,0,MS,Galvalume,true,YS550,Galvalume,AZ150,Sheet Area';
 
 final _seedRows = _parseMaterialCsv(_templateCsv);
 

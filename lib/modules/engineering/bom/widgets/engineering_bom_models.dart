@@ -19,8 +19,11 @@ class BomLineDraft {
   final heightMm = TextEditingController();
   final unitWeightKgPerMeter = TextEditingController();
   final coatingType = TextEditingController(text: 'HDG');
+  final coatingSpec = TextEditingController();
+  final yieldStrength = TextEditingController();
   final galvanizingMicron = TextEditingController();
   final grade = TextEditingController();
+  final formulaType = TextEditingController();
   final remarks = TextEditingController();
   final customValues = <String, TextEditingController>{};
   String materialMasterId = '';
@@ -45,6 +48,8 @@ class BomLineDraft {
   double get idMmValue => _toDouble(idMm.text);
   double get heightMmValue => _toDouble(heightMm.text);
   double get unitWeightKgPerMeterValue => _toDouble(unitWeightKgPerMeter.text);
+  double get steelWeight => lineWeight;
+  double get galvanisingWeight => 0;
   double get lineWeight => BomWeightCalculator.lineWeight(
     qtyPerStructure: qtyPerStructureValue,
     lengthMm: lengthMmValue,
@@ -58,6 +63,17 @@ class BomLineDraft {
     return customValues.putIfAbsent(fieldId, TextEditingController.new);
   }
 
+  double totalProjectQuantity(double projectQuantity) {
+    return BomWeightCalculator.totalProjectQuantity(
+      qtyPerStructureValue,
+      projectQuantity,
+    );
+  }
+
+  double totalProjectWeight(double projectQuantity) {
+    return BomWeightCalculator.totalProjectWeight(lineWeight, projectQuantity);
+  }
+
   void applyMaterial(MaterialMasterModel selected) {
     materialMasterId = selected.id;
     sectionCode.text = selected.materialCode;
@@ -65,11 +81,30 @@ class BomLineDraft {
     materialName.text = selected.materialName.trim().isEmpty
         ? selected.displayName
         : selected.materialName;
-    if (selected.materialGrade.trim().isNotEmpty) {
-      grade.text = selected.materialGrade;
+    final selectedGrade = selected.materialGrade.trim();
+    if (selectedGrade.isNotEmpty) {
+      grade.text = selectedGrade;
     }
-    if (selected.coating.trim().isNotEmpty) {
-      coatingType.text = selected.coating;
+    final selectedYield = selected.yieldStrength.trim();
+    if (selectedYield.isNotEmpty) {
+      yieldStrength.text = selectedYield;
+    } else if (selectedGrade.isNotEmpty) {
+      yieldStrength.text = selectedGrade;
+    }
+    final selectedCoating = selected.coatingType.trim().isNotEmpty
+        ? selected.coatingType.trim()
+        : selected.coating.trim();
+    if (selectedCoating.isNotEmpty) {
+      coatingType.text = selectedCoating;
+    }
+    if (selected.coatingSpec.trim().isNotEmpty) {
+      coatingSpec.text = selected.coatingSpec;
+    }
+    final formula = selected.weightFormula.trim().isNotEmpty
+        ? selected.weightFormula.trim()
+        : selected.formulaType.trim();
+    if (formula.isNotEmpty) {
+      formulaType.text = formula;
     }
     if (selected.standardWeightPerMeter > 0) {
       unitWeightKgPerMeter.text = _format(selected.standardWeightPerMeter);
@@ -100,13 +135,12 @@ class BomLineDraft {
       heightMm: heightMmValue,
       weightPerMeter: unitWeightKgPerMeterValue,
       calculatedWeight: lineWeight,
-      totalProjectWeight: BomWeightCalculator.totalProjectWeight(
-        lineWeight,
-        projectQuantity,
-      ),
+      totalProjectWeight: totalProjectWeight(projectQuantity),
       galvanizingMicron: _toDouble(galvanizingMicron.text),
       coatingType: coatingType.text.trim(),
+      coatingSpec: coatingSpec.text.trim(),
       grade: grade.text.trim(),
+      yieldStrength: yieldStrength.text.trim(),
       remarks: remarks.text.trim(),
       customFieldValues: {
         for (final field in customFields)
@@ -114,6 +148,7 @@ class BomLineDraft {
       },
       materialMasterId: materialMasterId,
       materialType: materialCategory.text.trim(),
+      formulaType: formulaType.text.trim(),
     );
   }
 
@@ -132,8 +167,11 @@ class BomLineDraft {
       heightMm,
       unitWeightKgPerMeter,
       coatingType,
+      coatingSpec,
+      yieldStrength,
       galvanizingMicron,
       grade,
+      formulaType,
       remarks,
     ]) {
       c.dispose();

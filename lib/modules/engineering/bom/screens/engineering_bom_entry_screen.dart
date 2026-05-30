@@ -46,7 +46,8 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
   final _revision = TextEditingController(text: 'R0');
   final _lines = <BomLineDraft>[];
   final _gridScrollController = ScrollController();
-  List<String> _visibleColumns = BomColumnConfig.presets['Solar Structure']!;
+  List<String> _visibleColumns =
+      BomColumnConfig.presets['Customer BOM Format']!;
   List<BomCustomField> _customFields = const [];
 
   late final String _bomId;
@@ -251,6 +252,7 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
                   lines: _lines,
                   visibleColumns: _visibleColumns,
                   customFields: _customFields,
+                  projectQuantity: _projectQty,
                   tenantId: widget.tenantId,
                   scrollController: _gridScrollController,
                   onChanged: () => setState(() {}),

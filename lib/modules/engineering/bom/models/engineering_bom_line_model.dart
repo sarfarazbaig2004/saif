@@ -21,7 +21,9 @@ class EngineeringBomLineModel {
   final double totalProjectWeight;
   final double galvanizingMicron;
   final String coatingType;
+  final String coatingSpec;
   final String grade;
+  final String yieldStrength;
   final String remarks;
   final Map<String, String> customFieldValues;
   final String materialMasterId;
@@ -50,7 +52,9 @@ class EngineeringBomLineModel {
     this.totalProjectWeight = 0,
     required this.galvanizingMicron,
     this.coatingType = '',
+    this.coatingSpec = '',
     required this.grade,
+    this.yieldStrength = '',
     this.remarks = '',
     this.customFieldValues = const {},
     this.materialMasterId = '',
@@ -103,7 +107,9 @@ class EngineeringBomLineModel {
           : _toDouble(map['totalProjectWeight']),
       galvanizingMicron: _toDouble(map['galvanizingMicron']),
       coatingType: (map['coatingType'] ?? '').toString(),
+      coatingSpec: (map['coatingSpec'] ?? '').toString(),
       grade: (map['grade'] ?? '').toString(),
+      yieldStrength: (map['yieldStrength'] ?? map['grade'] ?? '').toString(),
       remarks: (map['remarks'] ?? '').toString(),
       customFieldValues: _stringMap(map['customFieldValues']),
       materialMasterId: (map['materialMasterId'] ?? '').toString(),
@@ -147,7 +153,9 @@ class EngineeringBomLineModel {
       'totalProjectWeight': totalProjectWeight,
       'galvanizingMicron': galvanizingMicron,
       'coatingType': coatingType,
+      'coatingSpec': coatingSpec,
       'grade': grade,
+      'yieldStrength': yieldStrength,
       'remarks': remarks,
       'customFieldValues': customFieldValues,
       'materialMasterId': materialMasterId,
