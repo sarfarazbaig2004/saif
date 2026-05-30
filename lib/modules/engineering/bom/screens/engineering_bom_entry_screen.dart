@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
+import 'package:QUIK/modules/engineering/bom/helpers/bom_column_config.dart';
 import 'package:QUIK/modules/engineering/bom/models/engineering_bom_line_model.dart';
 import 'package:QUIK/modules/engineering/bom/models/engineering_bom_model.dart';
 import 'package:QUIK/modules/engineering/bom/repositories/engineering_bom_repository.dart';
-import 'package:QUIK/modules/inventory/material_master/models/material_master_model.dart';
-import 'package:QUIK/modules/inventory/material_master/services/weight_formula_service.dart';
-import 'package:QUIK/modules/inventory/material_master/widgets/material_picker_dialog.dart';
+import 'package:QUIK/modules/engineering/bom/services/bom_weight_calculator.dart';
+import 'package:QUIK/modules/engineering/bom/services/engineering_bom_quotation_seed.dart';
+import 'package:QUIK/modules/engineering/bom/widgets/bom_column_selector_dialog.dart';
+import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_grid_card.dart';
+import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_header.dart';
+import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_models.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
 
 class EngineeringBomEntryScreen extends StatefulWidget {
@@ -33,16 +37,17 @@ class EngineeringBomEntryScreen extends StatefulWidget {
 }
 
 class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
-  static const double _gridWidth = 1540;
-
   final _formKey = GlobalKey<FormState>();
   final _bomNo = TextEditingController();
   final _inquiryId = TextEditingController();
   final _customer = TextEditingController();
   final _project = TextEditingController();
+  final _projectQuantity = TextEditingController(text: '1');
   final _revision = TextEditingController(text: 'R0');
-  final _lines = <_BomLineDraft>[];
+  final _lines = <BomLineDraft>[];
   final _gridScrollController = ScrollController();
+  List<String> _visibleColumns = BomColumnConfig.presets['Solar Structure']!;
+  List<BomCustomField> _customFields = const [];
 
   late final String _bomId;
   bool _saving = false;
@@ -59,24 +64,58 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
     _customer.text = (widget.initialCustomer ?? '').trim();
     _project.text = (widget.initialProject ?? '').trim();
     _lines.add(
-      _BomLineDraft(
+      BomLineDraft(
         itemDescription: widget.initialItemDescription,
         qty: widget.initialQty,
       ),
     );
   }
 
-  double get _totalWeight {
-    return _lines.fold(0, (total, line) => total + line.calculatedWeight);
+  double get _projectQty => double.tryParse(_projectQuantity.text.trim()) ?? 1;
+
+  double get _weightPerStructure {
+    return _lines.fold(0, (total, line) => total + line.lineWeight);
   }
 
+  double get _totalProjectWeight => _lines.fold(
+    0,
+    (total, line) =>
+        total +
+        BomWeightCalculator.totalProjectWeight(line.lineWeight, _projectQty),
+  );
+
   void _addLine() {
-    setState(() => _lines.add(_BomLineDraft()));
+    setState(() => _lines.add(BomLineDraft()));
   }
 
   void _removeLine(int index) {
     if (_lines.length == 1) return;
     setState(() => _lines.removeAt(index).dispose());
+  }
+
+  List<EngineeringBomLineModel> _lineModels() {
+    final models = <EngineeringBomLineModel>[];
+    for (var i = 0; i < _lines.length; i++) {
+      if (!_lines[i].isBlank) {
+        models.add(_lines[i].toModel(i + 1, _projectQty, _customFields));
+      }
+    }
+    return models;
+  }
+
+  Future<void> _customizeColumns() async {
+    final result = await showDialog<BomFieldConfigResult>(
+      context: context,
+      builder: (_) => BomColumnSelectorDialog(
+        visibleColumns: _visibleColumns,
+        customFields: _customFields,
+      ),
+    );
+    if (result == null) return;
+    setState(() {
+      _customFields = result.customFields;
+      _visibleColumns = BomColumnConfig.sanitize(result.visibleColumns);
+    });
   }
 
   Future<void> _saveBom() async {
@@ -86,13 +125,7 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
       return;
     }
 
-    final lineModels = <EngineeringBomLineModel>[];
-    for (var i = 0; i < _lines.length; i++) {
-      final line = _lines[i];
-      if (line.isBlank) continue;
-      lineModels.add(line.toModel(i + 1));
-    }
-
+    final lineModels = _lineModels();
     if (lineModels.isEmpty) {
       _showMessage('Add at least one BOM line before saving.');
       return;
@@ -110,8 +143,11 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
           revision: _revision.text.trim().isEmpty
               ? 'R0'
               : _revision.text.trim(),
+          projectQuantity: _projectQty,
+          visibleColumns: _visibleColumns,
+          customFields: _customFields,
           lines: lineModels,
-          totalCalculatedWeight: _totalWeight,
+          totalCalculatedWeight: _totalProjectWeight,
         ),
       );
       if (!mounted) return;
@@ -132,11 +168,16 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
 
   @override
   void dispose() {
-    _bomNo.dispose();
-    _inquiryId.dispose();
-    _customer.dispose();
-    _project.dispose();
-    _revision.dispose();
+    for (final controller in [
+      _bomNo,
+      _inquiryId,
+      _customer,
+      _project,
+      _projectQuantity,
+      _revision,
+    ]) {
+      controller.dispose();
+    }
     for (final line in _lines) {
       line.dispose();
     }
@@ -190,55 +231,32 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _HeaderCard(
+                EngineeringBomHeader(
                   bomNo: _bomNo,
                   inquiryId: _inquiryId,
                   customer: _customer,
                   project: _project,
+                  projectQuantity: _projectQuantity,
                   revision: _revision,
+                  onChanged: () => setState(() {}),
                 ),
                 const SizedBox(height: 14),
-                _WeightSummary(totalWeight: _totalWeight, onAddLine: _addLine),
+                EngineeringBomSummary(
+                  weightPerStructure: _weightPerStructure,
+                  totalProjectWeight: _totalProjectWeight,
+                  onAddLine: _addLine,
+                ),
                 const SizedBox(height: 14),
-                _buildLinesGrid(),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLinesGrid() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: zBorder),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Scrollbar(
-        controller: _gridScrollController,
-        thumbVisibility: true,
-        child: SingleChildScrollView(
-          controller: _gridScrollController,
-          scrollDirection: Axis.horizontal,
-          child: SizedBox(
-            width: _gridWidth,
-            child: Column(
-              children: [
-                _BomGridHeader(),
-                const Divider(height: 1, color: zBorder),
-                for (var i = 0; i < _lines.length; i++)
-                  _BomLineRow(
-                    line: _lines[i],
-                    tenantId: widget.tenantId,
-                    lineNo: i + 1,
-                    canDelete: _lines.length > 1,
-                    onChanged: () => setState(() {}),
-                    onDelete: () => _removeLine(i),
-                  ),
+                EngineeringBomGridCard(
+                  lines: _lines,
+                  visibleColumns: _visibleColumns,
+                  customFields: _customFields,
+                  tenantId: widget.tenantId,
+                  scrollController: _gridScrollController,
+                  onChanged: () => setState(() {}),
+                  onCustomizeColumns: _customizeColumns,
+                  onDelete: _removeLine,
+                ),
               ],
             ),
           ),
@@ -248,12 +266,7 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
   }
 
   void _openQuotation(String format) {
-    final lineModels = <EngineeringBomLineModel>[];
-    for (var i = 0; i < _lines.length; i++) {
-      final line = _lines[i];
-      if (line.isBlank) continue;
-      lineModels.add(line.toModel(i + 1));
-    }
+    final lineModels = _lineModels();
     if (lineModels.isEmpty) {
       _showMessage('Add at least one BOM line before generating quotation.');
       return;
@@ -264,472 +277,18 @@ class _EngineeringBomEntryScreenState extends State<EngineeringBomEntryScreen> {
       MaterialPageRoute(
         builder: (_) => QuotationScreenLocal(
           companyId: widget.tenantId,
-          inquirySeed: _buildQuotationSeed(format, lineModels),
+          inquirySeed: EngineeringBomQuotationSeed.build(
+            format: format,
+            bomId: _bomId,
+            bomNo: _bomNo.text.trim(),
+            inquiryId: _inquiryId.text.trim(),
+            customer: _customer.text.trim(),
+            project: _project.text.trim(),
+            totalProjectWeight: _totalProjectWeight,
+            lines: lineModels,
+          ),
         ),
       ),
     );
   }
-
-  Map<String, dynamic> _buildQuotationSeed(
-    String format,
-    List<EngineeringBomLineModel> lines,
-  ) {
-    return {
-      'source': 'Engineering BOM',
-      'quotationFormat': format,
-      'engineeringBomId': _bomId,
-      'engineeringBomNo': _bomNo.text.trim(),
-      'inquiryId': _inquiryId.text.trim(),
-      'inquiryNumber': _inquiryId.text.trim(),
-      'customerName': _customer.text.trim(),
-      'subject': _project.text.trim().isEmpty
-          ? 'Engineering BOM ${_bomNo.text.trim()}'
-          : _project.text.trim(),
-      'notes': 'Generated from Engineering BOM ${_bomNo.text.trim()}',
-      'products': format == 'bomDetailed'
-          ? _buildDetailedQuotationItems(lines)
-          : [_buildCommercialQuotationItem(lines)],
-    };
-  }
-
-  Map<String, dynamic> _buildCommercialQuotationItem(
-    List<EngineeringBomLineModel> lines,
-  ) {
-    final firstDescription = lines
-        .map((line) => line.itemDescription)
-        .where((value) => value.trim().isNotEmpty)
-        .join(', ');
-    return {
-      'id': 'bom-commercial-$_bomId',
-      'productId': '',
-      'name': _project.text.trim().isEmpty
-          ? 'Engineering BOM ${_bomNo.text.trim()}'
-          : _project.text.trim(),
-      'description': firstDescription,
-      'quantity': _totalWeight,
-      'uom': 'KG',
-      'unit': 'KG',
-      'rate': 0.0,
-      'unitPrice': 0.0,
-      'gstPercentage': 18.0,
-      'quotationLineType': 'commercial',
-    };
-  }
-
-  List<Map<String, dynamic>> _buildDetailedQuotationItems(
-    List<EngineeringBomLineModel> lines,
-  ) {
-    return lines
-        .map((line) {
-          return {
-            'id': 'bom-$_bomId-${line.lineNo}',
-            'productId': '',
-            'name': line.section.isEmpty ? line.itemDescription : line.section,
-            'description': line.material.isEmpty
-                ? line.itemDescription
-                : '${line.itemDescription}\nMaterial: ${line.material}',
-            'quantity': line.qty,
-            'uom': 'KG',
-            'unit': 'KG',
-            'rate': 0.0,
-            'unitPrice': 0.0,
-            'gstPercentage': 18.0,
-            'quotationLineType': 'bomDetailed',
-            'bomSection': line.section,
-            'bomMaterial': line.material,
-            'bomLengthMm': line.lengthMm,
-            'bomWeight': line.calculatedWeight,
-          };
-        })
-        .toList(growable: false);
-  }
-}
-
-class _HeaderCard extends StatelessWidget {
-  final TextEditingController bomNo;
-  final TextEditingController inquiryId;
-  final TextEditingController customer;
-  final TextEditingController project;
-  final TextEditingController revision;
-
-  const _HeaderCard({
-    required this.bomNo,
-    required this.inquiryId,
-    required this.customer,
-    required this.project,
-    required this.revision,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: zBorder),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final narrow = constraints.maxWidth < 820;
-          final fields = [
-            _field(bomNo, 'BOM No', required: true),
-            _field(inquiryId, 'Inquiry ID'),
-            _field(customer, 'Customer', required: true),
-            _field(project, 'Project'),
-            _field(revision, 'Revision'),
-          ];
-          if (narrow) {
-            return Column(children: fields.map(_withBottomGap).toList());
-          }
-          return Wrap(spacing: 12, runSpacing: 12, children: fields);
-        },
-      ),
-    );
-  }
-
-  Widget _field(
-    TextEditingController controller,
-    String label, {
-    bool required = false,
-  }) {
-    return SizedBox(
-      width: 220,
-      child: TextFormField(
-        controller: controller,
-        decoration: _dec(label),
-        validator: required
-            ? (value) => (value ?? '').trim().isEmpty ? 'Required' : null
-            : null,
-      ),
-    );
-  }
-
-  Widget _withBottomGap(Widget child) {
-    return Padding(padding: const EdgeInsets.only(bottom: 12), child: child);
-  }
-}
-
-class _WeightSummary extends StatelessWidget {
-  final double totalWeight;
-  final VoidCallback onAddLine;
-
-  const _WeightSummary({required this.totalWeight, required this.onAddLine});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: zBlueSoft,
-        border: Border.all(color: zBorder),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.scale_outlined, color: zBlue),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'Total calculated weight: ${totalWeight.toStringAsFixed(3)} kg',
-              style: const TextStyle(fontWeight: FontWeight.w800, color: zText),
-            ),
-          ),
-          FilledButton.icon(
-            onPressed: onAddLine,
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add Line'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BomGridHeader extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    const style = TextStyle(fontWeight: FontWeight.w800, color: zMuted);
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          SizedBox(width: 42, child: Text('#', style: style)),
-          SizedBox(width: 210, child: Text('Item Description', style: style)),
-          SizedBox(width: 120, child: Text('Section', style: style)),
-          SizedBox(width: 140, child: Text('Material', style: style)),
-          SizedBox(width: 80, child: Text('Qty', style: style)),
-          SizedBox(width: 110, child: Text('Length mm', style: style)),
-          SizedBox(width: 95, child: Text('Width', style: style)),
-          SizedBox(width: 95, child: Text('Thick', style: style)),
-          SizedBox(width: 95, child: Text('OD', style: style)),
-          SizedBox(width: 95, child: Text('ID', style: style)),
-          SizedBox(width: 120, child: Text('Std kg/m', style: style)),
-          SizedBox(width: 150, child: Text('Calculated weight', style: style)),
-          SizedBox(width: 150, child: Text('Galvanizing micron', style: style)),
-          SizedBox(width: 110, child: Text('Grade', style: style)),
-          SizedBox(width: 70),
-        ],
-      ),
-    );
-  }
-}
-
-class _BomLineRow extends StatelessWidget {
-  final _BomLineDraft line;
-  final String tenantId;
-  final int lineNo;
-  final bool canDelete;
-  final VoidCallback onChanged;
-  final VoidCallback onDelete;
-
-  const _BomLineRow({
-    required this.line,
-    required this.tenantId,
-    required this.lineNo,
-    required this.canDelete,
-    required this.onChanged,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 42,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 14),
-              child: Text('$lineNo', style: const TextStyle(color: zMuted)),
-            ),
-          ),
-          _cell(line.itemDescription, 'Description', 210, required: true),
-          _cell(line.section, 'Section', 120),
-          _materialCell(context),
-          _cell(line.qty, 'Qty', 80, number: true),
-          _cell(line.lengthMm, 'Length', 110, number: true),
-          _cell(line.widthMm, 'Width', 95, number: true),
-          _cell(line.thicknessMm, 'Thick', 95, number: true),
-          _cell(line.odMm, 'OD', 95, number: true),
-          _cell(line.idMm, 'ID', 95, number: true),
-          _cell(line.weightPerMeter, 'Kg/m', 120, number: true),
-          SizedBox(
-            width: 150,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 14),
-              child: Text(
-                line.calculatedWeight.toStringAsFixed(3),
-                style: const TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
-          ),
-          _cell(line.galvanizingMicron, 'Micron', 150, number: true),
-          _cell(line.grade, 'Grade', 110),
-          SizedBox(
-            width: 70,
-            child: IconButton(
-              tooltip: 'Delete line',
-              onPressed: canDelete ? onDelete : null,
-              icon: const Icon(Icons.delete_outline, color: zDanger),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _cell(
-    TextEditingController controller,
-    String label,
-    double width, {
-    bool number = false,
-    bool required = false,
-  }) {
-    return SizedBox(
-      width: width,
-      child: Padding(
-        padding: const EdgeInsets.only(right: 10),
-        child: TextFormField(
-          controller: controller,
-          decoration: _dec(label),
-          keyboardType: number
-              ? const TextInputType.numberWithOptions(decimal: true)
-              : null,
-          onChanged: (_) => onChanged(),
-          validator: required
-              ? (value) => (value ?? '').trim().isEmpty ? 'Required' : null
-              : null,
-        ),
-      ),
-    );
-  }
-
-  Widget _materialCell(BuildContext context) {
-    return SizedBox(
-      width: 140,
-      child: Padding(
-        padding: const EdgeInsets.only(right: 10),
-        child: TextFormField(
-          controller: line.material,
-          decoration: _dec('Material').copyWith(
-            suffixIcon: IconButton(
-              tooltip: 'Select material',
-              icon: const Icon(Icons.search, size: 18),
-              onPressed: () => _pickMaterial(context),
-            ),
-          ),
-          onChanged: (_) => onChanged(),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pickMaterial(BuildContext context) async {
-    final material = await showDialog<MaterialMasterModel>(
-      context: context,
-      builder: (_) => MaterialPickerDialog(tenantId: tenantId),
-    );
-    if (material == null) return;
-    line.applyMaterial(material);
-    onChanged();
-  }
-}
-
-class _BomLineDraft {
-  final itemDescription = TextEditingController();
-  final section = TextEditingController();
-  final material = TextEditingController();
-  final qty = TextEditingController(text: '1');
-  final lengthMm = TextEditingController();
-  final widthMm = TextEditingController();
-  final thicknessMm = TextEditingController();
-  final odMm = TextEditingController();
-  final idMm = TextEditingController();
-  final weightPerMeter = TextEditingController();
-  final galvanizingMicron = TextEditingController();
-  final grade = TextEditingController();
-  String materialMasterId = '';
-  String materialType = '';
-  String formulaType = 'sectionWeightPerMeter';
-  double density = 0;
-
-  _BomLineDraft({String? itemDescription, double? qty}) {
-    this.itemDescription.text = (itemDescription ?? '').trim();
-    if (qty != null && qty > 0) {
-      this.qty.text = _formatNumber(qty);
-    }
-  }
-
-  bool get isBlank {
-    return itemDescription.text.trim().isEmpty &&
-        section.text.trim().isEmpty &&
-        material.text.trim().isEmpty &&
-        lengthMm.text.trim().isEmpty &&
-        widthMm.text.trim().isEmpty &&
-        thicknessMm.text.trim().isEmpty &&
-        odMm.text.trim().isEmpty &&
-        idMm.text.trim().isEmpty &&
-        weightPerMeter.text.trim().isEmpty;
-  }
-
-  double get calculatedWeight {
-    return WeightFormulaService.calculateWeight(
-      WeightFormulaInput(
-        formulaType: formulaType,
-        materialGrade: grade.text.trim(),
-        qty: _toDouble(qty.text),
-        lengthMm: _toDouble(lengthMm.text),
-        widthMm: _toDouble(widthMm.text),
-        thicknessMm: _toDouble(thicknessMm.text),
-        odMm: _toDouble(odMm.text),
-        idMm: _toDouble(idMm.text),
-        density: density,
-        standardWeightPerMeter: _toDouble(weightPerMeter.text),
-      ),
-    );
-  }
-
-  void applyMaterial(MaterialMasterModel selected) {
-    materialMasterId = selected.id;
-    materialType = selected.materialType;
-    formulaType = selected.formulaType.trim().isEmpty
-        ? WeightFormulaService.formulaTypeForMaterial(selected.materialType)
-        : selected.formulaType;
-    density = selected.density > 0
-        ? selected.density
-        : WeightFormulaService.densityForGrade(selected.materialGrade);
-    material.text = selected.displayName;
-    grade.text = selected.materialGrade;
-    if (selected.standardWeightPerMeter > 0) {
-      weightPerMeter.text = _formatNumber(selected.standardWeightPerMeter);
-    }
-  }
-
-  EngineeringBomLineModel toModel(int lineNo) {
-    return EngineeringBomLineModel(
-      lineNo: lineNo,
-      itemDescription: itemDescription.text.trim(),
-      section: section.text.trim(),
-      material: material.text.trim(),
-      qty: _toDouble(qty.text),
-      lengthMm: _toDouble(lengthMm.text),
-      widthMm: _toDouble(widthMm.text),
-      thicknessMm: _toDouble(thicknessMm.text),
-      odMm: _toDouble(odMm.text),
-      idMm: _toDouble(idMm.text),
-      weightPerMeter: _toDouble(weightPerMeter.text),
-      calculatedWeight: calculatedWeight,
-      galvanizingMicron: _toDouble(galvanizingMicron.text),
-      grade: grade.text.trim(),
-      materialMasterId: materialMasterId,
-      materialType: materialType,
-      formulaType: formulaType,
-      density: density,
-    );
-  }
-
-  void dispose() {
-    itemDescription.dispose();
-    section.dispose();
-    material.dispose();
-    qty.dispose();
-    lengthMm.dispose();
-    widthMm.dispose();
-    thicknessMm.dispose();
-    odMm.dispose();
-    idMm.dispose();
-    weightPerMeter.dispose();
-    galvanizingMicron.dispose();
-    grade.dispose();
-  }
-
-  static double _toDouble(String value) {
-    return double.tryParse(value.trim()) ?? 0;
-  }
-
-  static String _formatNumber(double value) {
-    if (value == value.roundToDouble()) return value.toInt().toString();
-    return value.toString();
-  }
-}
-
-InputDecoration _dec(String label) {
-  return InputDecoration(
-    labelText: label,
-    filled: true,
-    fillColor: zSurfaceSoft,
-    isDense: true,
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: zBorder),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: zBlue, width: 1.2),
-    ),
-  );
 }

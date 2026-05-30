@@ -1,3 +1,6 @@
+import 'dart:convert';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
@@ -22,7 +25,12 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _Header(onAdd: () => _openMaterialDialog()),
+        _Header(
+          onAdd: () => _openMaterialDialog(),
+          onImport: _importCsv,
+          onTemplate: _showTemplate,
+          onSeed: _seedAbEnergiaMaterials,
+        ),
         const SizedBox(height: 12),
         Expanded(
           child: StreamBuilder<List<MaterialMasterModel>>(
@@ -45,6 +53,7 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
                     DataColumn(label: Text('Type')),
                     DataColumn(label: Text('Shape')),
                     DataColumn(label: Text('Grade')),
+                    DataColumn(label: Text('Coating')),
                     DataColumn(label: Text('Density')),
                     DataColumn(label: Text('Formula')),
                     DataColumn(label: Text('Kg/m')),
@@ -60,6 +69,7 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
                             DataCell(Text(material.materialType)),
                             DataCell(Text(material.materialShape)),
                             DataCell(Text(material.materialGrade)),
+                            DataCell(Text(material.coating)),
                             DataCell(Text(_num(material.density))),
                             DataCell(Text(material.formulaType)),
                             DataCell(
@@ -91,6 +101,7 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
     final name = TextEditingController(text: existing?.materialName ?? '');
     final shape = TextEditingController(text: existing?.materialShape ?? '');
     final grade = TextEditingController(text: existing?.materialGrade ?? 'MS');
+    final coating = TextEditingController(text: existing?.coating ?? '');
     final density = TextEditingController(
       text: _num(existing?.density ?? MaterialMasterModel.densities['MS']!),
     );
@@ -172,6 +183,8 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
                       ],
                     ),
                     const SizedBox(height: 10),
+                    _field(coating, 'Coating'),
+                    const SizedBox(height: 10),
                     Row(
                       children: [
                         Expanded(child: _field(unit, 'Unit')),
@@ -213,12 +226,85 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
       materialType: type,
       materialShape: shape.text.trim(),
       materialGrade: grade.text.trim(),
+      coating: coating.text.trim(),
       density: double.tryParse(density.text.trim()) ?? 0,
       formulaType: formula,
       standardWeightPerMeter: double.tryParse(standardWeight.text.trim()) ?? 0,
       unit: unit.text.trim().isEmpty ? 'KG' : unit.text.trim(),
     );
     await _repository.saveMaterial(material);
+  }
+
+  Future<void> _importCsv() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['csv', 'txt'],
+      withData: true,
+    );
+    final bytes = result?.files.single.bytes;
+    if (bytes == null) return;
+    final rows = _parseMaterialCsv(const Utf8Decoder().convert(bytes));
+    var count = 0;
+    for (final row in rows) {
+      final code = (row['materialCode'] ?? '').trim();
+      if (code.isEmpty) continue;
+      await _repository.saveMaterial(_materialFromRow(row));
+      count++;
+    }
+    _snack('Imported $count material records.');
+  }
+
+  Future<void> _seedAbEnergiaMaterials() async {
+    for (final row in _seedRows) {
+      await _repository.saveMaterial(_materialFromRow(row));
+    }
+    _snack('AB Energia sample materials added.');
+  }
+
+  MaterialMasterModel _materialFromRow(Map<String, String> row) {
+    final category = (row['category'] ?? row['materialType'] ?? 'Plate').trim();
+    final grade = (row['grade'] ?? row['materialGrade'] ?? 'MS').trim();
+    final id = row['id']?.trim().isNotEmpty == true
+        ? row['id']!.trim()
+        : (row['materialCode'] ?? _repository.newMaterialId()).trim();
+    return MaterialMasterModel(
+      id: id,
+      materialCode: (row['materialCode'] ?? '').trim(),
+      materialName: (row['materialName'] ?? '').trim(),
+      materialType: category,
+      materialShape: (row['materialShape'] ?? category).trim(),
+      materialGrade: grade,
+      coating: (row['coating'] ?? '').trim(),
+      density: MaterialMasterModel.densities[grade] ?? 7850,
+      formulaType: WeightFormulaService.formulaTypeForMaterial(category),
+      standardWeightPerMeter:
+          double.tryParse(row['standardWeightPerMeter'] ?? '') ?? 0,
+      unit: (row['unit'] ?? 'KG').trim(),
+      isActive: (row['isActive'] ?? 'true').trim().toLowerCase() != 'false',
+    );
+  }
+
+  Future<void> _showTemplate() {
+    return showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Material Master CSV Template'),
+        content: SelectableText(_templateCsv),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _snack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _field(
@@ -248,8 +334,16 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
 
 class _Header extends StatelessWidget {
   final VoidCallback onAdd;
+  final VoidCallback onImport;
+  final VoidCallback onTemplate;
+  final VoidCallback onSeed;
 
-  const _Header({required this.onAdd});
+  const _Header({
+    required this.onAdd,
+    required this.onImport,
+    required this.onTemplate,
+    required this.onSeed,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -276,8 +370,55 @@ class _Header extends StatelessWidget {
             icon: const Icon(Icons.add),
             label: const Text('Add Material'),
           ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: onImport,
+            icon: const Icon(Icons.upload_file),
+            label: const Text('Import CSV'),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: onTemplate,
+            icon: const Icon(Icons.description_outlined),
+            label: const Text('Template'),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton.icon(
+            onPressed: onSeed,
+            icon: const Icon(Icons.playlist_add),
+            label: const Text('Seed AB Energia'),
+          ),
         ],
       ),
     );
   }
+}
+
+const _templateCsv =
+    'materialCode,materialName,category,standardWeightPerMeter,grade,coating,isActive\n'
+    '100CS50X15X2,C Section 100CS50X15X2,C Section,3.54,MS,HDG,true\n'
+    '60CS40X15X1.6,C Section 60CS40X15X1.6,C Section,1.72,MS,HDG,true\n'
+    'PLATE 50X5,Plate 50X5,Plate,0,MS,,true\n'
+    '1280X1063X0.5,Roofing Sheet 1280X1063X0.5,Roofing Sheet,0,MS,,true';
+
+final _seedRows = _parseMaterialCsv(_templateCsv);
+
+List<Map<String, String>> _parseMaterialCsv(String csv) {
+  final lines = const LineSplitter()
+      .convert(csv)
+      .where((line) => line.trim().isNotEmpty)
+      .toList();
+  if (lines.length < 2) return const [];
+  final headers = _splitCsvLine(lines.first);
+  return lines.skip(1).map((line) {
+    final values = _splitCsvLine(line);
+    return {
+      for (var i = 0; i < headers.length; i++)
+        headers[i]: i < values.length ? values[i] : '',
+    };
+  }).toList();
+}
+
+List<String> _splitCsvLine(String line) {
+  return line.split(',').map((value) => value.trim()).toList();
 }

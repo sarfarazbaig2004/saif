@@ -1,0 +1,154 @@
+import 'package:flutter/material.dart';
+
+import 'package:QUIK/modules/engineering/bom/helpers/bom_column_config.dart';
+import 'package:QUIK/modules/engineering/bom/models/engineering_bom_line_model.dart';
+import 'package:QUIK/modules/engineering/bom/services/bom_weight_calculator.dart';
+import 'package:QUIK/modules/inventory/material_master/models/material_master_model.dart';
+
+class BomLineDraft {
+  final itemDescription = TextEditingController();
+  final sectionCode = TextEditingController();
+  final materialCategory = TextEditingController();
+  final materialName = TextEditingController();
+  final qtyPerStructure = TextEditingController(text: '1');
+  final lengthMm = TextEditingController();
+  final widthMm = TextEditingController();
+  final thicknessMm = TextEditingController();
+  final odMm = TextEditingController();
+  final idMm = TextEditingController();
+  final heightMm = TextEditingController();
+  final unitWeightKgPerMeter = TextEditingController();
+  final coatingType = TextEditingController(text: 'HDG');
+  final galvanizingMicron = TextEditingController();
+  final grade = TextEditingController();
+  final remarks = TextEditingController();
+  final customValues = <String, TextEditingController>{};
+  String materialMasterId = '';
+
+  BomLineDraft({String? itemDescription, double? qty}) {
+    this.itemDescription.text = (itemDescription ?? '').trim();
+    if (qty != null && qty > 0) qtyPerStructure.text = _format(qty);
+  }
+
+  bool get isBlank {
+    return itemDescription.text.trim().isEmpty &&
+        sectionCode.text.trim().isEmpty &&
+        materialName.text.trim().isEmpty &&
+        lengthMm.text.trim().isEmpty;
+  }
+
+  double get qtyPerStructureValue => _toDouble(qtyPerStructure.text);
+  double get lengthMmValue => _toDouble(lengthMm.text);
+  double get widthMmValue => _toDouble(widthMm.text);
+  double get thicknessMmValue => _toDouble(thicknessMm.text);
+  double get odMmValue => _toDouble(odMm.text);
+  double get idMmValue => _toDouble(idMm.text);
+  double get heightMmValue => _toDouble(heightMm.text);
+  double get unitWeightKgPerMeterValue => _toDouble(unitWeightKgPerMeter.text);
+  double get lineWeight => BomWeightCalculator.lineWeight(
+    qtyPerStructure: qtyPerStructureValue,
+    lengthMm: lengthMmValue,
+    widthMm: widthMmValue,
+    thicknessMm: thicknessMmValue,
+    unitWeightKgPerMeter: unitWeightKgPerMeterValue,
+    materialCategory: materialCategory.text,
+  );
+
+  TextEditingController customController(String fieldId) {
+    return customValues.putIfAbsent(fieldId, TextEditingController.new);
+  }
+
+  void applyMaterial(MaterialMasterModel selected) {
+    materialMasterId = selected.id;
+    sectionCode.text = selected.materialCode;
+    materialCategory.text = _categoryFrom(selected);
+    materialName.text = selected.materialName.trim().isEmpty
+        ? selected.displayName
+        : selected.materialName;
+    if (selected.materialGrade.trim().isNotEmpty) {
+      grade.text = selected.materialGrade;
+    }
+    if (selected.coating.trim().isNotEmpty) {
+      coatingType.text = selected.coating;
+    }
+    if (selected.standardWeightPerMeter > 0) {
+      unitWeightKgPerMeter.text = _format(selected.standardWeightPerMeter);
+    }
+  }
+
+  EngineeringBomLineModel toModel(
+    int lineNo,
+    double projectQuantity,
+    List<BomCustomField> customFields,
+  ) {
+    return EngineeringBomLineModel(
+      lineNo: lineNo,
+      itemDescription: itemDescription.text.trim(),
+      section: sectionCode.text.trim(),
+      material: materialName.text.trim(),
+      qty: qtyPerStructureValue,
+      projectQuantity: projectQuantity,
+      totalProjectQuantity: BomWeightCalculator.totalProjectQuantity(
+        qtyPerStructureValue,
+        projectQuantity,
+      ),
+      lengthMm: lengthMmValue,
+      widthMm: widthMmValue,
+      thicknessMm: thicknessMmValue,
+      odMm: odMmValue,
+      idMm: idMmValue,
+      heightMm: heightMmValue,
+      weightPerMeter: unitWeightKgPerMeterValue,
+      calculatedWeight: lineWeight,
+      totalProjectWeight: BomWeightCalculator.totalProjectWeight(
+        lineWeight,
+        projectQuantity,
+      ),
+      galvanizingMicron: _toDouble(galvanizingMicron.text),
+      coatingType: coatingType.text.trim(),
+      grade: grade.text.trim(),
+      remarks: remarks.text.trim(),
+      customFieldValues: {
+        for (final field in customFields)
+          field.id: customController(field.id).text.trim(),
+      },
+      materialMasterId: materialMasterId,
+      materialType: materialCategory.text.trim(),
+    );
+  }
+
+  void dispose() {
+    for (final c in [
+      itemDescription,
+      sectionCode,
+      materialCategory,
+      materialName,
+      qtyPerStructure,
+      lengthMm,
+      widthMm,
+      thicknessMm,
+      odMm,
+      idMm,
+      heightMm,
+      unitWeightKgPerMeter,
+      coatingType,
+      galvanizingMicron,
+      grade,
+      remarks,
+    ]) {
+      c.dispose();
+    }
+    for (final controller in customValues.values) {
+      controller.dispose();
+    }
+  }
+
+  static String _categoryFrom(MaterialMasterModel m) {
+    if (m.materialType.trim().isNotEmpty) return m.materialType.trim();
+    return m.materialShape.trim();
+  }
+
+  static double _toDouble(String value) => double.tryParse(value.trim()) ?? 0;
+  static String _format(double v) =>
+      v == v.roundToDouble() ? v.toInt().toString() : v.toString();
+}

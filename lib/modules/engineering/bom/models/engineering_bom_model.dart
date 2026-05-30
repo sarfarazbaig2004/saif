@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'package:QUIK/modules/engineering/bom/helpers/bom_column_config.dart';
 import 'package:QUIK/modules/engineering/bom/models/engineering_bom_line_model.dart';
 
 class EngineeringBomModel {
@@ -9,6 +10,9 @@ class EngineeringBomModel {
   final String customer;
   final String project;
   final String revision;
+  final double projectQuantity;
+  final List<String> visibleColumns;
+  final List<BomCustomField> customFields;
   final List<EngineeringBomLineModel> lines;
   final double totalCalculatedWeight;
   final DateTime? createdAt;
@@ -21,6 +25,9 @@ class EngineeringBomModel {
     required this.customer,
     required this.project,
     required this.revision,
+    this.projectQuantity = 1,
+    this.visibleColumns = const [],
+    this.customFields = const [],
     required this.lines,
     required this.totalCalculatedWeight,
     this.createdAt,
@@ -50,6 +57,18 @@ class EngineeringBomModel {
       customer: (data['customer'] ?? '').toString(),
       project: (data['project'] ?? '').toString(),
       revision: (data['revision'] ?? 'R0').toString(),
+      projectQuantity: _toDouble(
+        data['projectQuantity'] ?? data['structureQuantity'],
+      ),
+      visibleColumns: (data['visibleColumns'] is List)
+          ? List<String>.from(data['visibleColumns'] as List)
+          : const [],
+      customFields: (data['customFields'] is List)
+          ? (data['customFields'] as List)
+                .whereType<Map>()
+                .map((field) => BomCustomField.fromMap(Map.from(field)))
+                .toList()
+          : const [],
       lines: lines,
       totalCalculatedWeight: _toDouble(data['totalCalculatedWeight']),
       createdAt: _dateTime(data['createdAt']),
@@ -64,6 +83,10 @@ class EngineeringBomModel {
       'customer': customer,
       'project': project,
       'revision': revision,
+      'projectQuantity': projectQuantity,
+      'structureQuantity': projectQuantity,
+      'visibleColumns': visibleColumns,
+      'customFields': customFields.map((field) => field.toMap()).toList(),
       'lines': lines.map((line) => line.toMap()).toList(growable: false),
       'totalCalculatedWeight': totalCalculatedWeight,
       'updatedAt': FieldValue.serverTimestamp(),

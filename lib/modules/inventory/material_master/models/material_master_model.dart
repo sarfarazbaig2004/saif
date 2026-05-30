@@ -9,6 +9,7 @@ class MaterialMasterModel {
   final String materialType;
   final String materialShape;
   final String materialGrade;
+  final String coating;
   final double density;
   final String formulaType;
   final double standardWeightPerMeter;
@@ -22,6 +23,7 @@ class MaterialMasterModel {
     required this.materialType,
     required this.materialShape,
     required this.materialGrade,
+    this.coating = '',
     required this.density,
     required this.formulaType,
     required this.standardWeightPerMeter,
@@ -36,6 +38,8 @@ class MaterialMasterModel {
     'Flat',
     'Angle',
     'Channel',
+    'C Section',
+    'Roofing Sheet',
     'Beam',
   ];
 
@@ -56,6 +60,7 @@ class MaterialMasterModel {
       'materialType': materialType,
       'materialShape': materialShape,
       'materialGrade': materialGrade,
+      'coating': coating,
       'density': density,
       'formulaType': formulaType,
       'standardWeightPerMeter': standardWeightPerMeter,
@@ -80,6 +85,7 @@ class MaterialMasterModel {
       materialType: (map['materialType'] ?? '').toString(),
       materialShape: (map['materialShape'] ?? '').toString(),
       materialGrade: (map['materialGrade'] ?? map['grade'] ?? '').toString(),
+      coating: (map['coating'] ?? '').toString(),
       density: doubleFromValue(map['density']),
       formulaType: (map['formulaType'] ?? '').toString(),
       standardWeightPerMeter: doubleFromValue(

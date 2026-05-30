@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:QUIK/modules/engineering/bom/services/bom_weight_engine.dart';
 import 'package:QUIK/modules/inventory/material_master/models/material_master_model.dart';
 
 class WeightFormulaInput {
@@ -88,7 +89,9 @@ class WeightFormulaService {
             density;
       case 'sectionWeightPerMeter':
       default:
-        return qty * _mmToM(input.lengthMm) * input.standardWeightPerMeter;
+        return BomWeightEngine.roundWeight(
+          qty * _mmToM(input.lengthMm) * input.standardWeightPerMeter,
+        );
     }
   }
 
