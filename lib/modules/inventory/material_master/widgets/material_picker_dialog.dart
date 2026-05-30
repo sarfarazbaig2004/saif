@@ -28,12 +28,28 @@ class _MaterialPickerDialogState extends State<MaterialPickerDialog> {
 
   Future<void> _load([String query = '']) async {
     setState(() => _loading = true);
-    final materials = await _repository.searchMaterials(query);
-    if (!mounted) return;
-    setState(() {
-      _materials = materials;
-      _loading = false;
-    });
+    try {
+      final materials = await _repository.searchMaterials(query);
+      debugPrint(
+        'MATERIAL_PICKER_SOURCE tenantId=${widget.tenantId} '
+        'path=${_repository.collectionPath} count=${materials.length}',
+      );
+      if (!mounted) return;
+      setState(() {
+        _materials = materials;
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint(
+        'MATERIAL_PICKER_SOURCE_ERROR tenantId=${widget.tenantId} '
+        'path=${_repository.collectionPath} error=$e',
+      );
+      if (!mounted) return;
+      setState(() {
+        _materials = const [];
+        _loading = false;
+      });
+    }
   }
 
   @override

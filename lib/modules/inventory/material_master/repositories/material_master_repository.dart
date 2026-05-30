@@ -19,29 +19,29 @@ class MaterialMasterRepository {
     ).collection('material_master');
   }
 
+  String get collectionPath => 'companies/${tenantId.trim()}/material_master';
+
   String newMaterialId() => _ref.doc().id;
 
   Stream<List<MaterialMasterModel>> watchMaterials() {
     return _ref
-        .where('isActive', isEqualTo: true)
         .orderBy('materialName')
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
               .map(MaterialMasterModel.fromFirestore)
+              .where((material) => material.isActive)
               .toList(growable: false),
         );
   }
 
   Future<List<MaterialMasterModel>> searchMaterials(String query) async {
     final normalized = query.trim().toLowerCase();
-    final snapshot = await _ref
-        .where('isActive', isEqualTo: true)
-        .limit(100)
-        .get();
+    final snapshot = await _ref.limit(200).get();
     final materials = snapshot.docs
         .map(MaterialMasterModel.fromFirestore)
         .where((material) {
+          if (!material.isActive) return false;
           if (normalized.isEmpty) return true;
           final haystack =
               '${material.materialCode} ${material.materialName} ${material.materialType} ${material.materialGrade}'

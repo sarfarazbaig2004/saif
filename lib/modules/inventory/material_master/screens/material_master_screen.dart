@@ -29,18 +29,31 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
           onAdd: () => _openMaterialDialog(),
           onImport: _importCsv,
           onTemplate: _showTemplate,
-          onSeed: _seedAbEnergiaMaterials,
+          onSeed: _loadSampleMaterialData,
         ),
         const SizedBox(height: 12),
         Expanded(
           child: StreamBuilder<List<MaterialMasterModel>>(
             stream: _repository.watchMaterials(),
             builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                debugPrint(
+                  'MATERIAL_MASTER_LIST_ERROR tenantId=${widget.tenantId} '
+                  'path=${_repository.collectionPath} error=${snapshot.error}',
+                );
+                return Center(
+                  child: Text('Failed to load materials: ${snapshot.error}'),
+                );
+              }
               if (snapshot.connectionState == ConnectionState.waiting &&
                   !snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
               final materials = snapshot.data ?? const <MaterialMasterModel>[];
+              debugPrint(
+                'MATERIAL_MASTER_LIST tenantId=${widget.tenantId} '
+                'path=${_repository.collectionPath} count=${materials.length}',
+              );
               if (materials.isEmpty) {
                 return const Center(child: Text('No materials added yet.'));
               }
@@ -254,11 +267,22 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
     _snack('Imported $count material records.');
   }
 
-  Future<void> _seedAbEnergiaMaterials() async {
+  Future<void> _loadSampleMaterialData() async {
+    final created = <String>[];
+    debugPrint(
+      'MATERIAL_MASTER_SAMPLE_SEED_START tenantId=${widget.tenantId} '
+      'path=${_repository.collectionPath}',
+    );
     for (final row in _seedRows) {
-      await _repository.saveMaterial(_materialFromRow(row));
+      final material = _materialFromRow(row);
+      await _repository.saveMaterial(material);
+      created.add(material.materialCode);
     }
-    _snack('AB Energia sample materials added.');
+    debugPrint(
+      'MATERIAL_MASTER_SAMPLE_SEED_DONE tenantId=${widget.tenantId} '
+      'path=${_repository.collectionPath} documents=${created.join('|')}',
+    );
+    _snack('Sample material data loaded for development/testing.');
   }
 
   MaterialMasterModel _materialFromRow(Map<String, String> row) {
@@ -386,7 +410,7 @@ class _Header extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onSeed,
             icon: const Icon(Icons.playlist_add),
-            label: const Text('Seed AB Energia'),
+            label: const Text('Load Sample Material Data (Development Only)'),
           ),
         ],
       ),
