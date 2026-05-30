@@ -293,18 +293,21 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
 
   Future<void> _loadStandardEngineeringLibrary() async {
     final created = <String>[];
-    final existingByCode = <String, MaterialMasterModel>{};
+    final existingByNormalized = <String, MaterialMasterModel>{};
     debugPrint(
       'MATERIAL_MASTER_STANDARD_LIBRARY_START tenantId=${widget.tenantId} '
       'path=${_repository.collectionPath}',
     );
     for (final row in _seedRows) {
       final code = (row['materialCode'] ?? '').trim();
-      final existing = await _repository.findByMaterialCode(code);
-      if (existing != null) existingByCode[code] = existing;
+      final normalized = MaterialMasterModel.normalizeMaterialCode(code);
+      final existing = await _repository.findByNormalizedMaterialCode(code);
+      if (existing != null) existingByNormalized[normalized] = existing;
     }
-    if (existingByCode.isNotEmpty) {
-      final update = await _confirmLibraryUpdate(existingByCode.keys.toList());
+    if (existingByNormalized.isNotEmpty) {
+      final update = await _confirmLibraryUpdate(
+        existingByNormalized.keys.toList(),
+      );
       if (update != true) {
         _snack('Standard engineering material library load cancelled.');
         return;
@@ -312,7 +315,8 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
     }
     for (final row in _seedRows) {
       final code = (row['materialCode'] ?? '').trim();
-      final existing = existingByCode[code];
+      final normalized = MaterialMasterModel.normalizeMaterialCode(code);
+      final existing = existingByNormalized[normalized];
       final material = _materialFromRow(row, existingId: existing?.id);
       await _repository.saveMaterial(material);
       created.add(material.materialCode);

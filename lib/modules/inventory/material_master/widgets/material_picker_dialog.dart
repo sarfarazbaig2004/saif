@@ -30,15 +30,49 @@ class _MaterialPickerDialogState extends State<MaterialPickerDialog> {
     setState(() => _loading = true);
     try {
       final materials = await _repository.searchMaterials(query);
+      // Deduplicate by normalized code, prefer active/latest
+      final Map<String, MaterialMasterModel> deduped = {};
+      final Map<String, List<MaterialMasterModel>> duplicates = {};
+      for (final mat in materials) {
+        final norm = mat.normalizedMaterialCode;
+        if (!deduped.containsKey(norm)) {
+          deduped[norm] = mat;
+          duplicates[norm] = [mat];
+        } else {
+          // Prefer active, latest (by updatedAt if available)
+          final existing = deduped[norm]!;
+          // If mat is more recently updated or more complete, prefer it
+          // (Assume order from Firestore is not guaranteed, so just keep first active)
+          if (!existing.isActive && mat.isActive) {
+            deduped[norm] = mat;
+          }
+          duplicates[norm]!.add(mat);
+        }
+      }
+      final dedupedList = deduped.values.toList();
+      final hasDuplicates = duplicates.values.any((list) => list.length > 1);
       debugPrint(
         'MATERIAL_PICKER_SOURCE tenantId=${widget.tenantId} '
-        'path=${_repository.collectionPath} count=${materials.length}',
+        'path=${_repository.collectionPath} count=${materials.length} deduped=${dedupedList.length}',
       );
       if (!mounted) return;
       setState(() {
-        _materials = materials;
+        _materials = dedupedList;
         _loading = false;
       });
+      if (hasDuplicates) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Warning: Duplicate materials with same code exist!',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        });
+      }
     } catch (e) {
       debugPrint(
         'MATERIAL_PICKER_SOURCE_ERROR tenantId=${widget.tenantId} '

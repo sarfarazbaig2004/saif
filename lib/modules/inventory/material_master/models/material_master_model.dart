@@ -3,6 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:QUIK/modules/production/core/production_firestore_utils.dart';
 
 class MaterialMasterModel {
+  /// Returns a normalized material code: uppercase, no spaces/hyphens, trimmed.
+  static String normalizeMaterialCode(String code) {
+    return code.toUpperCase().replaceAll(' ', '').replaceAll('-', '').trim();
+  }
+
   final String id;
   final String materialCode;
   final String materialName;
@@ -38,6 +43,9 @@ class MaterialMasterModel {
     required this.unit,
     this.isActive = true,
   });
+
+  /// Normalized code for duplicate detection (uppercase, no spaces/hyphens)
+  String get normalizedMaterialCode => normalizeMaterialCode(materialCode);
 
   static const materialTypes = [
     'Plate',
