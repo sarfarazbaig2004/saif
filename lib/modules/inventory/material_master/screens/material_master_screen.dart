@@ -29,7 +29,7 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
           onAdd: () => _openMaterialDialog(),
           onImport: _importCsv,
           onTemplate: _showTemplate,
-          onSeed: _loadSampleMaterialData,
+          onSeed: _loadStandardEngineeringLibrary,
         ),
         const SizedBox(height: 12),
         Expanded(
@@ -267,10 +267,10 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
     _snack('Imported $count material records.');
   }
 
-  Future<void> _loadSampleMaterialData() async {
+  Future<void> _loadStandardEngineeringLibrary() async {
     final created = <String>[];
     debugPrint(
-      'MATERIAL_MASTER_SAMPLE_SEED_START tenantId=${widget.tenantId} '
+      'MATERIAL_MASTER_STANDARD_LIBRARY_START tenantId=${widget.tenantId} '
       'path=${_repository.collectionPath}',
     );
     for (final row in _seedRows) {
@@ -279,10 +279,10 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
       created.add(material.materialCode);
     }
     debugPrint(
-      'MATERIAL_MASTER_SAMPLE_SEED_DONE tenantId=${widget.tenantId} '
+      'MATERIAL_MASTER_STANDARD_LIBRARY_DONE tenantId=${widget.tenantId} '
       'path=${_repository.collectionPath} documents=${created.join('|')}',
     );
-    _snack('Sample material data loaded for development/testing.');
+    _snack('Standard engineering material library loaded.');
   }
 
   MaterialMasterModel _materialFromRow(Map<String, String> row) {
@@ -410,7 +410,7 @@ class _Header extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: onSeed,
             icon: const Icon(Icons.playlist_add),
-            label: const Text('Load Sample Material Data (Development Only)'),
+            label: const Text('Load Standard Engineering Library'),
           ),
         ],
       ),
@@ -419,11 +419,38 @@ class _Header extends StatelessWidget {
 }
 
 const _templateCsv =
-    'materialCode,materialName,category,standardWeightPerMeter,grade,coating,isActive\n'
-    '100CS50X15X2,C Section 100CS50X15X2,C Section,3.54,MS,HDG,true\n'
-    '60CS40X15X1.6,C Section 60CS40X15X1.6,C Section,1.72,MS,HDG,true\n'
-    'PLATE 50X5,Plate 50X5,Plate,0,MS,,true\n'
-    '1280X1063X0.5,Roofing Sheet 1280X1063X0.5,Roofing Sheet,0,MS,,true';
+    'materialCode,materialName,category,materialShape,standardWeightPerMeter,grade,coating,isActive\n'
+    '100CS50X15X2,C Section 100CS50X15X2,C Section,C Section,3.54,MS,HDG,true\n'
+    '60CS40X15X1.6,C Section 60CS40X15X1.6,C Section,C Section,1.72,MS,HDG,true\n'
+    '80CS40X15X2,C Section 80CS40X15X2,C Section,C Section,2.85,MS,HDG,true\n'
+    '120CS50X15X2,C Section 120CS50X15X2,C Section,C Section,4.15,MS,HDG,true\n'
+    'ISA40X40X4,Angle ISA40X40X4,Angle,Equal Angle,2.42,MS,HDG,true\n'
+    'ISA50X50X5,Angle ISA50X50X5,Angle,Equal Angle,3.78,MS,HDG,true\n'
+    'ISA65X65X6,Angle ISA65X65X6,Angle,Equal Angle,5.80,MS,HDG,true\n'
+    'ISA75X75X6,Angle ISA75X75X6,Angle,Equal Angle,6.80,MS,HDG,true\n'
+    'ISA90X90X8,Angle ISA90X90X8,Angle,Equal Angle,10.90,MS,HDG,true\n'
+    'ISMC75,Channel ISMC75,Channel,ISMC,7.14,MS,HDG,true\n'
+    'ISMC100,Channel ISMC100,Channel,ISMC,9.56,MS,HDG,true\n'
+    'ISMC125,Channel ISMC125,Channel,ISMC,13.10,MS,HDG,true\n'
+    'ISMC150,Channel ISMC150,Channel,ISMC,16.80,MS,HDG,true\n'
+    'ISMC200,Channel ISMC200,Channel,ISMC,22.30,MS,HDG,true\n'
+    'FLAT25X3,Flat 25X3,Flat,Flat,0.59,MS,HDG,true\n'
+    'FLAT40X5,Flat 40X5,Flat,Flat,1.57,MS,HDG,true\n'
+    'FLAT50X6,Flat 50X6,Flat,Flat,2.36,MS,HDG,true\n'
+    'FLAT75X8,Flat 75X8,Flat,Flat,4.71,MS,HDG,true\n'
+    'PLATE50X5,Plate 50X5,Plate,Plate,0,MS,,true\n'
+    'PLATE75X6,Plate 75X6,Plate,Plate,0,MS,,true\n'
+    'PLATE100X8,Plate 100X8,Plate,Plate,0,MS,,true\n'
+    'PLATE150X10,Plate 150X10,Plate,Plate,0,MS,,true\n'
+    'PIPE25NB,Pipe 25NB,Pipe,NB Pipe,2.44,MS,HDG,true\n'
+    'PIPE32NB,Pipe 32NB,Pipe,NB Pipe,3.14,MS,HDG,true\n'
+    'PIPE40NB,Pipe 40NB,Pipe,NB Pipe,3.61,MS,HDG,true\n'
+    'PIPE50NB,Pipe 50NB,Pipe,NB Pipe,5.10,MS,HDG,true\n'
+    'PIPE80NB,Pipe 80NB,Pipe,NB Pipe,8.47,MS,HDG,true\n'
+    'SHS50X50X3,Hollow Section SHS50X50X3,Hollow Section,SHS,4.31,MS,HDG,true\n'
+    'SHS75X75X4,Hollow Section SHS75X75X4,Hollow Section,SHS,8.86,MS,HDG,true\n'
+    'RHS100X50X3,Hollow Section RHS100X50X3,Hollow Section,RHS,6.67,MS,HDG,true\n'
+    '1280X1063X0.5,Roofing Sheet 1280X1063X0.5,Roofing Sheet,Roofing Sheet,0,MS,,true';
 
 final _seedRows = _parseMaterialCsv(_templateCsv);
 

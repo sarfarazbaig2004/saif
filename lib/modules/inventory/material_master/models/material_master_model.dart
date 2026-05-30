@@ -40,6 +40,7 @@ class MaterialMasterModel {
     'Channel',
     'C Section',
     'Roofing Sheet',
+    'Hollow Section',
     'Beam',
   ];
 
