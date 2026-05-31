@@ -11,17 +11,14 @@ import 'package:QUIK/modules/administration/inventory/screen_inventory_profile_s
 import 'package:QUIK/modules/administration/compliance/screens/compliance_legal_screen.dart';
 import 'package:QUIK/modules/administration/modules/screen_company_modules.dart';
 import 'package:QUIK/modules/administration/users/screen_user_management.dart';
-import 'package:QUIK/modules/administration/join_requests/join_requests_screen.dart';
 import 'package:QUIK/modules/crm/customers/screens_customer_list.dart';
 import 'package:QUIK/modules/dashboard/dashboard_screen.dart';
 import 'package:QUIK/modules/dispatch/screens/dispatch_list_screen.dart';
-import 'package:QUIK/modules/engineering/bom/screens/engineering_bom_entry_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_inward_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_issue_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_master_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_low_stock_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_stock_screen.dart';
-import 'package:QUIK/modules/inventory/material_master/screens/material_master_screen.dart';
 import 'package:QUIK/modules/purchase/fabrication/screens/purchase_bill_screen.dart';
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_ledger_screen.dart';
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_master_screen.dart';
@@ -312,7 +309,6 @@ class _QuikShellState extends State<QuikShell> {
                 _hasPermission('purchase', 'purchaseOrders'));
       // Inventory
       case ShellPage.inventoryProducts:
-      case ShellPage.inventoryMaterialMaster:
         return _hasPermission('inventory', 'products');
       case ShellPage.inventoryStockSummary:
         return _hasPermission('inventory', 'stockSummary');
@@ -322,6 +318,8 @@ class _QuikShellState extends State<QuikShell> {
         return _hasPermission('inventory', 'stockOut');
       case ShellPage.inventoryWarehouse:
         return _hasPermission('inventory', 'warehouse');
+      case ShellPage.inventoryMaterialMaster:
+        return _hasPermission('inventory', 'products');
       case ShellPage.inventoryLowStock:
         return _hasPermission('inventory', 'lowStockAlerts');
       case ShellPage.inventoryRawMaterialStock:
@@ -378,6 +376,7 @@ class _QuikShellState extends State<QuikShell> {
       // Administration
       case ShellPage.adminUsers:
         return _hasPermission('administration', 'users');
+        
       case ShellPage.adminJoinRequests:
         return true;
       case ShellPage.adminRoles:
@@ -447,7 +446,6 @@ class _QuikShellState extends State<QuikShell> {
 
   bool _isGeneralInventoryPage(ShellPage page) {
     return page == ShellPage.inventoryProducts ||
-        page == ShellPage.inventoryMaterialMaster ||
         page == ShellPage.inventoryStockSummary ||
         page == ShellPage.inventoryStockIn ||
         page == ShellPage.inventoryStockOut ||
@@ -457,7 +455,6 @@ class _QuikShellState extends State<QuikShell> {
 
   bool _isFabricationInventoryCompatiblePage(ShellPage page) {
     return page == ShellPage.inventoryProducts ||
-        page == ShellPage.inventoryMaterialMaster ||
         page == ShellPage.inventoryStockSummary ||
         page == ShellPage.inventoryStockIn ||
         page == ShellPage.inventoryStockOut ||
@@ -478,7 +475,6 @@ class _QuikShellState extends State<QuikShell> {
     if (_isFabricationInventory) {
       return const [
         ShellPage.inventoryProducts,
-        ShellPage.inventoryMaterialMaster,
         ShellPage.inventoryRawMaterialStock,
         ShellPage.inventoryMaterialInward,
         ShellPage.inventoryMaterialIssue,
@@ -489,7 +485,6 @@ class _QuikShellState extends State<QuikShell> {
 
     return const [
       ShellPage.inventoryProducts,
-      ShellPage.inventoryMaterialMaster,
       ShellPage.inventoryStockSummary,
       ShellPage.inventoryStockIn,
       ShellPage.inventoryStockOut,
@@ -800,16 +795,16 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.purchaseOrders:
       case ShellPage.purchaseGrn:
       case ShellPage.inventoryProducts:
-      case ShellPage.inventoryMaterialMaster:
       case ShellPage.inventoryStockSummary:
       case ShellPage.inventoryStockIn:
       case ShellPage.inventoryStockOut:
       case ShellPage.inventoryWarehouse:
       case ShellPage.inventoryLowStock:
+      case ShellPage.inventoryMaterialMaster:
+        return _hasPermission('inventory', 'products');
       case ShellPage.inventoryRawMaterialStock:
       case ShellPage.inventoryMaterialInward:
       case ShellPage.inventoryMaterialIssue:
-      case ShellPage.engineeringBomBoq:
       case ShellPage.dispatchReady:
       case ShellPage.dispatchChallans:
       case ShellPage.dispatchShipmentTracking:
@@ -887,7 +882,7 @@ class _QuikShellState extends State<QuikShell> {
     return 'Welcome ${_resolvedEmployeeName()}';
   }
 
-  Widget _buildTopHeader({VoidCallback? onOpenMenu}) {
+  Widget _buildTopHeader() {
     return Container(
       constraints: const BoxConstraints(minHeight: 48),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -897,14 +892,6 @@ class _QuikShellState extends State<QuikShell> {
       ),
       child: Row(
         children: [
-          if (onOpenMenu != null) ...[
-            IconButton(
-              tooltip: 'Open navigation',
-              onPressed: onOpenMenu,
-              icon: const Icon(Icons.menu, color: zText, size: 20),
-            ),
-            const SizedBox(width: 4),
-          ],
           Expanded(
             child: Text(
               _activeSectionTitle(),
@@ -1023,75 +1010,31 @@ class _QuikShellState extends State<QuikShell> {
           }
         });
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isCompactShell = constraints.maxWidth < 900;
-
-            if (isCompactShell) {
-              return Scaffold(
-                backgroundColor: zCanvasBg,
-                drawer: Drawer(
-                  width: 282,
-                  backgroundColor: zIconRail,
-                  child: ShellSidebar(
-                    width: 282,
-                    activePage: activePage,
-                    sidebarGroups: _currentSidebarGroups,
-                    canInquiries: canInquiries,
-                    companyId: widget.companyId,
-                    userUid: widget.userUid,
-                    currentRole: _currentRole,
-                    showSettings: _isModuleEnabled(ModuleIds.settings),
-                    onSelectPage: (page) {
-                      Navigator.of(context).maybePop();
-                      _selectPage(page);
-                    },
-                    onLogout: _logout,
-                  ),
-                ),
-                body: Builder(
-                  builder: (scaffoldContext) {
-                    return Column(
-                      children: [
-                        _buildTopHeader(
-                          onOpenMenu: () =>
-                              Scaffold.of(scaffoldContext).openDrawer(),
-                        ),
-                        Expanded(child: _buildActiveBody()),
-                      ],
-                    );
-                  },
-                ),
-              );
-            }
-
-            return Scaffold(
-              backgroundColor: zCanvasBg,
-              body: Row(
-                children: [
-                  ShellSidebar(
-                    activePage: activePage,
-                    sidebarGroups: _currentSidebarGroups,
-                    canInquiries: canInquiries,
-                    companyId: widget.companyId,
-                    userUid: widget.userUid,
-                    currentRole: _currentRole,
-                    showSettings: _isModuleEnabled(ModuleIds.settings),
-                    onSelectPage: _selectPage,
-                    onLogout: _logout,
-                  ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        _buildTopHeader(),
-                        Expanded(child: _buildActiveBody()),
-                      ],
-                    ),
-                  ),
-                ],
+        return Scaffold(
+          backgroundColor: zCanvasBg,
+          body: Row(
+            children: [
+              ShellSidebar(
+                activePage: activePage,
+                sidebarGroups: _currentSidebarGroups,
+                canInquiries: canInquiries,
+                companyId: widget.companyId,
+                userUid: widget.userUid,
+                currentRole: _currentRole,
+                showSettings: _isModuleEnabled(ModuleIds.settings),
+                onSelectPage: _selectPage,
+                onLogout: _logout,
               ),
-            );
-          },
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildTopHeader(),
+                    Expanded(child: _buildActiveBody()),
+                  ],
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -1144,12 +1087,6 @@ class _QuikShellState extends State<QuikShell> {
         return Padding(
           padding: EdgeInsets.all(10),
           child: RawMaterialMasterScreen(tenantId: widget.companyId),
-        );
-
-      case ShellPage.inventoryMaterialMaster:
-        return Padding(
-          padding: const EdgeInsets.all(10),
-          child: MaterialMasterScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.inventoryStockSummary:
@@ -1225,12 +1162,6 @@ class _QuikShellState extends State<QuikShell> {
           ),
         );
 
-      case ShellPage.engineeringBomBoq:
-        return Padding(
-          padding: const EdgeInsets.all(10),
-          child: EngineeringBomEntryScreen(tenantId: widget.companyId),
-        );
-
       case ShellPage.dispatchReady:
         return Padding(
           padding: const EdgeInsets.all(14),
@@ -1288,12 +1219,6 @@ class _QuikShellState extends State<QuikShell> {
             companyId: widget.companyId,
             currentUid: widget.userUid,
           ),
-        );
-
-      case ShellPage.adminJoinRequests:
-        return Padding(
-          padding: const EdgeInsets.all(10),
-          child: JoinRequestsScreen(companyId: widget.companyId),
         );
 
       case ShellPage.adminModules:

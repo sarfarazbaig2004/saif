@@ -19,6 +19,7 @@ class InquiryFilterSheet extends StatefulWidget {
 
   static const statuses = [
     'All',
+    'Draft',
     'Open',
     'Qualified',
     'Quotation Pending',
@@ -66,13 +67,17 @@ class _InquiryFilterSheetState extends State<InquiryFilterSheet> {
             const SizedBox(height: 14),
 
             DropdownButtonFormField<String>(
-              initialValue: tempStatus,
+              initialValue: InquiryFilterSheet.statuses.contains(tempStatus)
+                  ? tempStatus
+                  : 'All',
               decoration: const InputDecoration(
                 labelText: 'Status',
                 isDense: true,
                 border: OutlineInputBorder(),
               ),
               items: InquiryFilterSheet.statuses
+                  .toSet()
+                  .toList()
                   .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                   .toList(),
               onChanged: (value) {

@@ -2,167 +2,131 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:QUIK/modules/production/core/production_firestore_utils.dart';
 
-class MaterialRequirementLineModel {
+class PurchaseRequisitionLineModel {
   final int lineNo;
-  final String sourceItemId;
   final String material;
   final String section;
-  final double requiredWeightKg;
   final double requiredQty;
   final double availableQty;
   final double reservedQty;
-  final double shortageQty;
-  final double purchaseRequiredQty;
+  final double purchaseQty;
   final String unit;
-  final double lengthMm;
   final String remarks;
 
-  const MaterialRequirementLineModel({
+  const PurchaseRequisitionLineModel({
     required this.lineNo,
-    required this.sourceItemId,
     required this.material,
     required this.section,
-    required this.requiredWeightKg,
     required this.requiredQty,
     required this.availableQty,
     required this.reservedQty,
-    required this.shortageQty,
-    required this.purchaseRequiredQty,
+    required this.purchaseQty,
     required this.unit,
-    required this.lengthMm,
     required this.remarks,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'lineNo': lineNo,
-      'sourceItemId': sourceItemId,
       'material': material,
       'section': section,
-      'requiredWeightKg': requiredWeightKg,
       'requiredQty': requiredQty,
       'availableQty': availableQty,
       'reservedQty': reservedQty,
-      'shortageQty': shortageQty,
-      'purchaseRequiredQty': purchaseRequiredQty,
+      'purchaseQty': purchaseQty,
       'unit': unit,
-      'lengthMm': lengthMm,
       'remarks': remarks,
     };
   }
 
-  factory MaterialRequirementLineModel.fromMap(Object? value) {
+  factory PurchaseRequisitionLineModel.fromMap(Object? value) {
     if (value is! Map) {
-      return const MaterialRequirementLineModel(
+      return const PurchaseRequisitionLineModel(
         lineNo: 0,
-        sourceItemId: '',
         material: '',
         section: '',
-        requiredWeightKg: 0,
         requiredQty: 0,
         availableQty: 0,
         reservedQty: 0,
-        shortageQty: 0,
-        purchaseRequiredQty: 0,
+        purchaseQty: 0,
         unit: 'KG',
-        lengthMm: 0,
         remarks: '',
       );
     }
 
     final data = Map<String, dynamic>.from(value);
-    return MaterialRequirementLineModel(
+    return PurchaseRequisitionLineModel(
       lineNo: intFromValue(data['lineNo']),
-      sourceItemId: (data['sourceItemId'] ?? '').toString(),
       material: (data['material'] ?? '').toString(),
       section: (data['section'] ?? '').toString(),
-      requiredWeightKg: doubleFromValue(data['requiredWeightKg']),
       requiredQty: doubleFromValue(data['requiredQty']),
       availableQty: doubleFromValue(data['availableQty']),
       reservedQty: doubleFromValue(data['reservedQty']),
-      shortageQty: doubleFromValue(data['shortageQty']),
-      purchaseRequiredQty: doubleFromValue(data['purchaseRequiredQty']),
+      purchaseQty: doubleFromValue(data['purchaseQty']),
       unit: (data['unit'] ?? 'KG').toString(),
-      lengthMm: doubleFromValue(data['lengthMm']),
       remarks: (data['remarks'] ?? '').toString(),
     );
   }
 }
 
-class MaterialRequirementModel {
-  final String requirementId;
-  final String requirementNo;
+class PurchaseRequisitionModel {
+  final String requisitionId;
+  final String requisitionNo;
+  final String materialRequirementId;
+  final String materialRequirementNo;
   final String jobCardId;
   final String jobCardNo;
   final String customerPoId;
-  final String customerName;
-  final String projectCode;
   final String poNumber;
+  final String customerName;
   final String bomId;
   final String bomNumber;
   final String status;
-  final List<MaterialRequirementLineModel> lines;
-  final double totalWeightKg;
+  final List<PurchaseRequisitionLineModel> lines;
   final String tenantId;
   final String companyId;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  const MaterialRequirementModel({
-    required this.requirementId,
-    required this.requirementNo,
+  const PurchaseRequisitionModel({
+    required this.requisitionId,
+    required this.requisitionNo,
+    required this.materialRequirementId,
+    required this.materialRequirementNo,
     required this.jobCardId,
     required this.jobCardNo,
     required this.customerPoId,
-    required this.customerName,
-    required this.projectCode,
     required this.poNumber,
+    required this.customerName,
     required this.bomId,
     required this.bomNumber,
     required this.status,
     required this.lines,
-    required this.totalWeightKg,
     required this.tenantId,
     required this.companyId,
     this.createdAt,
     this.updatedAt,
   });
 
-  double get totalRequiredQty =>
-      lines.fold<double>(0, (total, line) => total + line.requiredQty);
-
-  double get totalAvailableQty =>
-      lines.fold<double>(0, (total, line) => total + line.availableQty);
-
-  double get totalReservedQty =>
-      lines.fold<double>(0, (total, line) => total + line.reservedQty);
-
-  double get totalShortageQty =>
-      lines.fold<double>(0, (total, line) => total + line.shortageQty);
-
-  double get totalPurchaseRequiredQty =>
-      lines.fold<double>(0, (total, line) => total + line.purchaseRequiredQty);
+  double get totalPurchaseQty =>
+      lines.fold<double>(0, (total, line) => total + line.purchaseQty);
 
   Map<String, dynamic> toFirestore() {
     return {
-      'requirementId': requirementId,
-      'requirementNo': requirementNo,
+      'requisitionId': requisitionId,
+      'requisitionNo': requisitionNo,
+      'materialRequirementId': materialRequirementId,
+      'materialRequirementNo': materialRequirementNo,
       'jobCardId': jobCardId,
       'jobCardNo': jobCardNo,
       'customerPoId': customerPoId,
-      'customerName': customerName,
-      'projectCode': projectCode,
       'poNumber': poNumber,
+      'customerName': customerName,
       'bomId': bomId,
       'bomNumber': bomNumber,
       'status': status,
       'lines': lines.map((line) => line.toMap()).toList(growable: false),
-      'totalWeightKg': totalWeightKg,
-      'totalRequiredQty': totalRequiredQty,
-      'totalAvailableQty': totalAvailableQty,
-      'totalReservedQty': totalReservedQty,
-      'totalShortageQty': totalShortageQty,
-      'totalPurchaseRequiredQty': totalPurchaseRequiredQty,
+      'totalPurchaseQty': totalPurchaseQty,
       'tenantId': tenantId,
       'companyId': companyId,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -170,30 +134,30 @@ class MaterialRequirementModel {
     };
   }
 
-  factory MaterialRequirementModel.fromFirestore(
+  factory PurchaseRequisitionModel.fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> snapshot,
   ) {
     final data = snapshot.data() ?? const <String, dynamic>{};
     final lines = data['lines'] is Iterable
         ? (data['lines'] as Iterable)
-              .map(MaterialRequirementLineModel.fromMap)
+              .map(PurchaseRequisitionLineModel.fromMap)
               .toList(growable: false)
-        : <MaterialRequirementLineModel>[];
+        : <PurchaseRequisitionLineModel>[];
 
-    return MaterialRequirementModel(
-      requirementId: (data['requirementId'] ?? snapshot.id).toString(),
-      requirementNo: (data['requirementNo'] ?? '').toString(),
+    return PurchaseRequisitionModel(
+      requisitionId: (data['requisitionId'] ?? snapshot.id).toString(),
+      requisitionNo: (data['requisitionNo'] ?? '').toString(),
+      materialRequirementId: (data['materialRequirementId'] ?? '').toString(),
+      materialRequirementNo: (data['materialRequirementNo'] ?? '').toString(),
       jobCardId: (data['jobCardId'] ?? '').toString(),
       jobCardNo: (data['jobCardNo'] ?? '').toString(),
       customerPoId: (data['customerPoId'] ?? '').toString(),
-      customerName: (data['customerName'] ?? '').toString(),
-      projectCode: (data['projectCode'] ?? '').toString(),
       poNumber: (data['poNumber'] ?? '').toString(),
+      customerName: (data['customerName'] ?? '').toString(),
       bomId: (data['bomId'] ?? '').toString(),
-      bomNumber: (data['bomNumber'] ?? data['bomReference'] ?? '').toString(),
+      bomNumber: (data['bomNumber'] ?? '').toString(),
       status: (data['status'] ?? 'draft').toString(),
       lines: lines,
-      totalWeightKg: doubleFromValue(data['totalWeightKg']),
       tenantId: (data['tenantId'] ?? '').toString(),
       companyId: (data['companyId'] ?? '').toString(),
       createdAt: dateTimeFromValue(data['createdAt']),

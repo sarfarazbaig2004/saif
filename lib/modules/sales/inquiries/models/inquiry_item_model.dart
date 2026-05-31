@@ -10,6 +10,13 @@ class InquiryItemModel {
   final String drawingRef;
   final String remarks;
 
+  final String bomId;
+  final String bomNumber;
+  final String bomRevision;
+  final String bomRevisionId;
+  final String costingSheetId;
+  final double totalWeightKg;
+
   const InquiryItemModel({
     required this.id,
     required this.itemName,
@@ -21,6 +28,12 @@ class InquiryItemModel {
     required this.finish,
     required this.drawingRef,
     required this.remarks,
+    this.bomId = '',
+    this.bomNumber = '',
+    this.bomRevision = '',
+    this.bomRevisionId = '',
+    this.costingSheetId = '',
+    this.totalWeightKg = 0,
   });
 
   factory InquiryItemModel.empty() {
@@ -50,6 +63,12 @@ class InquiryItemModel {
       finish: (map['finish'] ?? '').toString(),
       drawingRef: (map['drawingRef'] ?? '').toString(),
       remarks: (map['remarks'] ?? '').toString(),
+      bomId: (map['bomId'] ?? '').toString(),
+      bomNumber: (map['bomNumber'] ?? '').toString(),
+      bomRevision: (map['bomRevision'] ?? '').toString(),
+      bomRevisionId: (map['bomRevisionId'] ?? '').toString(),
+      costingSheetId: (map['costingSheetId'] ?? '').toString(),
+      totalWeightKg: _toDouble(map['totalWeightKg'] ?? map['weightKg']),
     );
   }
 
@@ -65,6 +84,12 @@ class InquiryItemModel {
       'finish': finish,
       'drawingRef': drawingRef,
       'remarks': remarks,
+      'bomId': bomId,
+      'bomNumber': bomNumber,
+      'bomRevision': bomRevision,
+      'bomRevisionId': bomRevisionId,
+      'costingSheetId': costingSheetId,
+      'totalWeightKg': totalWeightKg,
     };
   }
 

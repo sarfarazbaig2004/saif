@@ -58,9 +58,12 @@ class JobCardDetailScreen extends StatelessWidget {
         requirementNo: repository.nextRequirementNo(jobCard.jobCardNo),
         jobCardId: jobCard.jobCardId,
         jobCardNo: jobCard.jobCardNo,
+        customerPoId: jobCard.customerPoId,
         customerName: jobCard.customerName,
         projectCode: jobCard.projectCode,
         poNumber: jobCard.poNumber,
+        bomId: jobCard.bomId,
+        bomNumber: jobCard.bomReference,
         status: 'draft',
         lines: lines,
         totalWeightKg: totalWeight,
@@ -102,9 +105,12 @@ class JobCardDetailScreen extends StatelessWidget {
       requirementNo: 'Preview',
       jobCardId: jobCard.jobCardId,
       jobCardNo: jobCard.jobCardNo,
+      customerPoId: jobCard.customerPoId,
       customerName: jobCard.customerName,
       projectCode: jobCard.projectCode,
       poNumber: jobCard.poNumber,
+      bomId: jobCard.bomId,
+      bomNumber: jobCard.bomReference,
       status: 'draft',
       lines: lines,
       totalWeightKg: lines.fold<double>(
@@ -156,6 +162,10 @@ class JobCardDetailScreen extends StatelessWidget {
               section: section,
               requiredWeightKg: weight > 0 ? weight : qty,
               requiredQty: qty,
+              availableQty: 0,
+              reservedQty: 0,
+              shortageQty: 0,
+              purchaseRequiredQty: 0,
               unit: weight > 0
                   ? 'KG'
                   : _firstNonEmpty([item['uom'], item['unit']]),
@@ -181,6 +191,10 @@ class JobCardDetailScreen extends StatelessWidget {
                 ? line.quantity
                 : 0,
             requiredQty: line.quantity,
+            availableQty: 0,
+            reservedQty: 0,
+            shortageQty: 0,
+            purchaseRequiredQty: 0,
             unit: line.unit,
             lengthMm: 0,
             remarks:

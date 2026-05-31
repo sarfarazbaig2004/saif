@@ -23,6 +23,12 @@ class SalesItemMapper {
       material: item.material,
       finish: item.finish,
       remarks: item.remarks,
+      bomId: item.bomId,
+      bomNumber: item.bomNumber,
+      bomRevision: item.bomRevision,
+      bomRevisionId: item.bomRevisionId,
+      costingSheetId: item.costingSheetId,
+      totalWeightKg: item.totalWeightKg,
     );
   }
 

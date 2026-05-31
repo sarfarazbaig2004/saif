@@ -1780,6 +1780,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
             prefixIcon: const Icon(Icons.account_tree_outlined),
           ),
           items: const [
+            DropdownMenuItem(value: 'Draft', child: Text('Draft')),
             DropdownMenuItem(
               value: 'BOM Available',
               child: Text('BOM Available'),

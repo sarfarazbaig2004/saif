@@ -12,6 +12,13 @@ class QuotationItemModel {
   final String finish;
   final String remarks;
 
+  final String bomId;
+  final String bomNumber;
+  final String bomRevision;
+  final String bomRevisionId;
+  final String costingSheetId;
+  final double totalWeightKg;
+
   const QuotationItemModel({
     required this.id,
     required this.inquiryItemId,
@@ -25,6 +32,12 @@ class QuotationItemModel {
     required this.material,
     required this.finish,
     required this.remarks,
+    this.bomId = '',
+    this.bomNumber = '',
+    this.bomRevision = '',
+    this.bomRevisionId = '',
+    this.costingSheetId = '',
+    this.totalWeightKg = 0,
   });
 
   factory QuotationItemModel.fromMap(Map<String, dynamic> map) {
@@ -41,13 +54,17 @@ class QuotationItemModel {
       material: (map['material'] ?? '').toString(),
       finish: (map['finish'] ?? '').toString(),
       remarks: (map['remarks'] ?? '').toString(),
+      bomId: (map['bomId'] ?? '').toString(),
+      bomNumber: (map['bomNumber'] ?? '').toString(),
+      bomRevision: (map['bomRevision'] ?? '').toString(),
+      bomRevisionId: (map['bomRevisionId'] ?? '').toString(),
+      costingSheetId: (map['costingSheetId'] ?? '').toString(),
+      totalWeightKg: _toDouble(map['totalWeightKg'] ?? map['weightKg']),
     );
   }
 
   double get basicAmount => quantity * unitRate;
-
   double get gstAmount => basicAmount * gstPercent / 100;
-
   double get totalAmount => basicAmount + gstAmount;
 
   Map<String, dynamic> toMap() {
@@ -67,6 +84,12 @@ class QuotationItemModel {
       'material': material,
       'finish': finish,
       'remarks': remarks,
+      'bomId': bomId,
+      'bomNumber': bomNumber,
+      'bomRevision': bomRevision,
+      'bomRevisionId': bomRevisionId,
+      'costingSheetId': costingSheetId,
+      'totalWeightKg': totalWeightKg,
     };
   }
 

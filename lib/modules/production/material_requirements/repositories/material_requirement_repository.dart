@@ -27,6 +27,29 @@ class MaterialRequirementRepository {
     return 'MR-$source-$suffix';
   }
 
+  Stream<List<MaterialRequirementModel>> watchRequirements() {
+    return _ref
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map(MaterialRequirementModel.fromFirestore)
+              .toList(growable: false),
+        );
+  }
+
+  Future<MaterialRequirementModel?> fetchRequirement(
+    String requirementId,
+  ) async {
+    final id = requirementId.trim();
+    if (id.isEmpty) return null;
+
+    final snapshot = await _ref.doc(id).get();
+    if (!snapshot.exists) return null;
+
+    return MaterialRequirementModel.fromFirestore(snapshot);
+  }
+
   Future<void> save(MaterialRequirementModel requirement) {
     return _ref.doc(requirement.requirementId).set({
       ...requirement.toFirestore(),
