@@ -18,6 +18,8 @@ class MaterialMasterModel {
   final String coating;
   final String coatingType;
   final String coatingSpec;
+  final double baseWeightPerMeter;
+  final String coatingFormula;
   final double density;
   final String formulaType;
   final String weightFormula;
@@ -42,6 +44,8 @@ class MaterialMasterModel {
     required this.standardWeightPerMeter,
     required this.unit,
     this.isActive = true,
+    this.baseWeightPerMeter = 0,
+    this.coatingFormula = '',
   });
 
   /// Normalized code for duplicate detection (uppercase, no spaces/hyphens)
@@ -90,6 +94,8 @@ class MaterialMasterModel {
       'formulaType': formulaType,
       'weightFormula': weightFormula.isEmpty ? formulaType : weightFormula,
       'standardWeightPerMeter': standardWeightPerMeter,
+      'baseWeightPerMeter': baseWeightPerMeter,
+      'coatingFormula': coatingFormula,
       'unit': unit,
       'isActive': isActive,
       'updatedAt': FieldValue.serverTimestamp(),
@@ -123,6 +129,10 @@ class MaterialMasterModel {
       standardWeightPerMeter: doubleFromValue(
         map['standardWeightPerMeter'] ?? map['unitWeightKgPerM'],
       ),
+      baseWeightPerMeter: doubleFromValue(
+        map['baseWeightPerMeter'] ?? map['standardWeightPerMeter'] ?? 0,
+      ),
+      coatingFormula: (map['coatingFormula'] ?? '').toString(),
       unit: (map['unit'] ?? 'KG').toString(),
       isActive: map['isActive'] == null ? true : map['isActive'] == true,
     );
