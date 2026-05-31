@@ -47,6 +47,20 @@ class JobCardDetailScreen extends StatelessWidget {
       final repository = MaterialRequirementRepository(
         tenantId: activeTenantId,
       );
+
+      final existing = await repository.fetchByJobCard(jobCard.jobCardId);
+      if (existing != null) {
+        if (!context.mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Material requirement already exists: ${existing.requirementNo}',
+            ),
+          ),
+        );
+        return;
+      }
+
       final requirementId = repository.newRequirementId();
       final totalWeight = lines.fold<double>(
         0,
@@ -63,7 +77,7 @@ class JobCardDetailScreen extends StatelessWidget {
         projectCode: jobCard.projectCode,
         poNumber: jobCard.poNumber,
         bomId: jobCard.bomId,
-        bomNumber: jobCard.bomReference,
+        bomNumber: _cleanBomReference(jobCard.bomReference),
         status: 'draft',
         lines: lines,
         totalWeightKg: totalWeight,
@@ -164,8 +178,8 @@ class JobCardDetailScreen extends StatelessWidget {
               requiredQty: qty,
               availableQty: 0,
               reservedQty: 0,
-              shortageQty: 0,
-              purchaseRequiredQty: 0,
+              shortageQty: weight > 0 ? weight : qty,
+              purchaseRequiredQty: weight > 0 ? weight : qty,
               unit: weight > 0
                   ? 'KG'
                   : _firstNonEmpty([item['uom'], item['unit']]),
@@ -193,8 +207,8 @@ class JobCardDetailScreen extends StatelessWidget {
             requiredQty: line.quantity,
             availableQty: 0,
             reservedQty: 0,
-            shortageQty: 0,
-            purchaseRequiredQty: 0,
+            shortageQty: line.quantity,
+            purchaseRequiredQty: line.quantity,
             unit: line.unit,
             lengthMm: 0,
             remarks:
@@ -351,6 +365,12 @@ class JobCardDetailScreen extends StatelessWidget {
   }
 
   String _string(Object? value) => value?.toString().trim() ?? '';
+
+  String _cleanBomReference(String value) {
+    final text = value.trim();
+    if (text.startsWith('{')) return jobCard.bomId;
+    return text;
+  }
 
   double _toDouble(Object? value) {
     if (value is num) return value.toDouble();

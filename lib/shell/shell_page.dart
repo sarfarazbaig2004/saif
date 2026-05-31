@@ -40,6 +40,7 @@ enum ShellPage {
   purchaseOrders,
   purchaseGrn,
   purchaseLedger,
+  purchaseRequisitions,
 
   // Inventory
   inventoryProducts,
@@ -70,6 +71,7 @@ enum ShellPage {
   productionGalvanizing,
   productionInspections,
   productionEntries,
+  productionMaterialRequirements,
 
   // HR
   hrHome,
@@ -162,6 +164,8 @@ extension ShellPageX on ShellPage {
         return 'GRN / Material Receipt';
       case ShellPage.purchaseLedger:
         return 'Vendor Ledger';
+      case ShellPage.purchaseRequisitions:
+        return 'Purchase Requisitions';
 
       case ShellPage.inventoryProducts:
         return 'Raw Materials';
@@ -213,6 +217,8 @@ extension ShellPageX on ShellPage {
         return 'Inspections';
       case ShellPage.productionEntries:
         return 'Production Entries';
+      case ShellPage.productionMaterialRequirements:
+        return 'Material Requirements';
 
       case ShellPage.hrHome:
         return 'HR';
@@ -321,6 +327,8 @@ extension ShellPageX on ShellPage {
         return Icons.inventory_outlined;
       case ShellPage.purchaseLedger:
         return Icons.menu_book_outlined;
+      case ShellPage.purchaseRequisitions:
+        return Icons.assignment_returned_outlined;
       case ShellPage.inventoryProducts:
         return Icons.inventory_2_outlined;
       case ShellPage.inventoryMaterialMaster:
@@ -370,6 +378,8 @@ extension ShellPageX on ShellPage {
         return Icons.fact_check_outlined;
       case ShellPage.productionEntries:
         return Icons.factory_outlined;
+      case ShellPage.productionMaterialRequirements:
+        return Icons.inventory_2_outlined;
       case ShellPage.hrHome:
         return Icons.badge_outlined;
       case ShellPage.financeProforma:

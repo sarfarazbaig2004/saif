@@ -50,6 +50,20 @@ class MaterialRequirementRepository {
     return MaterialRequirementModel.fromFirestore(snapshot);
   }
 
+  Future<MaterialRequirementModel?> fetchByJobCard(String jobCardId) async {
+    final id = jobCardId.trim();
+    if (id.isEmpty) return null;
+
+    final snapshot = await _ref
+        .where('jobCardId', isEqualTo: id)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isEmpty) return null;
+
+    return MaterialRequirementModel.fromFirestore(snapshot.docs.first);
+  }
+
   Future<void> save(MaterialRequirementModel requirement) {
     return _ref.doc(requirement.requirementId).set({
       ...requirement.toFirestore(),

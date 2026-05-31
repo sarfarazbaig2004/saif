@@ -24,6 +24,7 @@ import 'package:QUIK/modules/purchase/miraj/screens/vendor_ledger_screen.dart';
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_master_screen.dart';
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_offer_screen.dart';
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_purchase_order_screen.dart';
+import 'package:QUIK/modules/purchase/purchase_requisitions/screens/purchase_requisition_list_screen.dart';
 import 'package:QUIK/modules/sales/inquiries/screens_inquiry_list.dart';
 import 'package:QUIK/modules/sales/quotations/screens_quotation_list.dart';
 import 'package:QUIK/modules/settings/screen_settings_home.dart';
@@ -49,6 +50,7 @@ import 'package:QUIK/modules/production/execution/screens/production_entry_list_
 import 'package:QUIK/modules/production/galvanizing/screens/galvanizing_job_list_screen.dart';
 import 'package:QUIK/modules/production/inspections/screens/inspection_list_screen.dart';
 import 'package:QUIK/modules/production/job_cards/screens/job_card_list_screen.dart';
+import 'package:QUIK/modules/production/material_requirements/screens/material_requirement_list_screen.dart';
 import 'package:QUIK/modules/production/masters/screens/item_list_screen.dart';
 import 'package:QUIK/modules/production/masters/screens/process_list_screen.dart';
 import 'package:QUIK/modules/production/masters/screens/work_center_list_screen.dart';
@@ -307,6 +309,9 @@ class _QuikShellState extends State<QuikShell> {
             (_hasPermission('purchase', 'vendorLedger') ||
                 _hasPermission('purchase', 'vendors') ||
                 _hasPermission('purchase', 'purchaseOrders'));
+      case ShellPage.purchaseRequisitions:
+        return _hasPermission('purchase', 'purchaseOrders') ||
+            _hasPermission('purchase', 'vendors');
       // Inventory
       case ShellPage.inventoryProducts:
         return _hasPermission('inventory', 'products');
@@ -344,6 +349,7 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.productionGalvanizing:
       case ShellPage.productionInspections:
       case ShellPage.productionEntries:
+      case ShellPage.productionMaterialRequirements:
         return _isModuleEnabled(ModuleIds.production);
       case ShellPage.hrHome:
         return _hasPermission('hr', 'employees') ||
@@ -376,7 +382,7 @@ class _QuikShellState extends State<QuikShell> {
       // Administration
       case ShellPage.adminUsers:
         return _hasPermission('administration', 'users');
-        
+
       case ShellPage.adminJoinRequests:
         return true;
       case ShellPage.adminRoles:
@@ -406,7 +412,8 @@ class _QuikShellState extends State<QuikShell> {
         page == ShellPage.productionContractorJobs ||
         page == ShellPage.productionGalvanizing ||
         page == ShellPage.productionInspections ||
-        page == ShellPage.productionEntries;
+        page == ShellPage.productionEntries ||
+        page == ShellPage.productionMaterialRequirements;
   }
 
   bool _isDispatchPage(ShellPage page) {
@@ -422,7 +429,8 @@ class _QuikShellState extends State<QuikShell> {
         page == ShellPage.purchasePurchaseOrders ||
         page == ShellPage.purchaseOrders ||
         page == ShellPage.purchaseGrn ||
-        page == ShellPage.purchaseLedger;
+        page == ShellPage.purchaseLedger ||
+        page == ShellPage.purchaseRequisitions;
   }
 
   String _dispatchPermissionKey(ShellPage page) {
@@ -612,6 +620,7 @@ class _QuikShellState extends State<QuikShell> {
         icon: Icons.shopping_cart_outlined,
         children: [
           ShellPage.purchaseVendors,
+          ShellPage.purchaseRequisitions,
           ShellPage.purchaseVendorOffers,
           ShellPage.purchasePurchaseOrders,
           ShellPage.purchaseOrders,
@@ -629,6 +638,7 @@ class _QuikShellState extends State<QuikShell> {
           ShellPage.productionWorkCenters,
           ShellPage.productionBom,
           ShellPage.productionBoq,
+          ShellPage.productionMaterialRequirements,
           ShellPage.productionEntries,
         ],
       ),
@@ -831,6 +841,7 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.productionGalvanizing:
       case ShellPage.productionInspections:
       case ShellPage.productionEntries:
+      case ShellPage.productionMaterialRequirements:
       case ShellPage.hrHome:
       case ShellPage.reportsSales:
         return true;
@@ -1153,6 +1164,12 @@ class _QuikShellState extends State<QuikShell> {
           child: MirajVendorLedgerScreen(tenantId: widget.companyId),
         );
 
+      case ShellPage.purchaseRequisitions:
+        return Padding(
+          padding: const EdgeInsets.all(14),
+          child: PurchaseRequisitionListScreen(tenantId: widget.companyId),
+        );
+
       case ShellPage.purchaseGrn:
         return Padding(
           padding: const EdgeInsets.all(10),
@@ -1365,6 +1382,12 @@ class _QuikShellState extends State<QuikShell> {
         return Padding(
           padding: const EdgeInsets.all(10),
           child: ProductionEntryListScreen(tenantId: widget.companyId),
+        );
+
+      case ShellPage.productionMaterialRequirements:
+        return Padding(
+          padding: const EdgeInsets.all(10),
+          child: MaterialRequirementListScreen(tenantId: widget.companyId),
         );
 
       case ShellPage.hrHome:

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/production/material_requirements/models/material_requirement_model.dart';
 import 'package:QUIK/modules/production/material_requirements/repositories/material_requirement_repository.dart';
+import 'package:QUIK/modules/production/material_requirements/screens/material_requirement_detail_screen.dart';
 
 class MaterialRequirementListScreen extends StatelessWidget {
   final String tenantId;
@@ -52,6 +53,7 @@ class MaterialRequirementListScreen extends StatelessWidget {
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
+                  showCheckboxColumn: false,
                   columns: const [
                     DataColumn(label: Text('MR No')),
                     DataColumn(label: Text('Customer PO')),
@@ -66,6 +68,17 @@ class MaterialRequirementListScreen extends StatelessWidget {
                   rows: requirements
                       .map((requirement) {
                         return DataRow(
+                          onSelectChanged: (_) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MaterialRequirementDetailScreen(
+                                  tenantId: activeTenantId,
+                                  requirement: requirement,
+                                ),
+                              ),
+                            );
+                          },
                           cells: [
                             DataCell(Text(_dash(requirement.requirementNo))),
                             DataCell(Text(_dash(requirement.poNumber))),
