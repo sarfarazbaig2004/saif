@@ -21,164 +21,71 @@ class _InquiryItemsTable extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: DataTable(
         headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
+        columnSpacing: 22,
         columns: const [
           DataColumn(label: Text('Description')),
-          DataColumn(label: Text('HSN')),
+          DataColumn(label: Text('Project')),
+          DataColumn(label: Text('Structure Type')),
           DataColumn(label: Text('Qty')),
           DataColumn(label: Text('Unit')),
           DataColumn(label: Text('Rate')),
-          DataColumn(label: Text('BOM')),
-          DataColumn(label: Text('')),
+          DataColumn(label: Text('Est. Weight')),
+          DataColumn(label: Text('BOM Status')),
+          DataColumn(label: Text('Quotation Status')),
+          DataColumn(label: Text('Actions')),
         ],
-        rows: List.generate(items.length, (index) {
-          final item = items[index];
-          final bomId = _value(item['bomId']);
-          final bomStatus = _value(item['bomStatus']);
-          final bomLinked = _bool(item['bomLinked']);
-          final normalizedStatus = bomStatus.toLowerCase();
-          final approved = normalizedStatus == 'approved';
-          final state = !bomLinked
-              ? 'Create BOM'
-              : approved
-              ? 'View BOM + Create Revision'
-              : 'Edit BOM + View BOM + Delete';
-          debugPrint(
-            'BOM_BUTTON_STATE index=$index '
-            'inquiryItemId=${_value(item['inquiryItemId'])} '
-            'bomLinked=$bomLinked bomId=$bomId '
-            'bomNumber=${_value(item['bomNumber'])} '
-            'bomStatus=$bomStatus state=$state',
-          );
-          return DataRow(
-            cells: [
-              DataCell(
-                SizedBox(
-                  width: 240,
-                  child: Text(_value(item['name'] ?? item['description'])),
-                ),
-              ),
-              DataCell(Text(_value(item['hsn']))),
-              DataCell(Text(InquiryItemsGrid._numberText(item['quantity']))),
-              DataCell(Text(_value(item['unit']))),
-              DataCell(Text(InquiryItemsGrid._numberText(item['price']))),
-              DataCell(
-                !bomLinked
-                    ? OutlinedButton.icon(
-                        onPressed: !_hasAction
-                            ? null
-                            : () => _handleAction(
-                                item,
-                                InquiryBomGridAction.edit,
-                              ),
-                        icon: const Icon(Icons.account_tree_outlined, size: 16),
-                        label: const Text('Create BOM'),
-                      )
-                    : Wrap(
-                        spacing: 8,
-                        children: [
-                          if (approved) ...[
-                            OutlinedButton(
-                              onPressed: !_hasAction
-                                  ? null
-                                  : () => _handleAction(
-                                      item,
-                                      InquiryBomGridAction.view,
-                                    ),
-                              child: const Text('View BOM'),
-                            ),
-                            OutlinedButton(
-                              onPressed: !_hasAction
-                                  ? null
-                                  : () => _handleAction(
-                                      item,
-                                      InquiryBomGridAction.createRevision,
-                                    ),
-                              child: const Text('Create Revision'),
-                            ),
-                          ] else ...[
-                            OutlinedButton(
-                              onPressed: !_hasAction
-                                  ? null
-                                  : () => _handleAction(
-                                      item,
-                                      InquiryBomGridAction.edit,
-                                    ),
-                              child: const Text('Edit'),
-                            ),
-                            OutlinedButton(
-                              onPressed: !_hasAction
-                                  ? null
-                                  : () => _handleAction(
-                                      item,
-                                      InquiryBomGridAction.view,
-                                    ),
-                              child: const Text('View'),
-                            ),
-                            OutlinedButton(
-                              onPressed: !_hasAction
-                                  ? null
-                                  : () => _handleAction(
-                                      item,
-                                      InquiryBomGridAction.delete,
-                                    ),
-                              child: const Text('Delete'),
-                            ),
-                          ],
-                        ],
-                      ),
-              ),
-              DataCell(
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: 'Edit',
-                      onPressed: () => onEdit(index),
-                      icon: const Icon(Icons.edit_outlined, size: 20),
-                    ),
-                    IconButton(
-                      tooltip: 'Delete',
-                      onPressed: () => onDelete(index),
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        size: 20,
-                        color: Colors.redAccent,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          );
-        }),
+        rows: List.generate(items.length, _buildRow),
       ),
     );
   }
 
-  static String _value(dynamic value) => value?.toString().trim() ?? '';
+  DataRow _buildRow(int index) {
+    final item = items[index];
+    final bomStatus = _InquiryItemsTableHelpers.bomStatus(item);
+    final quotationStatus = _InquiryItemsTableHelpers.quotationStatus(item);
 
-  bool get _hasAction => onBomAction != null || onOpenBom != null;
-
-  void _handleAction(Map<String, dynamic> item, InquiryBomGridAction action) {
-    if (onBomAction != null) {
-      onBomAction!(item, action);
-      return;
-    }
-    switch (action) {
-      case InquiryBomGridAction.edit:
-      case InquiryBomGridAction.createRevision:
-        onOpenBom?.call(item, readOnly: false);
-        break;
-      case InquiryBomGridAction.view:
-        onOpenBom?.call(item, readOnly: true);
-        break;
-      case InquiryBomGridAction.delete:
-        break;
-    }
-  }
-
-  static bool _bool(dynamic value) {
-    if (value is bool) return value;
-    return value?.toString().trim().toLowerCase() == 'true';
+    return DataRow(
+      cells: [
+        DataCell(_inquiryDescriptionCell(item)),
+        DataCell(
+          _inquiryShortText(
+            _InquiryItemsTableHelpers.projectName(item),
+            width: 130,
+          ),
+        ),
+        DataCell(
+          _inquiryShortText(
+            _InquiryItemsTableHelpers.structureType(item),
+            width: 130,
+          ),
+        ),
+        DataCell(Text(InquiryItemsGrid._numberText(item['quantity']))),
+        DataCell(Text(_InquiryItemsTableHelpers.dash(item['unit']))),
+        DataCell(Text(InquiryItemsGrid._numberText(item['price']))),
+        DataCell(Text(_InquiryItemsTableHelpers.estimatedWeight(item))),
+        DataCell(
+          _inquiryStatusBadge(
+            bomStatus,
+            _InquiryItemsTableHelpers.bomStatusColor(bomStatus),
+          ),
+        ),
+        DataCell(
+          _inquiryStatusBadge(
+            quotationStatus,
+            _InquiryItemsTableHelpers.quotationStatusColor(quotationStatus),
+          ),
+        ),
+        DataCell(
+          _InquiryItemActions(
+            item: item,
+            index: index,
+            onEdit: onEdit,
+            onDelete: onDelete,
+            onOpenBom: onOpenBom,
+            onBomAction: onBomAction,
+          ),
+        ),
+      ],
+    );
   }
 }

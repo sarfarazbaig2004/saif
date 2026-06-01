@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+part 'inquiry_items_table_helpers.dart';
+part 'inquiry_items_table_cells.dart';
+part 'inquiry_items_table_actions.dart';
 part 'inquiry_items_table.dart';
 part 'inquiry_items_empty.dart';
 
