@@ -145,9 +145,7 @@ class _QuikShellState extends State<QuikShell> {
         r == 'company_super_admin' ||
         r == 'founder' ||
         r == 'ceo' ||
-        r == 'superadmin' ||
-        r == 'admin' ||
-        r == 'manager';
+        r == 'superadmin';
   }
 
   bool get _canViewComplianceLegal {
@@ -257,13 +255,23 @@ class _QuikShellState extends State<QuikShell> {
         return true;
 
       // New Modules
+      // New Modules
       case ShellPage.customerPoList:
+        return _hasPermission('customerPo', 'customerPo');
+
       case ShellPage.projectsList:
+        return _hasPermission('projectsJobCards', 'projects');
+
       case ShellPage.planningDashboard:
       case ShellPage.schedulingCalendar:
+        return _hasPermission('planningScheduling', 'planning');
+
       case ShellPage.engineeringDrawings:
       case ShellPage.engineeringBomBoq:
-        return true; // Let them see the placeholder landing page if module is on
+        return _hasPermission(
+          'engineering',
+          'engineering',
+        ); // Let them see the placeholder landing page if module is on
 
       // Sales
       case ShellPage.salesInquiries:
@@ -344,13 +352,23 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.productionWorkCenters:
       case ShellPage.productionBom:
       case ShellPage.productionBoq:
-      case ShellPage.productionJobCards:
-      case ShellPage.productionContractorJobs:
-      case ShellPage.productionGalvanizing:
-      case ShellPage.productionInspections:
       case ShellPage.productionEntries:
+        return _hasPermission('production', 'jobCards');
       case ShellPage.productionMaterialRequirements:
-        return _isModuleEnabled(ModuleIds.production);
+        return _hasPermission('production', 'materialRequirements') ||
+            _hasPermission('production', 'jobCards');
+
+      case ShellPage.productionJobCards:
+        return _hasPermission('production', 'jobCards');
+
+      case ShellPage.productionContractorJobs:
+        return _hasPermission('production', 'contractorJobs');
+
+      case ShellPage.productionGalvanizing:
+        return _hasPermission('production', 'galvanizing');
+
+      case ShellPage.productionInspections:
+        return _hasPermission('production', 'inspections');
       case ShellPage.hrHome:
         return _hasPermission('hr', 'employees') ||
             _hasPermission('hr', 'attendance') ||
