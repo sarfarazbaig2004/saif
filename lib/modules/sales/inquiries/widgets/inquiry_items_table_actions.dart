@@ -22,28 +22,12 @@ class _InquiryItemActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 260,
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          ..._bomButtons(),
-          IconButton(
-            tooltip: 'Edit Item',
-            onPressed: () => onEdit(index),
-            icon: const Icon(Icons.edit_outlined, size: 19),
-          ),
-          IconButton(
-            tooltip: 'Delete Item',
-            onPressed: () => onDelete(index),
-            icon: const Icon(
-              Icons.delete_outline,
-              size: 19,
-              color: Colors.redAccent,
-            ),
-          ),
-        ],
+      width: 300,
+      height: 44,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: _bomButtons(),
       ),
     );
   }
@@ -53,57 +37,69 @@ class _InquiryItemActions extends StatelessWidget {
     final bomStatus = _InquiryItemsTableHelpers.value(
       item['bomStatus'],
     ).toLowerCase();
-    final approved = bomStatus == 'approved';
 
     if (!bomLinked) {
       return [
-        OutlinedButton.icon(
-          onPressed: !_hasAction
-              ? null
-              : () => _handleAction(InquiryBomGridAction.edit),
-          icon: const Icon(Icons.account_tree_outlined, size: 15),
-          label: const Text('Create BOM'),
+        _smallActionButton(
+          'Create BOM',
+          !_hasAction ? null : () => _handleAction(InquiryBomGridAction.edit),
         ),
       ];
     }
 
-    if (approved) {
+    if (bomStatus == 'approved') {
       return [
-        OutlinedButton(
-          onPressed: !_hasAction
-              ? null
-              : () => _handleAction(InquiryBomGridAction.view),
-          child: const Text('View BOM'),
+        _smallActionButton(
+          'View BOM',
+          !_hasAction ? null : () => _handleAction(InquiryBomGridAction.view),
         ),
-        OutlinedButton(
-          onPressed: !_hasAction
+        const SizedBox(width: 8),
+        _smallActionButton(
+          'Revision',
+          !_hasAction
               ? null
               : () => _handleAction(InquiryBomGridAction.createRevision),
-          child: const Text('Revision'),
         ),
       ];
     }
 
     return [
-      OutlinedButton(
-        onPressed: !_hasAction
-            ? null
-            : () => _handleAction(InquiryBomGridAction.edit),
-        child: const Text('Edit BOM'),
+      _smallActionButton(
+        'Edit BOM',
+        !_hasAction ? null : () => _handleAction(InquiryBomGridAction.edit),
       ),
-      OutlinedButton(
-        onPressed: !_hasAction
-            ? null
-            : () => _handleAction(InquiryBomGridAction.view),
-        child: const Text('View'),
+      const SizedBox(width: 8),
+      _smallActionButton(
+        'View',
+        !_hasAction ? null : () => _handleAction(InquiryBomGridAction.view),
       ),
-      OutlinedButton(
-        onPressed: !_hasAction
-            ? null
-            : () => _handleAction(InquiryBomGridAction.delete),
-        child: const Text('Delete'),
+      const SizedBox(width: 8),
+      _smallActionButton(
+        'Delete',
+        !_hasAction ? null : () => _handleAction(InquiryBomGridAction.delete),
       ),
     ];
+  }
+
+  Widget _smallActionButton(String label, VoidCallback? onPressed) {
+    return SizedBox(
+      height: 36,
+      child: OutlinedButton(
+        onPressed: onPressed,
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          minimumSize: const Size(0, 36),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          visualDensity: VisualDensity.compact,
+        ),
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+    );
   }
 
   void _handleAction(InquiryBomGridAction action) {
