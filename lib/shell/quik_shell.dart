@@ -85,7 +85,7 @@ class QuikShell extends StatefulWidget {
 }
 
 class _QuikShellState extends State<QuikShell> {
-  ShellPage activePage = ShellPage.dashboard;
+  ShellPage? activePage;
 
   String? _resolvedIndustry;
 
@@ -248,7 +248,7 @@ class _QuikShellState extends State<QuikShell> {
 
     switch (page) {
       case ShellPage.dashboard:
-        return true;
+        return _hasPermission('dashboard', 'dashboard');
       case ShellPage.platformTenantModules:
         return false;
       case ShellPage.settingsGeneral:
@@ -873,25 +873,26 @@ class _QuikShellState extends State<QuikShell> {
   }
 
   String _activeSectionTitle() {
-    if (activePage == ShellPage.dashboard) return 'Dashboard';
-    if (activePage == ShellPage.settingsGeneral) return 'Settings';
-    if (activePage == ShellPage.financeTaxInvoiceCreate) {
+    final page = activePage;
+
+    if (page == null) return 'Loading';
+    if (page == ShellPage.dashboard) return 'Dashboard';
+    if (page == ShellPage.settingsGeneral) return 'Settings';
+    if (page == ShellPage.financeTaxInvoiceCreate) {
       return 'Finance • Create Tax Invoice';
     }
-    if (activePage == ShellPage.financeExportInvoiceCreate) {
+    if (page == ShellPage.financeExportInvoiceCreate) {
       return 'Finance • Create Export Invoice';
     }
 
-    if (_currentSidebarGroups.any(
-      (group) => group.children.contains(activePage),
-    )) {
+    if (_currentSidebarGroups.any((group) => group.children.contains(page))) {
       final group = _currentSidebarGroups.firstWhere(
-        (g) => g.children.contains(activePage),
+        (g) => g.children.contains(page),
       );
-      return '${group.title} • ${activePage.label}';
+      return '${group.title} • ${page.label}';
     }
 
-    return activePage.label;
+    return page.label;
   }
 
   String _resolvedEmployeeName() {
@@ -1034,8 +1035,18 @@ class _QuikShellState extends State<QuikShell> {
         _currentSidebarGroups = _computeSidebarGroups();
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && !_canViewPage(activePage)) {
-            setState(() => activePage = ShellPage.dashboard);
+          if (!mounted) return;
+
+          final allowedPages = <ShellPage>[
+            if (_canViewPage(ShellPage.dashboard)) ShellPage.dashboard,
+            ..._currentSidebarGroups.expand((group) => group.children),
+          ];
+
+          final nextPage = allowedPages.isNotEmpty ? allowedPages.first : null;
+
+          if (activePage == null ||
+              (activePage != null && !_canViewPage(activePage!))) {
+            setState(() => activePage = nextPage);
           }
         });
 
@@ -1044,13 +1055,14 @@ class _QuikShellState extends State<QuikShell> {
           body: Row(
             children: [
               ShellSidebar(
-                activePage: activePage,
+                activePage: activePage ?? ShellPage.dashboard,
                 sidebarGroups: _currentSidebarGroups,
                 canInquiries: canInquiries,
                 companyId: widget.companyId,
                 userUid: widget.userUid,
                 currentRole: _currentRole,
                 showSettings: _isModuleEnabled(ModuleIds.settings),
+                showDashboard: _canViewPage(ShellPage.dashboard),
                 onSelectPage: _selectPage,
                 onLogout: _logout,
               ),
@@ -1070,15 +1082,15 @@ class _QuikShellState extends State<QuikShell> {
   }
 
   Widget _buildActiveBody() {
-    if (!_canViewPage(activePage)) {
-      return Padding(
-        padding: const EdgeInsets.all(10),
-        child: DashboardScreen(
-          companyId: widget.companyId,
-          userName: widget.companyName,
-          currentUserId: widget.userUid,
-          permissions: _currentPermissions,
-          role: _currentRole,
+    if (activePage == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_canViewPage(activePage!)) {
+      return const Center(
+        child: Text(
+          'You do not have permission to access this page',
+          style: TextStyle(fontWeight: FontWeight.w700),
         ),
       );
     }
@@ -1453,7 +1465,7 @@ class _QuikShellState extends State<QuikShell> {
         // This acts as the fallback landing page for Customer PO, Projects, etc.
         return Padding(
           padding: const EdgeInsets.all(10),
-          child: _moduleLandingPage(activePage),
+          child: _moduleLandingPage(activePage!),
         );
     }
   }

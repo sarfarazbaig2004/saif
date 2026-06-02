@@ -12,6 +12,7 @@ class ShellSidebar extends StatefulWidget {
   final String userUid;
   final String currentRole;
   final bool showSettings;
+  final bool showDashboard;
   final double width;
   final void Function(ShellPage) onSelectPage;
   final VoidCallback onLogout;
@@ -25,6 +26,7 @@ class ShellSidebar extends StatefulWidget {
     required this.userUid,
     required this.currentRole,
     required this.showSettings,
+    required this.showDashboard,
     this.width = 240,
     required this.onSelectPage,
     required this.onLogout,
@@ -148,8 +150,10 @@ class _ShellSidebarState extends State<ShellSidebar> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
                 children: [
-                  _dashboardNavItem(),
-                  const SizedBox(height: 6),
+                  if (widget.showDashboard) ...[
+                    _dashboardNavItem(),
+                    const SizedBox(height: 6),
+                  ],
                   ...widget.sidebarGroups.map(_groupWidget),
                   if (widget.showSettings) ...[
                     const SizedBox(height: 6),
