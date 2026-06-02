@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:QUIK/modules/engineering/bom/services/bom_galvanising_weight_service.dart';
 
 import 'package:QUIK/modules/engineering/bom/helpers/bom_column_config.dart';
 import 'package:QUIK/modules/engineering/bom/models/engineering_bom_line_model.dart';
@@ -21,12 +20,14 @@ class BomLineDraft {
   final unitWeightKgPerMeter = TextEditingController();
   final coatingType = TextEditingController(text: 'HDG');
   final coatingSpec = TextEditingController();
+  final coatingPercent = TextEditingController();
   final yieldStrength = TextEditingController();
   final galvanizingMicron = TextEditingController();
   final grade = TextEditingController();
   final formulaType = TextEditingController();
   final remarks = TextEditingController();
   final customValues = <String, TextEditingController>{};
+
   String materialMasterId = '';
 
   BomLineDraft({String? itemDescription, double? qty}) {
@@ -49,6 +50,8 @@ class BomLineDraft {
   double get idMmValue => _toDouble(idMm.text);
   double get heightMmValue => _toDouble(heightMm.text);
   double get unitWeightKgPerMeterValue => _toDouble(unitWeightKgPerMeter.text);
+  double get coatingPercentValue => _toDouble(coatingPercent.text) / 100;
+
   double get steelWeight => BomWeightCalculator.lineWeight(
     qtyPerStructure: qtyPerStructureValue,
     lengthMm: lengthMmValue,
@@ -61,12 +64,8 @@ class BomLineDraft {
 
   double get galvanisingWeight => lineWeight - steelWeight;
 
-  double get lineWeight => BomGalvanisingWeightService.finalWeight(
-    baseWeight: steelWeight,
-    materialStatus: coatingType.text,
-    coatingSpec: coatingSpec.text,
-    thicknessMm: thicknessMmValue,
-  );
+  double get lineWeight => steelWeight * (1 + coatingPercentValue);
+
   bool get weightFormulaMissing {
     return sectionCode.text.trim().isNotEmpty &&
         qtyPerStructureValue > 0 &&
@@ -96,28 +95,37 @@ class BomLineDraft {
       'grade=${selected.materialGrade} yieldStrength=${selected.yieldStrength} '
       'kgm=${selected.standardWeightPerMeter}',
     );
+
     materialMasterId = selected.id;
     sectionCode.text = selected.materialCode;
     materialCategory.text = _categoryFrom(selected);
     materialName.text = selected.materialName.trim().isEmpty
         ? selected.displayName
         : selected.materialName;
+
     final selectedGrade = selected.materialGrade.trim();
     grade.text = selectedGrade;
+
     final selectedYield = selected.yieldStrength.trim();
-    if (selectedYield.isNotEmpty) {
-      yieldStrength.text = selectedYield;
-    } else {
-      yieldStrength.text = selectedGrade;
-    }
+    yieldStrength.text = selectedYield.isNotEmpty
+        ? selectedYield
+        : selectedGrade;
+
     final selectedCoating = selected.coatingType.trim().isNotEmpty
         ? selected.coatingType.trim()
         : selected.coating.trim();
+
     coatingType.text = selectedCoating;
     coatingSpec.text = selected.coatingSpec.trim();
+    coatingPercent.text = _fallbackCoatingPercent(
+      coatingType: selectedCoating,
+      coatingSpec: selected.coatingSpec,
+    );
+
     final formula = selected.weightFormula.trim().isNotEmpty
         ? selected.weightFormula.trim()
         : selected.formulaType.trim();
+
     formulaType.text = formula;
     unitWeightKgPerMeter.text = selected.standardWeightPerMeter > 0
         ? _format(selected.standardWeightPerMeter)
@@ -182,6 +190,7 @@ class BomLineDraft {
       unitWeightKgPerMeter,
       coatingType,
       coatingSpec,
+      coatingPercent,
       yieldStrength,
       galvanizingMicron,
       grade,
@@ -190,6 +199,7 @@ class BomLineDraft {
     ]) {
       c.dispose();
     }
+
     for (final controller in customValues.values) {
       controller.dispose();
     }
@@ -200,7 +210,20 @@ class BomLineDraft {
     return m.materialShape.trim();
   }
 
+  static String _fallbackCoatingPercent({
+    required String coatingType,
+    required String coatingSpec,
+  }) {
+    final type = coatingType.toLowerCase();
+    final spec = coatingSpec.toLowerCase();
+
+    if (type.contains('hdg') && spec.contains('80')) return '4';
+    if (type.contains('hdg') && spec.contains('100')) return '7';
+    return '0';
+  }
+
   static double _toDouble(String value) => double.tryParse(value.trim()) ?? 0;
+
   static String _format(double v) =>
       v == v.roundToDouble() ? v.toInt().toString() : v.toString();
 }
