@@ -1,12 +1,12 @@
 // FILE PATH: lib/modules/settings/screen_settings_home.dart
-
+import 'package:QUIK/modules/settings/coating_master/coating_master_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
 
-enum _SettingsSection { personal, workspace, access, system, danger }
+enum _SettingsSection { personal, workspace, access, system, coating, danger }
 
 class ScreenSettingsHome extends StatefulWidget {
   final String companyId;
@@ -39,8 +39,15 @@ class ScreenSettingsHome extends StatefulWidget {
 class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
   _SettingsSection _activeSection = _SettingsSection.personal;
 
-  bool get isAdmin => widget.role.toLowerCase() == 'admin';
+  bool get isAdmin {
+    final role = widget.role.toLowerCase();
+    return role == 'admin' ||
+        role == 'company_super_admin' ||
+        role == 'super_admin';
+  }
+
   bool get isManager => widget.role.toLowerCase() == 'manager';
+
   bool get isAdminOrManager => isAdmin || isManager;
   bool get isExportImport => widget.industry == 'export_import';
 
@@ -84,6 +91,12 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
           section: _SettingsSection.system,
           title: 'System',
           icon: Icons.settings_suggest_outlined,
+        ),
+      if (!isExportImport && isAdminOrManager)
+        const _NavItemData(
+          section: _SettingsSection.coating,
+          title: 'Coating Master',
+          icon: Icons.layers_outlined,
         ),
       const _NavItemData(
         section: _SettingsSection.danger,
@@ -215,6 +228,8 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
         return _buildAccessSection();
       case _SettingsSection.system:
         return _buildSystemSection();
+      case _SettingsSection.coating:
+        return CoatingMasterScreen(tenantId: widget.companyId);
       case _SettingsSection.danger:
         return _buildDangerSection();
     }
@@ -335,6 +350,18 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
             enabled: canOpenAuditLogs,
             onTap: widget.onOpenAuditLogs,
           ),
+        _ActionTile(
+          title: 'Coating Master',
+          subtitle:
+              'Manage HDG, Galvalume, AZ150, AZ350, ZM350 coating percentages.',
+          icon: Icons.layers_outlined,
+          enabled: isAdminOrManager,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => CoatingMasterScreen(tenantId: widget.companyId),
+            ),
+          ),
+        ),
         if (!isExportImport) ...[
           _ActionTile(
             title: 'Integrations',

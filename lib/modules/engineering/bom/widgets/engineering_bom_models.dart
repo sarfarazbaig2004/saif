@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:QUIK/modules/engineering/bom/services/bom_galvanising_weight_service.dart';
 
 import 'package:QUIK/modules/engineering/bom/helpers/bom_column_config.dart';
 import 'package:QUIK/modules/engineering/bom/models/engineering_bom_line_model.dart';
@@ -48,9 +49,7 @@ class BomLineDraft {
   double get idMmValue => _toDouble(idMm.text);
   double get heightMmValue => _toDouble(heightMm.text);
   double get unitWeightKgPerMeterValue => _toDouble(unitWeightKgPerMeter.text);
-  double get steelWeight => lineWeight;
-  double get galvanisingWeight => 0;
-  double get lineWeight => BomWeightCalculator.lineWeight(
+  double get steelWeight => BomWeightCalculator.lineWeight(
     qtyPerStructure: qtyPerStructureValue,
     lengthMm: lengthMmValue,
     widthMm: widthMmValue,
@@ -58,6 +57,15 @@ class BomLineDraft {
     unitWeightKgPerMeter: unitWeightKgPerMeterValue,
     materialCategory: materialCategory.text,
     materialCode: sectionCode.text,
+  );
+
+  double get galvanisingWeight => lineWeight - steelWeight;
+
+  double get lineWeight => BomGalvanisingWeightService.finalWeight(
+    baseWeight: steelWeight,
+    materialStatus: coatingType.text,
+    coatingSpec: coatingSpec.text,
+    thicknessMm: thicknessMmValue,
   );
   bool get weightFormulaMissing {
     return sectionCode.text.trim().isNotEmpty &&
