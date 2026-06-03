@@ -37,6 +37,9 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
+  final TextEditingController departmentController = TextEditingController(
+    text: 'Sales',
+  );
 
   bool isLoading = false;
   bool sendInviteNow = true;
@@ -49,21 +52,21 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   bool get isExportImport => widget.industry == 'export_import';
 
   final List<String> _defaultRoles = [
-  UserRoles.admin,
-  UserRoles.manager,
-  UserRoles.sales,
-  UserRoles.service,
+    UserRoles.admin,
+    UserRoles.manager,
+    UserRoles.sales,
+    UserRoles.service,
   ];
   final List<String> _defaultDepartments = [
-  'Sales',
-  'CRM',
-  'Inventory',
-  'Purchase',
-  'Dispatch',
-  'Finance',
-  'Administration',
-  'Management',
-  'Service',
+    'Sales',
+    'CRM',
+    'Inventory',
+    'Purchase',
+    'Dispatch',
+    'Finance',
+    'Administration',
+    'Management',
+    'Service',
   ];
 
   final List<Map<String, dynamic>> _tenantDepartments = [];
@@ -98,55 +101,33 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     }
   }
 
-  final Map<String, List<String>> _designationOptionsByDepartment = const {
-    'Sales': [
-      'Sales Executive',
-      'Senior Sales Executive',
-      'Area Sales Manager',
-      'Regional Sales Manager',
-      'Vice President - Business Development',
-    ],
-    'CRM': [
-      'CRM Executive',
-      'CRM Coordinator',
-      'Customer Relationship Manager',
-    ],
-    'Inventory': [
-      'Store Executive',
-      'Inventory Executive',
-      'Warehouse Executive',
-      'Inventory Manager',
-    ],
-    'Purchase': [
-      'Purchase Executive',
-      'Senior Purchase Executive',
-      'Procurement Manager',
-    ],
-    'Dispatch': [
-      'Dispatch Executive',
-      'Logistics Coordinator',
-      'Dispatch Manager',
-    ],
-    'Finance': ['Accounts Executive', 'Senior Accountant', 'Finance Manager'],
-    'Administration': [
-      'Admin Executive',
-      'Office Administrator',
-      'HR Executive',
-      'Admin Manager',
-    ],
-    'Management': [
-      'General Manager',
-      'Business Head',
-      'Vice President',
-      'Director',
-    ],
-    'Service': [
-      'Service Engineer',
-      'Service Technician',
-      'Service Coordinator',
-      'Service Manager',
-    ],
-  };
+  final List<String> _designationOptions = const [
+    'CEO',
+    'GM',
+    'Factory Head',
+    'Project Head',
+    'Production Head',
+    'Account Head',
+    'Production Manager',
+    'Quality Manager',
+    'Quality Supervisor',
+    'Dispatch Incharge',
+    'HR Executive',
+    'Project Manager',
+    'Project Coordinator',
+    'Safety Officer',
+    'Safety Supervisor',
+    'Store Incharge',
+    'Maintenance Manager',
+    'Maintenance Executive',
+    'Accounts Executive',
+    'Production Engineer',
+    'Vice President - Business Development',
+    'Area Sales Manager',
+    'Sales Executive',
+    'Senior Sales Executive',
+    'Regional Sales Manager',
+  ];
 
   late Map<String, dynamic> permissions;
 
@@ -179,7 +160,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   void initState() {
     super.initState();
     _applyRoleDefaults(selectedRole);
-    _setDefaultDesignationForDepartment(selectedDepartment);
+    _setDefaultDesignation();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _loadTenantMetadata();
@@ -192,20 +173,14 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     nameController.dispose();
     emailController.dispose();
     phoneController.dispose();
+    departmentController.dispose();
     super.dispose();
   }
 
-  void _setDefaultDesignationForDepartment(String department) {
-    final designations =
-        _designationOptionsByDepartment[department] ?? const <String>[];
-    selectedDesignation = designations.isNotEmpty ? designations.first : '';
-  }
-
-  void _onDepartmentChanged(String department) {
-    setState(() {
-      selectedDepartment = department;
-      _setDefaultDesignationForDepartment(department);
-    });
+  void _setDefaultDesignation() {
+    selectedDesignation = _designationOptions.isNotEmpty
+        ? _designationOptions.first
+        : '';
   }
 
   String _departmentLabelFromDoc(Map<String, dynamic> department) {
@@ -243,19 +218,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   }
 
   List<String> _designationOptionsForDepartment(String department) {
-    final departmentDoc = _tenantDepartments.firstWhere(
-      (dept) => _departmentLabelFromDoc(dept) == department,
-      orElse: () => {},
-    );
-
-    if (departmentDoc.isNotEmpty) {
-      final designations = departmentDoc['designations'];
-      if (designations is List) {
-        return designations.map((item) => item.toString()).toList();
-      }
-    }
-
-    return _designationOptionsByDepartment[department] ?? ['Not Assigned'];
+    return _designationOptions;
   }
 
   Map<String, dynamic>? _findRoleDoc(String roleKey) {
@@ -394,37 +357,35 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   }
 
   List<String> get availableRoles {
-  if (_tenantRoles.isNotEmpty) {
-    return _tenantRoles
-        .map(_roleKeyFromDoc)
-        .toList(growable: false);
-        }
+    if (_tenantRoles.isNotEmpty) {
+      return _tenantRoles.map(_roleKeyFromDoc).toList(growable: false);
+    }
 
-  return _defaultRoles;
+    return _defaultRoles;
   }
 
   List<String> get availableDepartments {
-  if (_tenantDepartments.isNotEmpty) {
-    return _tenantDepartments
-        .map(_departmentLabelFromDoc)
-        .toList(growable: false);
-        }
+    if (_tenantDepartments.isNotEmpty) {
+      return _tenantDepartments
+          .map(_departmentLabelFromDoc)
+          .toList(growable: false);
+    }
 
-  return _defaultDepartments;
+    return _defaultDepartments;
   }
 
   bool get _canCreateInvite {
-  if (_isLoadingMetadata) return false;
+    if (_isLoadingMetadata) return false;
 
-  if (!availableRoles.contains(selectedRole)) {
-    return false;
+    if (!availableRoles.contains(selectedRole)) {
+      return false;
     }
 
-  if (!availableDepartments.contains(selectedDepartment)) {
-    return false;
+    if (!availableDepartments.contains(selectedDepartment)) {
+      return false;
     }
 
-  return true;
+    return true;
   }
 
   Widget _buildTenantMetadataStatus() {
@@ -701,7 +662,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
         invitedByUid: widget.currentUid,
         name: nameController.text.trim(),
         phone: phoneController.text.trim(),
-        department: selectedDepartment,
+        department: departmentController.text.trim(),
         designation: selectedDesignation,
         accessScope: selectedAccessScope,
       );
@@ -719,7 +680,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
             'Invite Code: ${result.inviteCode}\n\n'
             'Valid for 7 days.\n'
             'Role: ${formatRole(selectedRole)}\n'
-            'Department: $selectedDepartment\n'
+            'Department: ${departmentController.text.trim()}\n'
             'Designation: $selectedDesignation\n'
             'Selected permissions: ${_selectedPermissionCount(permissions, activeModules)}',
           ),
@@ -737,7 +698,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
       nameController.clear();
       emailController.clear();
       phoneController.clear();
-      _setDefaultDesignationForDepartment(selectedDepartment);
+      _setDefaultDesignation();
 
       Navigator.pop(context, true);
     } catch (e) {
@@ -1354,15 +1315,10 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                                 _applyRoleDefaults(nextRole);
                               },
                             ),
-                            right: _buildDropdownField(
+                            right: _buildTextField(
+                              controller: departmentController,
                               label: 'Department',
-                              value: selectedDepartment,
-                              options: availableDepartments,
                               icon: Icons.apartment_outlined,
-                              onChanged: (value) {
-                                final department = value ?? selectedDepartment;
-                                _onDepartmentChanged(department);
-                              },
                             ),
                           ),
                           const SizedBox(height: 16),
@@ -1378,19 +1334,10 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                                 });
                               },
                             ),
-                            right: _buildDropdownField(
-                              label: 'Access Scope',
-                              value: selectedAccessScope,
-                              options: accessScopeList,
-                              icon: Icons.lock_open_outlined,
-                              labelBuilder: (value) =>
-                                  accessScopeLabels[value] ?? value,
-                              onChanged: (value) {
-                                setState(() {
-                                  selectedAccessScope =
-                                      value ?? AccessScope.company;
-                                });
-                              },
+                            right: _buildTextField(
+                              controller: departmentController,
+                              label: 'Department',
+                              icon: Icons.apartment_outlined,
                             ),
                           ),
                           const SizedBox(height: 16),
