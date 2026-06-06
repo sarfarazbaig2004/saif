@@ -11,11 +11,8 @@ import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_numbe
 import 'package:QUIK/modules/sales/shared/enums/customer_po_status.dart';
 import 'package:QUIK/modules/sales/shared/models/sales_commercial_terms_model.dart';
 import 'quotation_pdf_generator.dart';
-
-const Color primaryColor = Color(0xFF1E3A8A);
-const Color accentColor = Color(0xFF2563EB);
-const Color backgroundLight = Color(0xFFF8FAFC);
-const String quotationSeriesPrefix = 'MEM';
+import 'local/helpers/quotation_local_constants.dart';
+import 'local/widgets/quotation_bottom_action_bar.dart';
 
 class QuotationScreenLocal extends StatefulWidget {
   final int? userId;
@@ -3276,95 +3273,18 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
               ),
             ),
 
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 10,
-                    offset: Offset(0, -2),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Final Total',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                        Text(
-                          '₹ ${_cachedFinalTotal.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: primaryColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        if (_quotationStatus != 'Converted' &&
-                            (_approvalStatus == 'Approved' ||
-                                _isAdminOrManager) &&
-                            widget.quotationId != null)
-                          OutlinedButton(
-                            onPressed: _convertToInvoice,
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: primaryColor),
-                              foregroundColor: primaryColor,
-                            ),
-                            child: const Text('Convert to SO'),
-                          ),
-                        const SizedBox(width: 8),
-                        OutlinedButton.icon(
-                          onPressed: _isReadOnly || _isLoading
-                              ? null
-                              : _convertToCustomerPo,
-                          icon: const Icon(Icons.assignment_turned_in_outlined),
-                          label: const Text('Convert to Customer PO'),
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: primaryColor),
-                            foregroundColor: primaryColor,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton.icon(
-                          onPressed: _isReadOnly || _isLoading
-                              ? null
-                              : _saveQuotation,
-                          icon: _isLoading
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.save),
-                          label: const Text('Save Quotation'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+            QuotationBottomActionBar(
+              finalTotal: _cachedFinalTotal,
+              canConvertToSo:
+                  _quotationStatus != 'Converted' &&
+                  (_approvalStatus == 'Approved' || _isAdminOrManager) &&
+                  widget.quotationId != null,
+              canConvertToCustomerPo: !_isReadOnly && !_isLoading,
+              canSave: !_isReadOnly && !_isLoading,
+              isLoading: _isLoading,
+              onConvertToSo: _convertToInvoice,
+              onConvertToCustomerPo: _convertToCustomerPo,
+              onSave: _saveQuotation,
             ),
           ],
         ),
