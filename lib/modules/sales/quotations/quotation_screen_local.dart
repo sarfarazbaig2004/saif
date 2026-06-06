@@ -13,6 +13,7 @@ import 'package:QUIK/modules/sales/shared/models/sales_commercial_terms_model.da
 import 'quotation_pdf_generator.dart';
 import 'local/helpers/quotation_local_constants.dart';
 import 'local/widgets/quotation_bottom_action_bar.dart';
+import 'local/widgets/quotation_section_header.dart';
 
 class QuotationScreenLocal extends StatefulWidget {
   final int? userId;
@@ -1845,35 +1846,6 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     ],
   );
 
-  Widget _buildSectionHeader(String title, IconData icon, {Widget? trailing}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: accentColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1E293B),
-            ),
-          ),
-          if (trailing != null) const Spacer(),
-          if (trailing != null) trailing,
-        ],
-      ),
-    );
-  }
-
   Future<Map<String, dynamic>?> _selectCustomerDialog() async {
     final searchController = TextEditingController();
     String searchText = '';
@@ -2548,9 +2520,9 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSectionHeader(
-                              'Customer Details',
-                              Icons.business,
+                            QuotationSectionHeader(
+                              title: 'Customer Details',
+                              icon: Icons.business,
                               trailing: _isReadOnly
                                   ? null
                                   : OutlinedButton.icon(
@@ -2778,9 +2750,9 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSectionHeader(
-                              'Quotation & Inquiry Link',
-                              Icons.link,
+                            QuotationSectionHeader(
+                              title: 'Quotation & Inquiry Link',
+                              icon: Icons.link,
                             ),
                             if (_linkedInquiryId != null)
                               Container(
@@ -2864,9 +2836,9 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSectionHeader(
-                              'Line Items',
-                              Icons.inventory_2_outlined,
+                            QuotationSectionHeader(
+                              title: 'Line Items',
+                              icon: Icons.inventory_2_outlined,
                               trailing: _isReadOnly
                                   ? null
                                   : ElevatedButton.icon(
@@ -3042,9 +3014,9 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildSectionHeader(
-                              'Payment Structure',
-                              Icons.account_balance_wallet_outlined,
+                            QuotationSectionHeader(
+                              title: 'Payment Structure',
+                              icon: Icons.account_balance_wallet_outlined,
                             ),
                             Row(
                               children: [
@@ -3106,9 +3078,9 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
 
                             const Divider(height: 30),
 
-                            _buildSectionHeader(
-                              'Terms & Conditions',
-                              Icons.gavel_outlined,
+                            QuotationSectionHeader(
+                              title: 'Terms & Conditions',
+                              icon: Icons.gavel_outlined,
                               trailing: _isReadOnly
                                   ? null
                                   : OutlinedButton.icon(
@@ -3182,9 +3154,9 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
 
                             const Divider(height: 30),
 
-                            _buildSectionHeader(
-                              'Signature Details',
-                              Icons.edit_document,
+                            QuotationSectionHeader(
+                              title: 'Signature Details',
+                              icon: Icons.edit_document,
                             ),
                             Row(
                               children: [
