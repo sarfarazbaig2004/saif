@@ -1183,9 +1183,27 @@ class UserManagementService {
     return snapshot.docs.isNotEmpty;
   }
 
+  Future<bool> hasPendingInviteForPhone({
+    required String companyId,
+    required String phone,
+  }) async {
+    _assertRequiredId('companyId', companyId);
+
+    final normalizedPhone = _normalizePhone(phone);
+    if (normalizedPhone.isEmpty) return false;
+
+    final snapshot = await _companyInvitesCollection(companyId)
+        .where('phone', isEqualTo: normalizedPhone)
+        .where('status', isEqualTo: 'pending')
+        .limit(1)
+        .get();
+
+    return snapshot.docs.isNotEmpty;
+  }
+
   Future<InviteCreationResult> createInvite({
     required String companyId,
-    required String email,
+    String? email,
     required String role,
     required Map<String, dynamic> permissions,
     required String invitedByUid,
@@ -1215,18 +1233,37 @@ class UserManagementService {
       permissions: permissions,
     );
 
-    if (normalizedEmail.isEmpty) {
-      throw ArgumentError('Email is required to create an invite.');
+    if (normalizedEmail.isEmpty && normalizedPhone.isEmpty) {
+      throw ArgumentError('Email or phone number is required to create an invite.');
     }
 
-    final duplicate = await hasPendingInviteForEmail(
-      companyId: companyId,
-      email: normalizedEmail,
-    );
+    if (normalizedEmail.isNotEmpty) {
+      final duplicateEmail = await hasPendingInviteForEmail(
+        companyId: companyId,
+        email: normalizedEmail,
+      );
 
-    if (duplicate) {
-      throw StateError('A pending invite already exists for this email.');
+      if (duplicateEmail) {
+        throw StateError('A pending invite already exists for this email.');
+      }
     }
+
+    if (normalizedPhone.isNotEmpty) {
+      final duplicatePhone = await hasPendingInviteForPhone(
+        companyId: companyId,
+        phone: normalizedPhone,
+      );
+
+      if (duplicatePhone) {
+        throw StateError('A pending invite already exists for this phone number.');
+      }
+    }
+
+    final inviteType = normalizedEmail.isNotEmpty && normalizedPhone.isNotEmpty
+        ? 'email_phone'
+        : normalizedEmail.isNotEmpty
+            ? 'email'
+            : 'phone';
 
     final inviteRef = _companyInvitesCollection(companyId).doc();
 
@@ -1248,6 +1285,11 @@ class UserManagementService {
         'name': _normalizeText(name),
         'email': normalizedEmail,
         'phone': normalizedPhone,
+        'inviteType': inviteType,
+        'otpChannels': [
+          if (normalizedEmail.isNotEmpty) 'email',
+          if (normalizedPhone.isNotEmpty) 'phone',
+        ],
         'role': normalizedRole,
         'roleLabel': _roleLabelFor(normalizedRole, role),
         'permissions': canonicalPermissions,

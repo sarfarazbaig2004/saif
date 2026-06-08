@@ -385,7 +385,10 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
       return false;
     }
 
-    return true;
+    final email = emailController.text.trim();
+    final phone = phoneController.text.trim();
+
+    return email.isNotEmpty || phone.isNotEmpty;
   }
 
   Widget _buildTenantMetadataStatus() {
@@ -1259,9 +1262,16 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                               keyboardType: TextInputType.emailAddress,
                               validator: (v) {
                                 final value = (v ?? '').trim();
-                                if (value.isEmpty) {
-                                  return 'Email is required';
+                                final phone = phoneController.text.trim();
+
+                                if (value.isEmpty && phone.isEmpty) {
+                                  return 'Email or phone number is required';
                                 }
+
+                                if (value.isEmpty) {
+                                  return null;
+                                }
+
                                 final emailRegex = RegExp(
                                   r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
                                 );
