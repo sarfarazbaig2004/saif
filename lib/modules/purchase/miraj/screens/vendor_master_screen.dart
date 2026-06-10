@@ -162,6 +162,12 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _gstController = TextEditingController();
+  final _panController = TextEditingController();
+  final _bankNameController = TextEditingController();
+  final _accountHolderController = TextEditingController();
+  final _accountNoController = TextEditingController();
+  final _ifscController = TextEditingController();
+  final _bankBranchController = TextEditingController();
   final _addressController = TextEditingController();
   final _notesController = TextEditingController();
 
@@ -187,6 +193,13 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
     _phoneController.text = (data['phone'] ?? '').toString();
     _emailController.text = (data['email'] ?? '').toString();
     _gstController.text = (data['gstNo'] ?? '').toString();
+    _panController.text = (data['panNo'] ?? '').toString();
+    _bankNameController.text = (data['bankName'] ?? '').toString();
+    _accountHolderController.text = (data['accountHolderName'] ?? '')
+        .toString();
+    _accountNoController.text = (data['bankAccountNo'] ?? '').toString();
+    _ifscController.text = (data['ifscCode'] ?? '').toString();
+    _bankBranchController.text = (data['bankBranch'] ?? '').toString();
     _addressController.text = (data['address'] ?? '').toString();
     _notesController.text = (data['notes'] ?? '').toString();
     _isActive = data['isActive'] != false;
@@ -199,6 +212,12 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _gstController.dispose();
+    _panController.dispose();
+    _bankNameController.dispose();
+    _accountHolderController.dispose();
+    _accountNoController.dispose();
+    _ifscController.dispose();
+    _bankBranchController.dispose();
     _addressController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -247,11 +266,45 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
     return null;
   }
 
-  Future<bool> _vendorNameExists(String name) async {
-    final normalizedName = name.trim().toLowerCase();
+  String? _validatePan(String? value) {
+    final pan = value?.trim().toUpperCase() ?? '';
+    if (pan.isEmpty) return null;
+
+    if (!RegExp(r'^[A-Z]{5}[0-9]{4}[A-Z]$').hasMatch(pan)) {
+      return 'Enter valid PAN number';
+    }
+
+    return null;
+  }
+
+  String? _validateAccountNo(String? value) {
+    final accountNo = value?.trim() ?? '';
+    if (accountNo.isEmpty) return null;
+
+    if (!RegExp(r'^[0-9]{9,18}$').hasMatch(accountNo)) {
+      return 'Enter valid account number';
+    }
+
+    return null;
+  }
+
+  String? _validateIfsc(String? value) {
+    final ifsc = value?.trim().toUpperCase() ?? '';
+    if (ifsc.isEmpty) return null;
+
+    if (!RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(ifsc)) {
+      return 'Enter valid IFSC code';
+    }
+
+    return null;
+  }
+
+  Future<bool> _vendorFieldExists(String field, String value) async {
+    final normalizedValue = value.trim();
+    if (normalizedValue.isEmpty) return false;
 
     final snapshot = await _vendorsRef
-        .where('nameLower', isEqualTo: normalizedName)
+        .where(field, isEqualTo: normalizedValue)
         .where('isDeleted', isEqualTo: false)
         .limit(1)
         .get();
@@ -263,6 +316,43 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
     }
 
     return true;
+  }
+
+  Future<String?> _findDuplicateVendorField({
+    required String name,
+    required String phone,
+    required String email,
+    required String gstNo,
+    required String panNo,
+    required String bankAccountNo,
+  }) async {
+    final checks = <String, String>{
+      'nameLower': name.trim().toLowerCase(),
+      'phone': phone.trim(),
+      'email': email.trim().toLowerCase(),
+      'gstNo': gstNo.trim().toUpperCase(),
+      'panNo': panNo.trim().toUpperCase(),
+      'bankAccountNo': bankAccountNo.trim(),
+    };
+
+    final labels = <String, String>{
+      'nameLower': 'Vendor name already exists',
+      'phone': 'Phone number already exists',
+      'email': 'Email already exists',
+      'gstNo': 'GST number already exists',
+      'panNo': 'PAN number already exists',
+      'bankAccountNo': 'Bank account number already exists',
+    };
+
+    for (final entry in checks.entries) {
+      if (entry.value.isEmpty) continue;
+
+      if (await _vendorFieldExists(entry.key, entry.value)) {
+        return labels[entry.key];
+      }
+    }
+
+    return null;
   }
 
   Future<void> _confirmDelete() async {
@@ -309,12 +399,21 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
     setState(() => _isSaving = true);
     try {
       final name = _nameController.text.trim();
-      if (await _vendorNameExists(name)) {
+      final duplicateMessage = await _findDuplicateVendorField(
+        name: name,
+        phone: _phoneController.text.trim(),
+        email: _emailController.text.trim().toLowerCase(),
+        gstNo: _gstController.text.trim().toUpperCase(),
+        panNo: _panController.text.trim().toUpperCase(),
+        bankAccountNo: _accountNoController.text.trim(),
+      );
+
+      if (duplicateMessage != null) {
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Vendor already exists'),
+          SnackBar(
+            content: Text(duplicateMessage),
             backgroundColor: Colors.orange,
           ),
         );
@@ -330,6 +429,12 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
         'phone': _phoneController.text.trim(),
         'email': _emailController.text.trim(),
         'gstNo': _gstController.text.trim().toUpperCase(),
+        'panNo': _panController.text.trim().toUpperCase(),
+        'bankName': _bankNameController.text.trim(),
+        'accountHolderName': _accountHolderController.text.trim(),
+        'bankAccountNo': _accountNoController.text.trim(),
+        'ifscCode': _ifscController.text.trim().toUpperCase(),
+        'bankBranch': _bankBranchController.text.trim(),
         'address': _addressController.text.trim(),
         'notes': _notesController.text.trim(),
         'isActive': _isActive,
@@ -431,6 +536,62 @@ class _MirajVendorFormScreenState extends State<MirajVendorFormScreen> {
                     decoration: const InputDecoration(
                       labelText: 'GST No.',
                       prefixIcon: Icon(Icons.receipt_long_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _panController,
+                    validator: _validatePan,
+                    maxLength: 10,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      labelText: 'PAN No.',
+                      prefixIcon: Icon(Icons.badge_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _bankNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Bank Name',
+                      prefixIcon: Icon(Icons.account_balance_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _accountHolderController,
+                    decoration: const InputDecoration(
+                      labelText: 'Account Holder Name',
+                      prefixIcon: Icon(Icons.person_pin_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _accountNoController,
+                    keyboardType: TextInputType.number,
+                    validator: _validateAccountNo,
+                    decoration: const InputDecoration(
+                      labelText: 'Account No.',
+                      prefixIcon: Icon(Icons.numbers_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _ifscController,
+                    validator: _validateIfsc,
+                    maxLength: 11,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      labelText: 'IFSC Code',
+                      prefixIcon: Icon(Icons.confirmation_number_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _bankBranchController,
+                    decoration: const InputDecoration(
+                      labelText: 'Branch Name',
+                      prefixIcon: Icon(Icons.account_tree_outlined),
                     ),
                   ),
                   const SizedBox(height: 12),
