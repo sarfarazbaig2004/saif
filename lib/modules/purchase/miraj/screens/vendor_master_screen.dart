@@ -3,6 +3,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/modules/purchase/miraj/screens/vendor_contact_screen.dart';
+
 class MirajVendorMasterScreen extends StatefulWidget {
   final String tenantId;
   final String currentUserUid;
@@ -116,6 +118,7 @@ class _MirajVendorMasterScreenState extends State<MirajVendorMasterScreen> {
                         itemBuilder: (context, index) {
                           final doc = vendors[index];
                           return _VendorCard(
+                            vendorRef: doc.reference,
                             data: doc.data(),
                             onTap: () => _openForm(
                               context,
@@ -536,10 +539,15 @@ class _VendorHeader extends StatelessWidget {
 }
 
 class _VendorCard extends StatelessWidget {
+  final DocumentReference<Map<String, dynamic>> vendorRef;
   final Map<String, dynamic> data;
   final VoidCallback onTap;
 
-  const _VendorCard({required this.data, required this.onTap});
+  const _VendorCard({
+    required this.vendorRef,
+    required this.data,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -567,9 +575,26 @@ class _VendorCard extends StatelessWidget {
             (data['gstNo'] ?? '').toString(),
           ].where((value) => value.trim().isNotEmpty).join(' • '),
         ),
-        trailing: IconButton(
-          onPressed: onTap,
-          icon: const Icon(Icons.edit_outlined),
+        trailing: Wrap(
+          spacing: 8,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => VendorContactScreen(
+                      vendorRef: vendorRef,
+                      vendorName: (data['name'] ?? 'Vendor').toString(),
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.contacts_outlined, size: 18),
+              label: const Text('Contacts'),
+            ),
+            IconButton(onPressed: onTap, icon: const Icon(Icons.edit_outlined)),
+          ],
         ),
         onTap: onTap,
       ),
