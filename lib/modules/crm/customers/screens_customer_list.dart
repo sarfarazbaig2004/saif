@@ -112,16 +112,7 @@ class _ScreensCustomerListState extends State<ScreensCustomerList> {
     required String role,
     required String currentUserUid,
   }) {
-    if (_isAdminOrManager(role)) return docs;
-
-    return docs.where((doc) {
-      final data = doc.data();
-      final createdBy = (data['createdByUid'] ?? data['createdBy'] ?? '')
-          .toString();
-      final assignedToUid = (data['assignedToUid'] ?? '').toString();
-
-      return createdBy == currentUserUid || assignedToUid == currentUserUid;
-    }).toList();
+    return docs;
   }
 
   List<QueryDocumentSnapshot<Map<String, dynamic>>> _applyFilters({
@@ -2032,3 +2023,5 @@ Color _priorityFg(String priority) {
       return Colors.grey.shade800;
   }
 }
+
+
