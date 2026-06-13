@@ -141,23 +141,12 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     required String role,
     required String currentUserUid,
   }) {
-    final normalizedSearch = _searchText.toLowerCase();
-    final isAdmin = _isAdminOrManager(role);
-
-    final filtered = docs.where((doc) {
+    final normalizedSearch = _searchText.toLowerCase();final filtered = docs.where((doc) {
       final data = doc.data();
 
       bool matchesRole = true;
 
-      if (!isAdmin) {
-        final assignedToUid = _getString(data, 'assignedToUid');
-        final createdByUid = _getString(data, 'createdByUid').isEmpty
-            ? _getString(data, 'createdBy')
-            : _getString(data, 'createdByUid');
-
-        matchesRole =
-            assignedToUid == currentUserUid || createdByUid == currentUserUid;
-      }
+      
 
       final inquiryCode = _getString(data, 'inquiryCode').isEmpty
           ? _getString(data, 'inquiryNumber').toLowerCase()
@@ -1324,3 +1313,5 @@ Color _priorityFg(String priority) {
       return Colors.grey.shade800;
   }
 }
+
+
