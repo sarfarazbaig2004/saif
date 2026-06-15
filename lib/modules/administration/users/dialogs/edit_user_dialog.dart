@@ -3,6 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/modules/module_registry.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_constants.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
 import 'package:QUIK/modules/administration/users/widgets/mini_badge.dart';
@@ -28,6 +29,7 @@ Future<void> showEditUserDialog({
     required String role,
     required bool isActive,
     required Map<String, dynamic> permissions,
+    required List<String> allowedModuleIds,
     String? department,
     String? designation,
     String? branchName,
@@ -45,6 +47,8 @@ Future<void> showEditUserDialog({
   final bool isDeleted = (data['isDeleted'] ?? false) == true;
   final bool isSelfUser = doc.id == currentUid;
   bool isSaving = false;
+
+  Set<String> selectedModuleIds = _readAllowedModuleIds(data);
 
   final List<String> departmentOptions = const [
     'Sales',
@@ -170,6 +174,7 @@ Future<void> showEditUserDialog({
                 role: selectedRole,
                 isActive: isDeleted ? false : isActive,
                 permissions: normalizedPermissions,
+                allowedModuleIds: selectedModuleIds.toList()..sort(),
                 department: selectedDepartment.trim(),
                 designation: selectedDesignation.trim(),
                 accessScope: selectedAccessScope.trim(),
@@ -703,6 +708,146 @@ Future<void> showEditUserDialog({
       );
     },
   );
+}
+
+
+Set<String> _readAllowedModuleIds(Map<String, dynamic> data) {
+  final raw = data['allowedModuleIds'];
+
+  if (raw is Iterable) {
+    final saved = raw
+        .map((value) => value.toString().trim())
+        .where((value) => value.isNotEmpty)
+        .toSet();
+
+    if (saved.isNotEmpty) return saved;
+  }
+
+  final permissions = data['permissions'];
+  if (permissions is Map) {
+    return _moduleIdsFromLegacyPermissions(
+      Map<String, dynamic>.from(permissions),
+    );
+  }
+
+  return ModuleRegistry.activeModules.map((module) => module.id).toSet();
+}
+
+Set<String> _moduleIdsFromLegacyPermissions(Map<String, dynamic> permissions) {
+  final ids = <String>{};
+
+  void addIfAllowed(String moduleId, String permissionModuleKey) {
+    if (hasModuleAccess(permissions, permissionModuleKey)) {
+      ids.add(moduleId);
+    }
+  }
+
+  addIfAllowed(ModuleIds.dashboard, PermissionModules.dashboard);
+  addIfAllowed(ModuleIds.crm, PermissionModules.crm);
+  addIfAllowed(ModuleIds.sales, PermissionModules.sales);
+  addIfAllowed(ModuleIds.inventoryStore, PermissionModules.inventory);
+  addIfAllowed(ModuleIds.purchase, PermissionModules.purchase);
+  addIfAllowed(ModuleIds.dispatch, PermissionModules.dispatch);
+  addIfAllowed(ModuleIds.finance, PermissionModules.finance);
+  addIfAllowed(ModuleIds.reports, PermissionModules.reports);
+  addIfAllowed(ModuleIds.administration, PermissionModules.administration);
+
+  if (hasPermission(
+    permissions,
+    moduleKey: 'customerPo',
+    submoduleKey: 'customerPo',
+    action: PermissionActions.view,
+  )) {
+    ids.add(ModuleIds.customerPo);
+  }
+
+  if (hasPermission(
+    permissions,
+    moduleKey: 'projectsJobCards',
+    submoduleKey: 'projects',
+    action: PermissionActions.view,
+  )) {
+    ids.add(ModuleIds.projectsJobCards);
+  }
+
+  if (hasPermission(
+    permissions,
+    moduleKey: 'planningScheduling',
+    submoduleKey: 'planning',
+    action: PermissionActions.view,
+  )) {
+    ids.add(ModuleIds.planningScheduling);
+  }
+
+  if (hasPermission(
+    permissions,
+    moduleKey: 'engineering',
+    submoduleKey: 'engineering',
+    action: PermissionActions.view,
+  )) {
+    ids.add(ModuleIds.engineering);
+  }
+
+  if (hasPermission(
+    permissions,
+    moduleKey: 'production',
+    submoduleKey: 'jobCards',
+    action: PermissionActions.view,
+  )) {
+    ids.add(ModuleIds.production);
+    ids.add(ModuleIds.projectsJobCards);
+  }
+
+  if (hasPermission(
+    permissions,
+    moduleKey: 'production',
+    submoduleKey: 'contractorJobs',
+    action: PermissionActions.view,
+  )) {
+    ids.add(ModuleIds.contractorJobWork);
+  }
+
+  if (hasPermission(
+    permissions,
+    moduleKey: 'production',
+    submoduleKey: 'galvanizing',
+    action: PermissionActions.view,
+  )) {
+    ids.add(ModuleIds.galvanizing);
+  }
+
+  if (hasPermission(
+    permissions,
+    moduleKey: 'production',
+    submoduleKey: 'inspections',
+    action: PermissionActions.view,
+  )) {
+    ids.add(ModuleIds.inspectionQa);
+  }
+
+  if (hasPermission(
+        permissions,
+        moduleKey: 'hr',
+        submoduleKey: 'employees',
+        action: PermissionActions.view,
+      ) ||
+      hasPermission(
+        permissions,
+        moduleKey: 'hr',
+        submoduleKey: 'attendance',
+        action: PermissionActions.view,
+      ) ||
+      hasPermission(
+        permissions,
+        moduleKey: 'hr',
+        submoduleKey: 'wages',
+        action: PermissionActions.view,
+      )) {
+    ids.add(ModuleIds.hrAdmin);
+  }
+
+  ids.add(ModuleIds.settings);
+  return ids;
 }
 
 Map<String, dynamic> _getIndustryDefaultPermissions({
