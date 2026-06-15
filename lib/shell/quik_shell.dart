@@ -92,6 +92,7 @@ class _QuikShellState extends State<QuikShell> {
   // Live State tracked securely via Firestore streams
   String _currentRole = 'viewer';
   Map<String, dynamic> _currentPermissions = {};
+  Set<String> _currentAllowedModuleIds = {};
   List<SidebarGroup<ShellPage>> _currentSidebarGroups = [];
 
   @override
@@ -235,6 +236,16 @@ class _QuikShellState extends State<QuikShell> {
     }
 
     if (isAdminOrManager) return true;
+
+    final pageModuleId = _moduleIdForPage(page);
+    if (pageModuleId != null && !_isModuleEnabled(pageModuleId)) {
+      return false;
+    }
+    if (pageModuleId != null &&
+        _currentAllowedModuleIds.isNotEmpty &&
+        _currentAllowedModuleIds.contains(pageModuleId)) {
+      return true;
+    }
 
     if (_isGeneralInventoryPage(page) &&
         _isFabricationInventory &&
@@ -763,6 +774,121 @@ class _QuikShellState extends State<QuikShell> {
     return filtered;
   }
 
+
+  String? _moduleIdForPage(ShellPage page) {
+    switch (page) {
+      case ShellPage.dashboard:
+        return ModuleIds.dashboard;
+      case ShellPage.settingsGeneral:
+        return ModuleIds.settings;
+
+      case ShellPage.crmCustomers:
+      case ShellPage.crmContacts:
+      case ShellPage.crmVisits:
+      case ShellPage.crmCommunication:
+        return ModuleIds.crm;
+
+      case ShellPage.salesInquiries:
+      case ShellPage.salesQuotations:
+      case ShellPage.salesOrders:
+      case ShellPage.salesFollowUps:
+      case ShellPage.salesTasks:
+      case ShellPage.salesMeetings:
+        return ModuleIds.sales;
+
+      case ShellPage.customerPoList:
+        return ModuleIds.customerPo;
+
+      case ShellPage.projectsList:
+      case ShellPage.productionJobCards:
+        return ModuleIds.projectsJobCards;
+
+      case ShellPage.planningDashboard:
+      case ShellPage.schedulingCalendar:
+        return ModuleIds.planningScheduling;
+
+      case ShellPage.engineeringDrawings:
+      case ShellPage.engineeringBomBoq:
+        return ModuleIds.engineering;
+
+      case ShellPage.inventoryProducts:
+      case ShellPage.inventoryStockSummary:
+      case ShellPage.inventoryStockIn:
+      case ShellPage.inventoryStockOut:
+      case ShellPage.inventoryWarehouse:
+      case ShellPage.inventoryMaterialMaster:
+      case ShellPage.inventoryLowStock:
+      case ShellPage.inventoryRawMaterialStock:
+      case ShellPage.inventoryMaterialInward:
+      case ShellPage.inventoryMaterialIssue:
+        return ModuleIds.inventoryStore;
+
+      case ShellPage.purchaseVendors:
+      case ShellPage.purchaseVendorOffers:
+      case ShellPage.purchasePurchaseOrders:
+      case ShellPage.purchaseOrders:
+      case ShellPage.purchaseGrn:
+      case ShellPage.purchaseLedger:
+      case ShellPage.purchaseRequisitions:
+        return ModuleIds.purchase;
+
+      case ShellPage.productionItems:
+      case ShellPage.productionProcesses:
+      case ShellPage.productionWorkCenters:
+      case ShellPage.productionBom:
+      case ShellPage.productionBoq:
+      case ShellPage.productionEntries:
+      case ShellPage.productionMaterialRequirements:
+        return ModuleIds.production;
+
+      case ShellPage.productionContractorJobs:
+        return ModuleIds.contractorJobWork;
+
+      case ShellPage.productionGalvanizing:
+        return ModuleIds.galvanizing;
+
+      case ShellPage.productionInspections:
+        return ModuleIds.inspectionQa;
+
+      case ShellPage.dispatchReady:
+      case ShellPage.dispatchChallans:
+      case ShellPage.dispatchShipmentTracking:
+      case ShellPage.dispatchDelivered:
+        return ModuleIds.dispatch;
+
+      case ShellPage.hrHome:
+        return ModuleIds.hrAdmin;
+
+      case ShellPage.financeProforma:
+      case ShellPage.financeTaxInvoice:
+      case ShellPage.financeTaxInvoiceCreate:
+      case ShellPage.financeExportInvoiceCreate:
+      case ShellPage.financePaymentsReceived:
+      case ShellPage.financeOutstanding:
+      case ShellPage.financeExpenses:
+        return ModuleIds.finance;
+
+      case ShellPage.reportsSales:
+      case ShellPage.reportsInquiry:
+      case ShellPage.reportsCustomer:
+      case ShellPage.reportsProduct:
+      case ShellPage.reportsPayment:
+        return ModuleIds.reports;
+
+      case ShellPage.adminUsers:
+      case ShellPage.adminJoinRequests:
+      case ShellPage.adminRoles:
+      case ShellPage.adminComplianceLegal:
+      case ShellPage.adminCompanyProfile:
+      case ShellPage.adminBranches:
+      case ShellPage.adminAuditLogs:
+        return ModuleIds.administration;
+
+      default:
+        return null;
+    }
+  }
+
   String? _moduleIdForSidebarGroup(String groupKey) {
     // New setup uses ModuleIds.xxx exactly for keys
     return groupKey;
@@ -771,6 +897,11 @@ class _QuikShellState extends State<QuikShell> {
   bool _isModuleEnabled(String moduleId) {
     if (isAdminOrManager) {
       return true;
+    }
+
+    if (_currentAllowedModuleIds.isNotEmpty &&
+        !_currentAllowedModuleIds.contains(moduleId)) {
+      return false;
     }
 
     final moduleAccess = ModuleAccessProvider.maybeOf(context, listen: false);
@@ -1022,6 +1153,14 @@ class _QuikShellState extends State<QuikShell> {
         _currentPermissions = rawPermissions is Map
             ? Map<String, dynamic>.from(rawPermissions)
             : widget.permissions;
+
+        final dynamic rawAllowedModuleIds = companyUserData['allowedModuleIds'];
+        _currentAllowedModuleIds = rawAllowedModuleIds is Iterable
+            ? rawAllowedModuleIds
+                  .map((value) => value.toString().trim())
+                  .where((value) => value.isNotEmpty)
+                  .toSet()
+            : <String>{};
 
         final bool isDeleted = companyUserData['isDeleted'] == true;
         final bool isActive = companyUserData.containsKey('isActive')

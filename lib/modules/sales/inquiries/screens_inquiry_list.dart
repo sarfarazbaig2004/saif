@@ -110,6 +110,12 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
 
   // --- ROBUST PERMISSION SYSTEM ---
   bool _hasInquiryPermission(Map<String, dynamic> userData) {
+    final allowedModuleIds = userData['allowedModuleIds'];
+    if (allowedModuleIds is Iterable &&
+        allowedModuleIds.map((e) => e.toString()).contains('sales')) {
+      return true;
+    }
+
     final role = _getString(userData, 'role').toLowerCase();
 
     if (_isAdminOrManager(role)) return true;

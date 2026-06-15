@@ -472,91 +472,15 @@ Future<void> showEditUserDialog({
                                     } else {
                                       selectedModuleIds.remove(moduleId);
                                     }
+
+                                    permissions = _permissionsFromAllowedModules(
+                                      selectedModuleIds,
+                                    );
                                   });
                                 },
                               ),
                             ),
                             const SizedBox(height: 18),
-                            _buildSectionCard(
-                              title: 'Module Permissions',
-                              subtitle:
-                                  'Permissions are aligned with QUIK ERP modules, submodules, and actions.',
-                              trailing: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                alignment: WrapAlignment.end,
-                                children: [
-                                  TextButton(
-                                    onPressed: isSaving
-                                        ? null
-                                        : () {
-                                            setLocalState(() {
-                                              permissions =
-                                                  mergePermissionsWithCanonicalShape(
-                                                    _getIndustryDefaultPermissions(
-                                                      role: selectedRole,
-                                                      isExportImport:
-                                                          isExportImport,
-                                                    ),
-                                                  );
-                                            });
-                                          },
-                                    child: const Text('Apply Role Template'),
-                                  ),
-                                  TextButton(
-                                    onPressed: isSaving
-                                        ? null
-                                        : () {
-                                            setLocalState(() {
-                                              permissions =
-                                                  buildFullPermissions();
-                                            });
-                                          },
-                                    child: const Text('Select All'),
-                                  ),
-                                  TextButton(
-                                    onPressed: isSaving
-                                        ? null
-                                        : () {
-                                            setLocalState(() {
-                                              permissions =
-                                                  buildEmptyPermissions();
-                                            });
-                                          },
-                                    child: const Text('Deselect All'),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                children: activeModules.map((moduleKey) {
-                                  return _buildPermissionModuleCard(
-                                    moduleKey: moduleKey,
-                                    isExportImport: isExportImport,
-                                    modulePermissions: _readModulePermissions(
-                                      visiblePermissions,
-                                      moduleKey,
-                                    ),
-                                    onActionChanged:
-                                        (
-                                          String module,
-                                          String? submodule,
-                                          String action,
-                                          bool value,
-                                        ) {
-                                          setLocalState(() {
-                                            permissions = _setPermissionValue(
-                                              permissions: permissions,
-                                              moduleKey: module,
-                                              submoduleKey: submodule,
-                                              action: action,
-                                              value: value,
-                                            );
-                                          });
-                                        },
-                                  );
-                                }).toList(),
-                              ),
-                            ),
                             const SizedBox(height: 18),
                             Container(
                               width: double.infinity,
@@ -896,9 +820,6 @@ Widget _buildLevelOneModuleAccessGrid({
         itemBuilder: (context, index) {
           final module = modules[index];
           final selected = selectedModuleIds.contains(module.id);
-          final locked =
-              module.id == ModuleIds.dashboard || module.id == ModuleIds.settings;
-
           return Container(
             decoration: BoxDecoration(
               color: selected ? const Color(0xFFEFF6FF) : Colors.white,
@@ -911,9 +832,7 @@ Widget _buildLevelOneModuleAccessGrid({
             ),
             child: CheckboxListTile(
               value: selected,
-              onChanged: locked
-                  ? null
-                  : (value) => onChanged(module.id, value ?? false),
+              onChanged: (value) => onChanged(module.id, value ?? false),
               title: Text(
                 module.displayName,
                 maxLines: 1,
@@ -925,11 +844,7 @@ Widget _buildLevelOneModuleAccessGrid({
                 ),
               ),
               subtitle: Text(
-                locked
-                    ? 'Required module'
-                    : selected
-                        ? 'Access enabled'
-                        : 'Access disabled',
+                selected ? 'Access enabled' : 'Access disabled',
                 style: const TextStyle(
                   fontSize: 12,
                   color: _editMutedTextColor,
@@ -943,6 +858,112 @@ Widget _buildLevelOneModuleAccessGrid({
       );
     },
   );
+}
+
+
+Map<String, dynamic> _permissionsFromAllowedModules(Set<String> moduleIds) {
+  final permissions = buildEmptyPermissions();
+
+  void enableFullModule(String permissionModuleKey) {
+    final moduleValue = permissions[permissionModuleKey];
+
+    if (moduleValue is Map) {
+      final updatedModule = <String, dynamic>{};
+
+      for (final entry in moduleValue.entries) {
+        final value = entry.value;
+
+        if (value is Map) {
+          updatedModule[entry.key] = <String, bool>{
+            for (final actionEntry in value.entries)
+              actionEntry.key.toString(): true,
+          };
+        } else {
+          updatedModule[entry.key] = true;
+        }
+      }
+
+      permissions[permissionModuleKey] = updatedModule;
+    }
+  }
+
+  void enableSubmodule(String permissionModuleKey, String submoduleKey) {
+    final moduleValue = permissions[permissionModuleKey];
+
+    if (moduleValue is Map && moduleValue[submoduleKey] is Map) {
+      final current = Map<String, dynamic>.from(moduleValue);
+      final actions = Map<String, dynamic>.from(current[submoduleKey] as Map);
+      current[submoduleKey] = <String, bool>{
+        for (final action in actions.keys) action.toString(): true,
+      };
+      permissions[permissionModuleKey] = current;
+    }
+  }
+
+  if (moduleIds.contains(ModuleIds.dashboard)) {
+    permissions[PermissionModules.dashboard] = buildActionMap(
+      dashboardActions,
+      enabled: true,
+    );
+  }
+
+  if (moduleIds.contains(ModuleIds.crm)) {
+    enableFullModule(PermissionModules.crm);
+  }
+  if (moduleIds.contains(ModuleIds.sales)) {
+    enableFullModule(PermissionModules.sales);
+  }
+  if (moduleIds.contains(ModuleIds.purchase)) {
+    enableFullModule(PermissionModules.purchase);
+  }
+  if (moduleIds.contains(ModuleIds.inventoryStore)) {
+    enableFullModule(PermissionModules.inventory);
+  }
+  if (moduleIds.contains(ModuleIds.dispatch)) {
+    enableFullModule(PermissionModules.dispatch);
+  }
+  if (moduleIds.contains(ModuleIds.finance)) {
+    enableFullModule(PermissionModules.finance);
+  }
+  if (moduleIds.contains(ModuleIds.reports)) {
+    enableFullModule(PermissionModules.reports);
+  }
+  if (moduleIds.contains(ModuleIds.administration)) {
+    enableFullModule(PermissionModules.administration);
+  }
+
+  if (moduleIds.contains(ModuleIds.production)) {
+    enableSubmodule('production', 'jobCards');
+    enableSubmodule('production', 'materialRequirements');
+  }
+  if (moduleIds.contains(ModuleIds.contractorJobWork)) {
+    enableSubmodule('production', 'contractorJobs');
+  }
+  if (moduleIds.contains(ModuleIds.galvanizing)) {
+    enableSubmodule('production', 'galvanizing');
+  }
+  if (moduleIds.contains(ModuleIds.inspectionQa)) {
+    enableSubmodule('production', 'inspections');
+  }
+
+  if (moduleIds.contains(ModuleIds.customerPo)) {
+    enableSubmodule('customerPo', 'customerPo');
+  }
+  if (moduleIds.contains(ModuleIds.projectsJobCards)) {
+    enableSubmodule('projectsJobCards', 'projects');
+    enableSubmodule('production', 'jobCards');
+  }
+  if (moduleIds.contains(ModuleIds.planningScheduling)) {
+    enableSubmodule('planningScheduling', 'planning');
+  }
+  if (moduleIds.contains(ModuleIds.engineering)) {
+    enableSubmodule('engineering', 'engineering');
+  }
+  if (moduleIds.contains(ModuleIds.hrAdmin)) {
+    enableFullModule('hr');
+  }
+
+  return mergePermissionsWithCanonicalShape(permissions);
 }
 
 Map<String, dynamic> _getIndustryDefaultPermissions({
@@ -1259,6 +1280,7 @@ Widget _buildEditSummary({
   );
 }
 
+// ignore: unused_element
 Widget _buildPermissionModuleCard({
   required String moduleKey,
   required bool isExportImport,
@@ -1449,6 +1471,7 @@ Map<String, dynamic> _readModulePermissions(
       : <String, dynamic>{};
 }
 
+// ignore: unused_element
 Map<String, dynamic> _setPermissionValue({
   required Map<String, dynamic> permissions,
   required String moduleKey,

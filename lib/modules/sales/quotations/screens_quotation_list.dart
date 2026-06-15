@@ -70,6 +70,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
   CollectionReference<Map<String, dynamic>>? _quotationCollection;
   String? _loadedTenantId;
 
+  // ignore: unused_element
   bool get _isAdminOrManager {
     final role = _currentUserRole.trim().toLowerCase().replaceAll('_', '');
     return [
@@ -195,10 +196,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
     ).collection('quotations');
     Query<Map<String, dynamic>> query = _quotationCollection!;
 
-    if (!_isAdminOrManager && _currentUserUid != null) {
-      query = query.where('createdBy', isEqualTo: _currentUserUid);
-    }
-
+    // Level 1 module access: if Sales module is allowed, show company-wide quotations.
     _primaryQuery = query;
   }
 
