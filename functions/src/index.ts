@@ -977,7 +977,12 @@ export const sendJoinCompanyOtp = onCall(
         .trim();
 
     const inviteEmail =
-      (inviteData.email ?? "").toString().trim().toLowerCase();
+      (
+        inviteData.email ??
+        inviteData.employeeEmail ??
+        inviteData.invitedEmail ??
+        ""
+      ).toString().trim().toLowerCase();
 
     if (inviteEmail && inviteEmail !== email) {
       throw new HttpsError(
@@ -1503,3 +1508,4 @@ export const createCompanyUser = onCall(
     };
   },
 );
+
