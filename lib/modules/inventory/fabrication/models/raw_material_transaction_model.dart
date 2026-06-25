@@ -97,6 +97,11 @@ class RawMaterialTransactionModel {
   final double quantityKg;
   final String referenceNo;
   final String partyOrProcess;
+  final String vendorId;
+  final String vendorInvoiceNo;
+  final String purchaseOrderId;
+  final String purchaseOrderNo;
+  final String vehicleNo;
   final String workOrderId;
   final String heatNumber;
   final String batchNo;
@@ -123,6 +128,11 @@ class RawMaterialTransactionModel {
     required this.quantityKg,
     required this.referenceNo,
     required this.partyOrProcess,
+    this.vendorId = '',
+    this.vendorInvoiceNo = '',
+    this.purchaseOrderId = '',
+    this.purchaseOrderNo = '',
+    this.vehicleNo = '',
     required this.workOrderId,
     required this.heatNumber,
     required this.batchNo,
@@ -158,6 +168,12 @@ class RawMaterialTransactionModel {
       'quantityKg': quantityKg,
       'referenceNo': referenceNo,
       'partyOrProcess': partyOrProcess,
+      'vendorId': vendorId,
+      'vendorName': partyOrProcess,
+      'vendorInvoiceNo': vendorInvoiceNo,
+      'purchaseOrderId': purchaseOrderId,
+      'purchaseOrderNo': purchaseOrderNo,
+      'vehicleNo': vehicleNo,
       'workOrderId': workOrderId,
       'heatNumber': heatNumber,
       'batchNo': batchNo,
@@ -202,10 +218,17 @@ class RawMaterialTransactionModel {
       referenceNo: (data['referenceNo'] ?? data['challanNo'] ?? '').toString(),
       partyOrProcess:
           (data['partyOrProcess'] ??
+                  data['vendorName'] ??
                   data['supplierName'] ??
                   data['issuedTo'] ??
                   '')
               .toString(),
+      vendorId: (data['vendorId'] ?? '').toString(),
+      vendorInvoiceNo: (data['vendorInvoiceNo'] ?? '').toString(),
+      purchaseOrderId: (data['purchaseOrderId'] ?? '').toString(),
+      purchaseOrderNo: (data['purchaseOrderNo'] ?? data['poNo'] ?? '')
+          .toString(),
+      vehicleNo: (data['vehicleNo'] ?? '').toString(),
       workOrderId: (data['workOrderId'] ?? '').toString(),
       heatNumber: (data['heatNumber'] ?? '').toString(),
       batchNo: (data['batchNo'] ?? '').toString(),

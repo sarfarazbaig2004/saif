@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
@@ -25,6 +26,9 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
   final _formKey = GlobalKey<FormState>();
 
   final _supplierName = TextEditingController();
+  final _vendorInvoiceNo = TextEditingController();
+  final _purchaseOrderNo = TextEditingController();
+  final _vehicleNo = TextEditingController();
   final _challanNo = TextEditingController();
   final _plantName = TextEditingController(text: 'Plant 1');
   final _warehouseName = TextEditingController(text: 'Main Store');
@@ -39,6 +43,8 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
   DateTime _inwardDate = DateTime.now();
   bool _saving = false;
   RawMaterialModel? _selectedMaterial;
+  _SelectedVendor? _selectedVendor;
+  String _purchaseOrderId = '';
 
   String get _tenantId {
     final contextTenantId = context.tenant.selectedTenantId.trim();
@@ -61,6 +67,9 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
   @override
   void dispose() {
     _supplierName.dispose();
+    _vendorInvoiceNo.dispose();
+    _purchaseOrderNo.dispose();
+    _vehicleNo.dispose();
     _challanNo.dispose();
     _plantName.dispose();
     _warehouseName.dispose();
@@ -95,6 +104,38 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
     _autoCalculateKg();
   }
 
+  Future<void> _pickVendor() async {
+    final vendor = await showDialog<_SelectedVendor>(
+      context: context,
+      builder: (_) => _VendorPickerDialog(tenantId: _tenantId),
+    );
+    if (vendor == null) return;
+    setState(() {
+      _selectedVendor = vendor;
+      _supplierName.text = vendor.name;
+      if (_purchaseOrderNo.text.trim().isNotEmpty) {
+        _purchaseOrderId = '';
+        _purchaseOrderNo.clear();
+      }
+    });
+  }
+
+  Future<void> _pickPurchaseOrder() async {
+    final purchaseOrder = await showDialog<_SelectedPurchaseOrder>(
+      context: context,
+      builder: (_) => _PurchaseOrderPickerDialog(
+        tenantId: _tenantId,
+        vendorId: _selectedVendor?.id ?? '',
+        vendorName: _selectedVendor?.name ?? '',
+      ),
+    );
+    if (purchaseOrder == null) return;
+    setState(() {
+      _purchaseOrderId = purchaseOrder.id;
+      _purchaseOrderNo.text = purchaseOrder.poNo;
+    });
+  }
+
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -104,6 +145,24 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
           content: Text(
             'Missing company workspace. Material inward was not saved.',
           ),
+        ),
+      );
+      return;
+    }
+
+    if (_selectedVendor == null || _supplierName.text.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Select an active vendor.')));
+      return;
+    }
+
+    final quantityNos = double.tryParse(_quantityNos.text.trim()) ?? 0;
+    final quantityKg = double.tryParse(_quantityKg.text.trim()) ?? 0;
+    if (quantityNos <= 0 && quantityKg <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter Received Qty (nos) or Received Qty (kg).'),
         ),
       );
       return;
@@ -128,10 +187,15 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
           productFamily: material?.productFamily ?? '',
           plantName: _plantName.text.trim(),
           warehouseName: _warehouseName.text.trim(),
-          quantityNos: double.tryParse(_quantityNos.text.trim()) ?? 0,
-          quantityKg: double.tryParse(_quantityKg.text.trim()) ?? 0,
+          quantityNos: quantityNos,
+          quantityKg: quantityKg,
           referenceNo: _challanNo.text.trim(),
           partyOrProcess: _supplierName.text.trim(),
+          vendorId: _selectedVendor?.id ?? '',
+          vendorInvoiceNo: _vendorInvoiceNo.text.trim(),
+          purchaseOrderId: _purchaseOrderId,
+          purchaseOrderNo: _purchaseOrderNo.text.trim(),
+          vehicleNo: _vehicleNo.text.trim(),
           workOrderId: '',
           heatNumber: '',
           batchNo: '',
@@ -214,8 +278,11 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
                       runSpacing: 12,
                       children: [
                         _dateField(),
-                        _field(_supplierName, 'Supplier Name', required: true),
+                        _vendorPicker(),
                         _field(_challanNo, 'Challan / GRN No', required: true),
+                        _field(_vendorInvoiceNo, 'Vendor Invoice No.'),
+                        _purchaseOrderPicker(),
+                        _field(_vehicleNo, 'Vehicle No.'),
                         _field(_plantName, 'Plant', required: true),
                         _field(_warehouseName, 'Warehouse', required: true),
                         _materialPicker(materials),
@@ -224,10 +291,26 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
                           'Description / Thickness',
                           width: 420,
                           required: true,
+                          readOnly: true,
                         ),
-                        _field(_grade, 'Grade / IS', required: true),
-                        _field(_lengthMm, 'Length', number: true),
-                        _field(_unitWeightKgPerM, 'Unit Weight', number: true),
+                        _field(
+                          _grade,
+                          'Grade / IS',
+                          required: true,
+                          readOnly: true,
+                        ),
+                        _field(
+                          _lengthMm,
+                          'Length',
+                          number: true,
+                          readOnly: true,
+                        ),
+                        _field(
+                          _unitWeightKgPerM,
+                          'Unit Weight',
+                          number: true,
+                          readOnly: true,
+                        ),
                         _field(
                           _quantityNos,
                           'Received Qty (nos)',
@@ -258,6 +341,7 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
       child: DropdownButtonFormField<RawMaterialModel>(
         initialValue: _selectedMaterial,
         decoration: const InputDecoration(labelText: 'Raw Material'),
+        validator: (value) => value == null ? 'Raw Material is required' : null,
         items: materials
             .map(
               (material) => DropdownMenuItem(
@@ -270,6 +354,59 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
             )
             .toList(growable: false),
         onChanged: _applyMaterial,
+      ),
+    );
+  }
+
+  Widget _vendorPicker() {
+    return SizedBox(
+      width: 300,
+      child: InkWell(
+        onTap: _pickVendor,
+        borderRadius: BorderRadius.circular(12),
+        child: InputDecorator(
+          decoration: InputDecoration(
+            labelText: 'Vendor',
+            errorText: _supplierName.text.trim().isEmpty ? null : null,
+            suffixIcon: const Icon(Icons.search),
+          ),
+          child: Text(
+            _supplierName.text.trim().isEmpty
+                ? 'Select active vendor'
+                : _supplierName.text.trim(),
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: _supplierName.text.trim().isEmpty ? zMuted : zText,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _purchaseOrderPicker() {
+    return SizedBox(
+      width: 300,
+      child: InkWell(
+        onTap: _pickPurchaseOrder,
+        borderRadius: BorderRadius.circular(12),
+        child: InputDecorator(
+          decoration: const InputDecoration(
+            labelText: 'Purchase Order',
+            suffixIcon: Icon(Icons.search),
+          ),
+          child: Text(
+            _purchaseOrderNo.text.trim().isEmpty
+                ? 'Optional'
+                : _purchaseOrderNo.text.trim(),
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: _purchaseOrderNo.text.trim().isEmpty ? zMuted : zText,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -294,11 +431,13 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
     double width = 240,
     bool required = false,
     bool number = false,
+    bool readOnly = false,
   }) {
     return SizedBox(
       width: width,
       child: TextFormField(
         controller: controller,
+        readOnly: readOnly,
         keyboardType: number
             ? const TextInputType.numberWithOptions(decimal: true)
             : TextInputType.text,
@@ -333,4 +472,283 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
     if (value == value.roundToDouble()) return value.toStringAsFixed(0);
     return value.toStringAsFixed(3);
   }
+}
+
+class _VendorPickerDialog extends StatefulWidget {
+  final String tenantId;
+
+  const _VendorPickerDialog({required this.tenantId});
+
+  @override
+  State<_VendorPickerDialog> createState() => _VendorPickerDialogState();
+}
+
+class _VendorPickerDialogState extends State<_VendorPickerDialog> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _search.addListener(() {
+      setState(() => _query = _search.text.trim().toLowerCase());
+    });
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  CollectionReference<Map<String, dynamic>> get _vendorsRef => FirebaseFirestore
+      .instance
+      .collection('companies')
+      .doc(widget.tenantId)
+      .collection('vendors');
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Select Vendor'),
+      content: SizedBox(
+        width: 560,
+        height: 460,
+        child: Column(
+          children: [
+            TextField(
+              controller: _search,
+              decoration: const InputDecoration(
+                labelText: 'Search vendor',
+                prefixIcon: Icon(Icons.search),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _vendorsRef.orderBy('nameLower').snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final docs = (snapshot.data?.docs ?? [])
+                      .where((doc) {
+                        final data = doc.data();
+                        if (data['isDeleted'] == true ||
+                            data['isActive'] == false) {
+                          return false;
+                        }
+                        final name = (data['name'] ?? '').toString();
+                        final gstNo = (data['gstNo'] ?? '').toString();
+                        if (_query.isEmpty) return true;
+                        return name.toLowerCase().contains(_query) ||
+                            gstNo.toLowerCase().contains(_query);
+                      })
+                      .toList(growable: false);
+
+                  if (docs.isEmpty) {
+                    return const Center(
+                      child: Text('No active vendors found.'),
+                    );
+                  }
+
+                  return ListView.separated(
+                    itemCount: docs.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data();
+                      final vendor = _SelectedVendor(
+                        id: doc.id,
+                        name: (data['name'] ?? '').toString(),
+                        gstNo: (data['gstNo'] ?? '').toString(),
+                      );
+                      return ListTile(
+                        leading: const Icon(Icons.business_outlined),
+                        title: Text(vendor.name),
+                        subtitle: vendor.gstNo.trim().isEmpty
+                            ? null
+                            : Text('GSTIN: ${vendor.gstNo}'),
+                        onTap: () => Navigator.pop(context, vendor),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
+  }
+}
+
+class _PurchaseOrderPickerDialog extends StatefulWidget {
+  final String tenantId;
+  final String vendorId;
+  final String vendorName;
+
+  const _PurchaseOrderPickerDialog({
+    required this.tenantId,
+    required this.vendorId,
+    required this.vendorName,
+  });
+
+  @override
+  State<_PurchaseOrderPickerDialog> createState() =>
+      _PurchaseOrderPickerDialogState();
+}
+
+class _PurchaseOrderPickerDialogState
+    extends State<_PurchaseOrderPickerDialog> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _search.addListener(() {
+      setState(() => _query = _search.text.trim().toLowerCase());
+    });
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  CollectionReference<Map<String, dynamic>> get _purchaseOrdersRef =>
+      FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.tenantId)
+          .collection('purchase_orders');
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Select Purchase Order'),
+      content: SizedBox(
+        width: 560,
+        height: 460,
+        child: Column(
+          children: [
+            TextField(
+              controller: _search,
+              decoration: const InputDecoration(
+                labelText: 'Search purchase order',
+                prefixIcon: Icon(Icons.search),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _purchaseOrdersRef
+                    .orderBy('createdAt', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting &&
+                      !snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final docs = (snapshot.data?.docs ?? [])
+                      .where((doc) {
+                        final data = doc.data();
+                        if (data['isDeleted'] == true) return false;
+                        final vendorId = (data['vendorId'] ?? '').toString();
+                        final vendorName = (data['vendorName'] ?? '')
+                            .toString();
+                        if (widget.vendorId.trim().isNotEmpty &&
+                            vendorId.trim().isNotEmpty &&
+                            vendorId != widget.vendorId) {
+                          return false;
+                        }
+                        if (widget.vendorId.trim().isEmpty &&
+                            widget.vendorName.trim().isNotEmpty &&
+                            vendorName.trim().isNotEmpty &&
+                            vendorName.trim().toLowerCase() !=
+                                widget.vendorName.trim().toLowerCase()) {
+                          return false;
+                        }
+                        final poNo = (data['poNo'] ?? doc.id).toString();
+                        if (_query.isEmpty) return true;
+                        return poNo.toLowerCase().contains(_query) ||
+                            vendorName.toLowerCase().contains(_query);
+                      })
+                      .toList(growable: false);
+
+                  if (docs.isEmpty) {
+                    return const Center(
+                      child: Text('No purchase orders found.'),
+                    );
+                  }
+
+                  return ListView.separated(
+                    itemCount: docs.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      final data = doc.data();
+                      final purchaseOrder = _SelectedPurchaseOrder(
+                        id: doc.id,
+                        poNo: (data['poNo'] ?? doc.id).toString(),
+                        vendorName: (data['vendorName'] ?? '').toString(),
+                      );
+                      return ListTile(
+                        leading: const Icon(Icons.assignment_outlined),
+                        title: Text(purchaseOrder.poNo),
+                        subtitle: purchaseOrder.vendorName.trim().isEmpty
+                            ? null
+                            : Text(purchaseOrder.vendorName),
+                        onTap: () => Navigator.pop(context, purchaseOrder),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
+  }
+}
+
+class _SelectedVendor {
+  final String id;
+  final String name;
+  final String gstNo;
+
+  const _SelectedVendor({
+    required this.id,
+    required this.name,
+    required this.gstNo,
+  });
+}
+
+class _SelectedPurchaseOrder {
+  final String id;
+  final String poNo;
+  final String vendorName;
+
+  const _SelectedPurchaseOrder({
+    required this.id,
+    required this.poNo,
+    required this.vendorName,
+  });
 }
