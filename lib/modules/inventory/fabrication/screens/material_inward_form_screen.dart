@@ -353,7 +353,7 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
 
   Widget _materialPicker(List<RawMaterialModel> materials) {
     return SizedBox(
-      width: 420,
+      width: _responsiveFieldWidth(420),
       child: InkWell(
         onTap: materials.isEmpty ? null : () => _pickMaterial(materials),
         borderRadius: BorderRadius.circular(12),
@@ -380,7 +380,7 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
 
   Widget _vendorPicker() {
     return SizedBox(
-      width: 300,
+      width: _responsiveFieldWidth(300),
       child: InkWell(
         onTap: _pickVendor,
         borderRadius: BorderRadius.circular(12),
@@ -407,7 +407,7 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
 
   Widget _purchaseOrderPicker() {
     return SizedBox(
-      width: 300,
+      width: _responsiveFieldWidth(300),
       child: InkWell(
         onTap: _pickPurchaseOrder,
         borderRadius: BorderRadius.circular(12),
@@ -433,7 +433,7 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
 
   Widget _dateField() {
     return SizedBox(
-      width: 220,
+      width: _responsiveFieldWidth(220),
       child: InkWell(
         onTap: _pickDate,
         borderRadius: BorderRadius.circular(12),
@@ -454,7 +454,7 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
     bool readOnly = false,
   }) {
     return SizedBox(
-      width: width,
+      width: _responsiveFieldWidth(width),
       child: TextFormField(
         controller: controller,
         readOnly: readOnly,
@@ -491,6 +491,13 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
   String _formatNumber(double value) {
     if (value == value.roundToDouble()) return value.toStringAsFixed(0);
     return value.toStringAsFixed(3);
+  }
+
+  double _responsiveFieldWidth(double preferredWidth) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final availableWidth = screenWidth - 64;
+    if (availableWidth >= preferredWidth) return preferredWidth;
+    return availableWidth.clamp(180.0, preferredWidth);
   }
 }
 
