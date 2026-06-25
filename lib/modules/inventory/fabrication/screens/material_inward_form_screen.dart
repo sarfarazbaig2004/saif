@@ -136,6 +136,15 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
     });
   }
 
+  Future<void> _pickMaterial(List<RawMaterialModel> materials) async {
+    final material = await showDialog<RawMaterialModel>(
+      context: context,
+      builder: (_) => _RawMaterialPickerDialog(materials: materials),
+    );
+    if (material == null) return;
+    _applyMaterial(material);
+  }
+
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -154,6 +163,13 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Select an active vendor.')));
+      return;
+    }
+
+    if (_selectedMaterial == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Select Raw Material.')));
       return;
     }
 
@@ -338,22 +354,26 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
   Widget _materialPicker(List<RawMaterialModel> materials) {
     return SizedBox(
       width: 420,
-      child: DropdownButtonFormField<RawMaterialModel>(
-        initialValue: _selectedMaterial,
-        decoration: const InputDecoration(labelText: 'Raw Material'),
-        validator: (value) => value == null ? 'Raw Material is required' : null,
-        items: materials
-            .map(
-              (material) => DropdownMenuItem(
-                value: material,
-                child: Text(
-                  material.displayName,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            )
-            .toList(growable: false),
-        onChanged: _applyMaterial,
+      child: InkWell(
+        onTap: materials.isEmpty ? null : () => _pickMaterial(materials),
+        borderRadius: BorderRadius.circular(12),
+        child: InputDecorator(
+          decoration: const InputDecoration(
+            labelText: 'Raw Material',
+            suffixIcon: Icon(Icons.search),
+            contentPadding: EdgeInsets.fromLTRB(12, 16, 44, 16),
+          ),
+          child: Text(
+            _selectedMaterial == null
+                ? 'Select Raw Material'
+                : _selectedMaterial!.displayName,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: _selectedMaterial == null ? zMuted : zText,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -588,6 +608,137 @@ class _VendorPickerDialogState extends State<_VendorPickerDialog> {
         ),
       ],
     );
+  }
+}
+
+class _RawMaterialPickerDialog extends StatefulWidget {
+  final List<RawMaterialModel> materials;
+
+  const _RawMaterialPickerDialog({required this.materials});
+
+  @override
+  State<_RawMaterialPickerDialog> createState() =>
+      _RawMaterialPickerDialogState();
+}
+
+class _RawMaterialPickerDialogState extends State<_RawMaterialPickerDialog> {
+  final _search = TextEditingController();
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _search.addListener(() {
+      setState(() => _query = _search.text.trim().toLowerCase());
+    });
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final materials = _filteredMaterials();
+
+    return AlertDialog(
+      title: const Text('Select Raw Material'),
+      content: SizedBox(
+        width: 620,
+        height: 500,
+        child: Column(
+          children: [
+            TextField(
+              controller: _search,
+              decoration: const InputDecoration(
+                labelText: 'Search material',
+                prefixIcon: Icon(Icons.search),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: materials.isEmpty
+                  ? const Center(child: Text('No raw materials found.'))
+                  : ListView.separated(
+                      itemCount: materials.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final material = materials[index];
+                        final subtitle = [
+                          material.gradeIs,
+                          if (material.length > 0)
+                            '${_formatMaterialNumber(material.length)} mm',
+                          if (material.unitWeight > 0)
+                            '${_formatMaterialNumber(material.unitWeight)} kg/m',
+                        ].where((value) => value.trim().isNotEmpty).join(' • ');
+
+                        return ListTile(
+                          leading: const Icon(Icons.inventory_2_outlined),
+                          title: Text(
+                            material.displayName,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: subtitle.isEmpty ? null : Text(subtitle),
+                          onTap: () => Navigator.pop(context, material),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+      ],
+    );
+  }
+
+  List<RawMaterialModel> _filteredMaterials() {
+    final unique = <String, RawMaterialModel>{};
+    for (final material in widget.materials) {
+      unique.putIfAbsent(_materialKey(material), () => material);
+    }
+
+    final rows = unique.values
+        .where((material) {
+          if (_query.isEmpty) return true;
+          return material.materialCode.toLowerCase().contains(_query) ||
+              material.descriptionThickness.toLowerCase().contains(_query) ||
+              material.gradeIs.toLowerCase().contains(_query);
+        })
+        .toList(growable: false);
+
+    rows.sort((a, b) {
+      final code = a.materialCode.compareTo(b.materialCode);
+      if (code != 0) return code;
+      final description = a.descriptionThickness.compareTo(
+        b.descriptionThickness,
+      );
+      if (description != 0) return description;
+      return a.gradeIs.compareTo(b.gradeIs);
+    });
+    return rows;
+  }
+
+  String _materialKey(RawMaterialModel material) {
+    if (material.materialId.trim().isNotEmpty) return material.materialId;
+    return [
+      material.materialCode,
+      material.descriptionThickness,
+      material.gradeIs,
+      material.length.toStringAsFixed(3),
+      material.unitWeight.toStringAsFixed(3),
+    ].map((value) => value.trim().toLowerCase()).join('|');
+  }
+
+  static String _formatMaterialNumber(double value) {
+    if (value == value.roundToDouble()) return value.toStringAsFixed(0);
+    return value.toStringAsFixed(3);
   }
 }
 
