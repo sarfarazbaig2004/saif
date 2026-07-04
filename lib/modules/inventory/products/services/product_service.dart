@@ -5,6 +5,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import '../../../../models/item_model.dart';
 
+import 'package:QUIK/core/utils/file_upload_limits.dart';
+
 class ProductService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
@@ -76,6 +78,7 @@ class ProductService {
         'module': 'products',
       },
     );
+    validateUploadBytesLength(bytes.lengthInBytes);
     final task = await ref.putData(bytes, metadata);
     if (task.state != TaskState.success) throw Exception('Upload failed');
     return await ref.getDownloadURL();

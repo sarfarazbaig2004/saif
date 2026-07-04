@@ -1,6 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 
+import 'package:QUIK/core/utils/file_upload_limits.dart';
+
 class CustomerPoPdfUploadResult {
   final String url;
   final String fileName;
@@ -28,6 +30,10 @@ class CustomerPoPdfUploadService {
     if (result == null || result.files.isEmpty) return null;
 
     final file = result.files.first;
+    if (file.size > maxUploadFileSizeBytes) {
+      throw Exception(maxUploadFileSizeMessage);
+    }
+
     if (file.bytes == null) return null;
 
     final fileName = file.name;

@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 
+import 'package:QUIK/core/utils/file_upload_limits.dart';
+
 class ScreensFabricationInquiry extends StatefulWidget {
   final String companyId;
   final String currentUserUid;
@@ -156,6 +158,11 @@ class _ScreensFabricationInquiryState extends State<ScreensFabricationInquiry> {
       );
 
       if (picked == null || picked.files.isEmpty) return;
+
+      if (hasFileOverUploadLimit(picked.files)) {
+        _infoSnack(maxUploadFileSizeMessage);
+        return;
+      }
 
       final uploaded = <Map<String, dynamic>>[];
       final timestamp = DateTime.now().millisecondsSinceEpoch;

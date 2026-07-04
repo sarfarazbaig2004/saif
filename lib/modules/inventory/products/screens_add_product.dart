@@ -10,6 +10,8 @@ import 'package:QUIK/core/inventory/models/material_classification.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 
+import 'package:QUIK/core/utils/file_upload_limits.dart';
+
 class ScreensAddProduct extends StatefulWidget {
   final String companyId;
   final String currentUserUid;
@@ -389,6 +391,15 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
 
       if (result == null || result.files.isEmpty) return;
 
+      if (hasFileOverUploadLimit(result.files)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text(maxUploadFileSizeMessage)),
+          );
+        }
+        return;
+      }
+
       for (final file in result.files) {
         final bytes = file.bytes;
         if (bytes == null || bytes.isEmpty) continue;
@@ -489,6 +500,15 @@ class _ScreensAddProductState extends State<ScreensAddProduct> {
       );
 
       if (result == null || result.files.isEmpty) return;
+
+      if (hasFileOverUploadLimit(result.files)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text(maxUploadFileSizeMessage)),
+          );
+        }
+        return;
+      }
 
       for (final file in result.files) {
         final bytes = file.bytes;

@@ -8,6 +8,8 @@ import 'package:QUIK/modules/inventory/material_master/models/material_master_mo
 import 'package:QUIK/modules/inventory/material_master/repositories/material_master_repository.dart';
 import 'package:QUIK/modules/inventory/material_master/services/weight_formula_service.dart';
 
+import 'package:QUIK/core/utils/file_upload_limits.dart';
+
 class MaterialMasterScreen extends StatefulWidget {
   final String tenantId;
 
@@ -278,6 +280,12 @@ class _MaterialMasterScreenState extends State<MaterialMasterScreen> {
       allowedExtensions: const ['csv', 'txt'],
       withData: true,
     );
+
+    if (result != null && hasFileOverUploadLimit(result.files)) {
+      _snack(maxUploadFileSizeMessage);
+      return;
+    }
+
     final bytes = result?.files.single.bytes;
     if (bytes == null) return;
     final rows = _parseMaterialCsv(const Utf8Decoder().convert(bytes));

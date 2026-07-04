@@ -8,6 +8,8 @@ import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/administration/compliance/models/compliance_document_model.dart';
 import 'package:QUIK/modules/administration/compliance/services/compliance_document_service.dart';
 
+import 'package:QUIK/core/utils/file_upload_limits.dart';
+
 enum _QmsDocumentBucket { all, iso, inspection }
 
 class ComplianceLegalScreen extends StatefulWidget {
@@ -568,6 +570,13 @@ class _ComplianceLegalScreenState extends State<ComplianceLegalScreen>
                               'xlsx',
                             ],
                           );
+
+                          if (result != null &&
+                              hasFileOverUploadLimit(result.files)) {
+                            _showSnack(maxUploadFileSizeMessage);
+                            return;
+                          }
+
                           final file = result?.files.single;
                           if (file == null) return;
                           setDialogState(() => pickedFile = file);

@@ -13,6 +13,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_pdf_generator.dart';
 import 'package:QUIK/modules/finance/proforma_invoice/proforma_screen.dart';
 
+import 'package:QUIK/core/utils/file_upload_limits.dart';
+
 // =========================================================
 // CONSTANTS
 // =========================================================
@@ -523,13 +525,10 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
       final file = result.files.first;
       final fileSize = file.size;
 
-      if (fileSize > 10 * 1024 * 1024) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('File size exceeds 10MB limit.'),
-            backgroundColor: _zDanger,
-          ),
-        );
+      if (fileSize > maxUploadFileSizeBytes) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text(maxUploadFileSizeMessage)));
         return;
       }
 

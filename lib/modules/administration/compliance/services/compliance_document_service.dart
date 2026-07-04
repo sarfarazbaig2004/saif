@@ -6,6 +6,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/administration/compliance/models/compliance_document_model.dart';
 
+import 'package:QUIK/core/utils/file_upload_limits.dart';
+
 class ComplianceDocumentService {
   ComplianceDocumentService({
     required this.tenantId,
@@ -89,6 +91,7 @@ class ComplianceDocumentService {
       contentType: _contentTypeForFile(safeFileName),
     );
 
+    validateUploadBytesLength(bytes.lengthInBytes);
     await ref.putData(bytes, metadata);
     final url = await ref.getDownloadURL();
 

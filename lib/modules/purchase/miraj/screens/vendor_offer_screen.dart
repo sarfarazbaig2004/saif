@@ -6,6 +6,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:QUIK/core/utils/file_upload_limits.dart';
+
 class MirajVendorOfferScreen extends StatefulWidget {
   final String tenantId;
   final String currentUserUid;
@@ -317,6 +319,15 @@ class _MirajVendorOfferFormScreenState
       );
 
       if (result == null || result.files.isEmpty) return;
+
+      if (hasFileOverUploadLimit(result.files)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text(maxUploadFileSizeMessage)),
+          );
+        }
+        return;
+      }
 
       final uploaded = <Map<String, dynamic>>[];
       for (final file in result.files) {
