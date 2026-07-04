@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
@@ -39,6 +40,7 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
   DateTime _inwardDate = DateTime.now();
   bool _saving = false;
   RawMaterialModel? _selectedMaterial;
+  String? _selectedVendorId;
 
   String get _tenantId {
     final contextTenantId = context.tenant.selectedTenantId.trim();
@@ -49,6 +51,12 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
 
   FabricationInventoryRepository get _repository =>
       FabricationInventoryRepository(tenantId: _tenantId);
+
+  CollectionReference<Map<String, dynamic>> get _vendorsRef =>
+      FirebaseFirestore.instance
+          .collection('companies')
+          .doc(_tenantId)
+          .collection('vendors');
 
   @override
   void initState() {
@@ -214,7 +222,7 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
                       runSpacing: 12,
                       children: [
                         _dateField(),
-                        _field(_supplierName, 'Supplier Name', required: true),
+                        _vendorDropdown(),
                         _field(_challanNo, 'Challan / GRN No', required: true),
                         _field(_plantName, 'Plant', required: true),
                         _field(_warehouseName, 'Warehouse', required: true),
@@ -252,27 +260,169 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
     );
   }
 
+
+  Future<void> _pickVendor() async {
+    if (_tenantId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing company workspace.')),
+      );
+      return;
+    }
+
+    try {
+      final snapshot = await _vendorsRef.get();
+
+      if (!mounted) return;
+
+      final vendors = snapshot.docs
+          .where((doc) {
+            final data = doc.data();
+            return data['isDeleted'] != true && data['isActive'] != false;
+          })
+          .map((doc) {
+            final data = doc.data();
+            return _SelectedVendor(
+              id: doc.id,
+              name: (data['name'] ?? '').toString().trim(),
+            );
+          })
+          .where((vendor) => vendor.name.isNotEmpty)
+          .toList()
+        ..sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
+
+      if (vendors.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No active vendors found. Add a vendor first.'),
+          ),
+        );
+        return;
+      }
+
+      final selectedVendor = await showDialog<_SelectedVendor>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Select Supplier'),
+            content: SizedBox(
+              width: 520,
+              height: 420,
+              child: ListView.separated(
+                itemCount: vendors.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final vendor = vendors[index];
+                  return ListTile(
+                    leading: const Icon(Icons.business_outlined),
+                    title: Text(vendor.name),
+                    selected: vendor.id == _selectedVendorId,
+                    onTap: () => Navigator.pop(dialogContext, vendor),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!mounted || selectedVendor == null) return;
+
+      setState(() {
+        _selectedVendorId = selectedVendor.id;
+        _supplierName.text = selectedVendor.name;
+      });
+
+      _formKey.currentState?.validate();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load vendors: $e')));
+    }
+  }
+
+  Widget _vendorDropdown() {
+    return SizedBox(
+      width: 240,
+      child: TextFormField(
+        controller: _supplierName,
+        readOnly: true,
+        onTap: _saving ? null : _pickVendor,
+        decoration: const InputDecoration(
+          labelText: 'Supplier Name *',
+          suffixIcon: Icon(Icons.arrow_drop_down),
+        ),
+        validator: (value) =>
+            (value ?? '').trim().isEmpty ? 'Supplier Name is required' : null,
+      ),
+    );
+  }
+
+
   Widget _materialPicker(List<RawMaterialModel> materials) {
+    final materialMap = <String, RawMaterialModel>{};
+
+    for (final material in materials) {
+      final materialId = material.materialId.trim();
+      if (materialId.isEmpty) continue;
+      materialMap.putIfAbsent(materialId, () => material);
+    }
+
+    final uniqueMaterials = materialMap.values.toList()
+      ..sort(
+        (a, b) =>
+            a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase()),
+      );
+
+    final selectedId = _selectedMaterial?.materialId.trim() ?? '';
+    final selectedValue =
+        uniqueMaterials.any((material) => material.materialId == selectedId)
+            ? selectedId
+            : null;
+
     return SizedBox(
       width: 420,
-      child: DropdownButtonFormField<RawMaterialModel>(
-        initialValue: _selectedMaterial,
+      child: DropdownButtonFormField<String>(
+        initialValue: selectedValue,
+        isExpanded: true,
         decoration: const InputDecoration(labelText: 'Raw Material'),
-        items: materials
+        selectedItemBuilder: (context) => uniqueMaterials
             .map(
-              (material) => DropdownMenuItem(
-                value: material,
+              (material) => Text(
+                material.displayName,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            )
+            .toList(growable: false),
+        items: uniqueMaterials
+            .map(
+              (material) => DropdownMenuItem<String>(
+                value: material.materialId,
                 child: Text(
                   material.displayName,
                   overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             )
             .toList(growable: false),
-        onChanged: _applyMaterial,
+        onChanged: (materialId) {
+          final material = materialMap[materialId];
+          _applyMaterial(material);
+        },
       ),
     );
   }
+
 
   Widget _dateField() {
     return SizedBox(
@@ -334,3 +484,14 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
     return value.toStringAsFixed(3);
   }
 }
+
+class _SelectedVendor {
+  final String id;
+  final String name;
+
+  const _SelectedVendor({
+    required this.id,
+    required this.name,
+  });
+}
+
