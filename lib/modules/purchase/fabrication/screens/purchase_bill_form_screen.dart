@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_inward_model.dart';
@@ -18,6 +19,12 @@ class _PurchaseBillFormScreenState extends State<PurchaseBillFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late final FabricationInventoryRepository _repository;
 
+  CollectionReference<Map<String, dynamic>> get _vendorsRef => FirebaseFirestore
+      .instance
+      .collection('companies')
+      .doc(widget.tenantId)
+      .collection('vendors');
+
   final _supplierName = TextEditingController();
   final _supplierBillNo = TextEditingController();
   final _billAmount = TextEditingController();
@@ -26,6 +33,7 @@ class _PurchaseBillFormScreenState extends State<PurchaseBillFormScreen> {
   DateTime _billDate = DateTime.now();
   String _status = 'pending';
   String? _linkedInwardId;
+  String? _selectedVendorId;
   List<RawMaterialInwardModel> _receipts = const <RawMaterialInwardModel>[];
   bool _loadingReceipts = true;
   bool _saving = false;
@@ -143,7 +151,7 @@ class _PurchaseBillFormScreenState extends State<PurchaseBillFormScreen> {
                   runSpacing: 12,
                   children: [
                     _dateField(),
-                    _field(_supplierName, 'Supplier Name', required: true),
+                    _vendorPickerField(),
                     _field(_supplierBillNo, 'Supplier Bill No', required: true),
                     _field(
                       _billAmount,
@@ -222,6 +230,105 @@ class _PurchaseBillFormScreenState extends State<PurchaseBillFormScreen> {
     );
   }
 
+  Future<void> _pickVendor() async {
+    try {
+      final snapshot = await _vendorsRef.orderBy('nameLower').get();
+
+      if (!mounted) return;
+
+      final vendors =
+          snapshot.docs
+              .where((doc) {
+                final data = doc.data();
+                return data['isDeleted'] != true && data['isActive'] != false;
+              })
+              .map((doc) {
+                final data = doc.data();
+                return _SelectedVendor(
+                  id: doc.id,
+                  name: (data['name'] ?? '').toString().trim(),
+                );
+              })
+              .where((vendor) => vendor.name.isNotEmpty)
+              .toList()
+            ..sort(
+              (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+            );
+
+      if (vendors.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No active vendors found. Add a vendor first.'),
+          ),
+        );
+        return;
+      }
+
+      final selectedVendor = await showDialog<_SelectedVendor>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Select Supplier'),
+            content: SizedBox(
+              width: 520,
+              height: 420,
+              child: ListView.separated(
+                itemCount: vendors.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final vendor = vendors[index];
+                  return ListTile(
+                    leading: const Icon(Icons.business_outlined),
+                    title: Text(vendor.name),
+                    selected: vendor.id == _selectedVendorId,
+                    onTap: () => Navigator.pop(dialogContext, vendor),
+                  );
+                },
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Cancel'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!mounted || selectedVendor == null) return;
+
+      setState(() {
+        _selectedVendorId = selectedVendor.id;
+        _supplierName.text = selectedVendor.name;
+      });
+
+      _formKey.currentState?.validate();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to load vendors: $e')));
+    }
+  }
+
+  Widget _vendorPickerField() {
+    return SizedBox(
+      width: 240,
+      child: TextFormField(
+        controller: _supplierName,
+        readOnly: true,
+        onTap: _saving ? null : _pickVendor,
+        decoration: const InputDecoration(
+          labelText: 'Supplier Name *',
+          suffixIcon: Icon(Icons.arrow_drop_down),
+        ),
+        validator: (value) =>
+            (value ?? '').trim().isEmpty ? 'Supplier Name is required' : null,
+      ),
+    );
+  }
+
   Widget _dateField() {
     return SizedBox(
       width: 220,
@@ -276,4 +383,11 @@ class _PurchaseBillFormScreenState extends State<PurchaseBillFormScreen> {
     ];
     return '${value.day} ${months[value.month - 1]} ${value.year}';
   }
+}
+
+class _SelectedVendor {
+  final String id;
+  final String name;
+
+  const _SelectedVendor({required this.id, required this.name});
 }
