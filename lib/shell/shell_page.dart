@@ -168,7 +168,7 @@ extension ShellPageX on ShellPage {
         return 'Purchase Requisitions';
 
       case ShellPage.inventoryProducts:
-        return 'Raw Materials';
+        return 'Item Master';
       case ShellPage.inventoryMaterialMaster:
         return 'Material Master';
       case ShellPage.inventoryStockSummary:

@@ -15,6 +15,17 @@ class RawMaterialModel {
   final double reorderLevel;
   final String remarks;
   final bool isActive;
+  // Item-master fields. Defaults keep every existing raw_materials document valid.
+  final String itemType;
+  final String itemCode;
+  final String itemName;
+  final String brandOrMake;
+  final String hsnCode;
+  final double gstPercent;
+  final double minimumStock;
+  final String warehouse;
+  final String status;
+  final Map<String, dynamic> itemDetails;
 
   const RawMaterialModel({
     required this.materialId,
@@ -29,7 +40,22 @@ class RawMaterialModel {
     required this.reorderLevel,
     required this.remarks,
     required this.isActive,
+    this.itemType = 'raw_material',
+    this.itemCode = '',
+    this.itemName = '',
+    this.brandOrMake = '',
+    this.hsnCode = '',
+    this.gstPercent = 0,
+    this.minimumStock = 0,
+    this.warehouse = '',
+    this.status = 'active',
+    this.itemDetails = const <String, dynamic>{},
   });
+
+  /// Legacy documents have no type and are always raw materials.
+  String get effectiveItemType => itemType.trim().isEmpty ? 'raw_material' : itemType;
+  String get effectiveItemCode => itemCode.trim().isEmpty ? materialCode : itemCode;
+  String get effectiveItemName => itemName.trim().isEmpty ? descriptionThickness : itemName;
 
   String get displayName {
     if (materialCode.trim().isEmpty) return descriptionThickness;
@@ -40,6 +66,9 @@ class RawMaterialModel {
   Map<String, dynamic> toFirestore() {
     return {
       'materialId': materialId,
+      'itemType': effectiveItemType,
+      'itemCode': effectiveItemCode,
+      'itemName': effectiveItemName,
       'materialCode': materialCode,
       'descriptionThickness': descriptionThickness,
       'materialDescription': descriptionThickness,
@@ -54,6 +83,13 @@ class RawMaterialModel {
       'rawMaterialCategory': category,
       'productFamily': productFamily,
       'reorderLevel': reorderLevel,
+      'minimumStock': minimumStock,
+      'brandOrMake': brandOrMake,
+      'hsnCode': hsnCode,
+      'gstPercent': gstPercent,
+      'warehouse': warehouse,
+      'status': status,
+      ...itemDetails,
       'remarks': remarks,
       'isActive': isActive,
       'futureTracking': const {
@@ -91,6 +127,16 @@ class RawMaterialModel {
       reorderLevel: doubleFromValue(data['reorderLevel']),
       remarks: (data['remarks'] ?? data['notes'] ?? '').toString(),
       isActive: data['isActive'] == null ? true : data['isActive'] == true,
+      itemType: (data['itemType'] ?? 'raw_material').toString(),
+      itemCode: (data['itemCode'] ?? data['materialCode'] ?? '').toString(),
+      itemName: (data['itemName'] ?? data['descriptionThickness'] ?? data['materialDescription'] ?? data['description'] ?? '').toString(),
+      brandOrMake: (data['brandOrMake'] ?? data['brand'] ?? data['make'] ?? '').toString(),
+      hsnCode: (data['hsnCode'] ?? '').toString(),
+      gstPercent: doubleFromValue(data['gstPercent']),
+      minimumStock: doubleFromValue(data['minimumStock'] ?? data['reorderLevel']),
+      warehouse: (data['warehouse'] ?? data['warehouseName'] ?? '').toString(),
+      status: (data['status'] ?? (data['isActive'] == false ? 'inactive' : 'active')).toString(),
+      itemDetails: Map<String, dynamic>.from(data),
     );
   }
 }

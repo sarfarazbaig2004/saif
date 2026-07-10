@@ -1779,7 +1779,7 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.crmCustomers:
         return ['Accounts', 'Contacts', 'History', 'Relationships'];
       case ShellPage.inventoryProducts:
-        return ['Master', 'Grade', 'Length', 'Stock'];
+        return ['Master', 'Types', 'Categories', 'Stock'];
       case ShellPage.adminUsers:
         return ['Access', 'Permissions', 'Roles', 'Team'];
       case ShellPage.settingsGeneral:
@@ -1798,7 +1798,7 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.crmCustomers:
         return 'Manage customer master records, view customer relationship data, and keep your CRM organized around actual business accounts.';
       case ShellPage.inventoryProducts:
-        return 'Manage raw material master data used by inward, issue, and transaction-backed stock summaries.';
+        return 'Manage a common item master while keeping raw material records available for existing inward, issue, and stock workflows.';
       case ShellPage.adminUsers:
         return 'Handle user management, role-based access, and team structure for each company workspace.';
       case ShellPage.settingsGeneral:
