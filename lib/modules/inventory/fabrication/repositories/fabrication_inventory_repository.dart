@@ -9,6 +9,7 @@ import 'package:QUIK/modules/inventory/fabrication/models/raw_material_snapshot_
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_snapshot_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_stock_summary_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_transaction_model.dart';
+import 'package:QUIK/modules/inventory/fabrication/services/material_inward_weight_calculator.dart';
 import 'package:QUIK/modules/production/core/production_firestore_utils.dart';
 
 class FabricationInventoryRepository {
@@ -252,11 +253,10 @@ class FabricationInventoryRepository {
         plantName: 'Plant 1',
         warehouseName: 'Main Store',
         quantityNos: entry.quantityNos,
-        quantityKg: _calculatedQuantityKg(
-          quantityKg: entry.quantityKg,
-          quantityNos: entry.quantityNos,
-          length: entry.lengthMm,
-          unitWeight: entry.unitWeightKgPerM,
+        quantityKg: calculateMaterialInwardWeightKg(
+          unitWeightKgPerMeter: entry.unitWeightKgPerM,
+          lengthMeter: entry.lengthMm,
+          receivedQuantityNos: entry.quantityNos,
         ),
         referenceNo: entry.challanNo,
         partyOrProcess: entry.supplierName,
@@ -385,12 +385,14 @@ class FabricationInventoryRepository {
     RawMaterialTransactionModel entry,
     String transactionId,
   ) {
-    final quantityKg = _calculatedQuantityKg(
-      quantityKg: entry.quantityKg,
-      quantityNos: entry.quantityNos,
-      length: entry.length,
-      unitWeight: entry.unitWeight,
-    );
+    final quantityKg =
+        entry.transactionType == RawMaterialTransactionType.inward
+        ? calculateMaterialInwardWeightKg(
+            unitWeightKgPerMeter: entry.unitWeight,
+            lengthMeter: entry.length,
+            receivedQuantityNos: entry.quantityNos,
+          )
+        : entry.quantityKg;
 
     return RawMaterialTransactionModel(
       transactionId: transactionId,
@@ -420,17 +422,6 @@ class FabricationInventoryRepository {
       qaReferenceId: entry.qaReferenceId,
       remarks: entry.remarks,
     );
-  }
-
-  double _calculatedQuantityKg({
-    required double quantityKg,
-    required double quantityNos,
-    required double length,
-    required double unitWeight,
-  }) {
-    if (quantityKg > 0) return quantityKg;
-    if (quantityNos <= 0 || length <= 0 || unitWeight <= 0) return 0;
-    return quantityNos * (length / 1000) * unitWeight;
   }
 
   bool _sameStockItem(

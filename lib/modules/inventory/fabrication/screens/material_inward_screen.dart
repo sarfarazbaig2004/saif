@@ -4,6 +4,7 @@ import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_inward_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/repositories/fabrication_inventory_repository.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_inward_form_screen.dart';
+import 'package:QUIK/modules/inventory/fabrication/services/material_inward_weight_calculator.dart';
 import 'package:QUIK/modules/inventory/fabrication/widgets/fabrication_inventory_flow_card.dart';
 import 'package:QUIK/modules/production/core/production_list_scaffold.dart';
 
@@ -80,7 +81,7 @@ class FabricationMaterialInwardScreen extends StatelessWidget {
           subtitle: subtitle.isEmpty
               ? 'Add supplier, challan, grade, and received length details'
               : subtitle,
-          trailing: '${item.quantityKg.toStringAsFixed(2)} kg',
+          trailing: '${formatMaterialInwardWeightKg(item.quantityKg)} kg',
         );
       },
     );

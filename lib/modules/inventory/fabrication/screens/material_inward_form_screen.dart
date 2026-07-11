@@ -5,6 +5,7 @@ import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_transaction_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/repositories/fabrication_inventory_repository.dart';
+import 'package:QUIK/modules/inventory/fabrication/services/material_inward_weight_calculator.dart';
 
 class MaterialInwardFormScreen extends StatefulWidget {
   final String tenantId;
@@ -75,14 +76,15 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
   }
 
   void _autoCalculateKg() {
-    final qtyKg = double.tryParse(_quantityKg.text.trim()) ?? 0;
-    if (qtyKg > 0) return;
     final nos = double.tryParse(_quantityNos.text.trim()) ?? 0;
     final length = double.tryParse(_lengthMm.text.trim()) ?? 0;
     final unitWeight = double.tryParse(_unitWeightKgPerM.text.trim()) ?? 0;
-    if (nos <= 0 || length <= 0 || unitWeight <= 0) return;
-    final kg = nos * (length / 1000) * unitWeight;
-    _quantityKg.text = kg.toStringAsFixed(3);
+    final kg = calculateMaterialInwardWeightKg(
+      unitWeightKgPerMeter: unitWeight,
+      lengthMeter: length,
+      receivedQuantityNos: nos,
+    );
+    _quantityKg.text = formatMaterialInwardWeightKg(kg);
   }
 
   void _applyMaterial(RawMaterialModel? material) {
@@ -129,7 +131,12 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
           plantName: _plantName.text.trim(),
           warehouseName: _warehouseName.text.trim(),
           quantityNos: double.tryParse(_quantityNos.text.trim()) ?? 0,
-          quantityKg: double.tryParse(_quantityKg.text.trim()) ?? 0,
+          quantityKg: calculateMaterialInwardWeightKg(
+            unitWeightKgPerMeter:
+                double.tryParse(_unitWeightKgPerM.text.trim()) ?? 0,
+            lengthMeter: double.tryParse(_lengthMm.text.trim()) ?? 0,
+            receivedQuantityNos: double.tryParse(_quantityNos.text.trim()) ?? 0,
+          ),
           referenceNo: _challanNo.text.trim(),
           partyOrProcess: _supplierName.text.trim(),
           workOrderId: '',
@@ -232,12 +239,14 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
                           _quantityNos,
                           'Received Qty (nos)',
                           number: true,
+                          rejectNegative: true,
                         ),
                         _field(
                           _quantityKg,
                           'Received Qty (kg)',
                           number: true,
                           required: true,
+                          readOnly: true,
                         ),
                         _field(_remarks, 'Remarks', width: 420),
                       ],
@@ -255,21 +264,75 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
   Widget _materialPicker(List<RawMaterialModel> materials) {
     return SizedBox(
       width: 420,
-      child: DropdownButtonFormField<RawMaterialModel>(
-        initialValue: _selectedMaterial,
-        decoration: const InputDecoration(labelText: 'Raw Material'),
-        items: materials
-            .map(
-              (material) => DropdownMenuItem(
-                value: material,
-                child: Text(
-                  material.displayName,
-                  overflow: TextOverflow.ellipsis,
+      child: Autocomplete<RawMaterialModel>(
+        initialValue: TextEditingValue(
+          text: _selectedMaterial?.displayName ?? '',
+        ),
+        displayStringForOption: (material) => material.displayName,
+        optionsBuilder: (textEditingValue) {
+          final query = textEditingValue.text.trim().toLowerCase();
+          if (query.isEmpty) return materials;
+          return materials.where((material) {
+            return material.displayName.toLowerCase().contains(query) ||
+                material.materialCode.toLowerCase().contains(query) ||
+                material.descriptionThickness.toLowerCase().contains(query) ||
+                material.gradeIs.toLowerCase().contains(query);
+          });
+        },
+        onSelected: _applyMaterial,
+        fieldViewBuilder:
+            (context, textController, focusNode, onFieldSubmitted) {
+              return TextFormField(
+                controller: textController,
+                focusNode: focusNode,
+                decoration: const InputDecoration(
+                  labelText: 'Raw Material',
+                  suffixIcon: Icon(Icons.search),
+                ),
+                onFieldSubmitted: (_) => onFieldSubmitted(),
+              );
+            },
+        optionsViewBuilder: (context, onSelected, options) {
+          final matches = options.toList(growable: false);
+          return Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(8),
+              clipBehavior: Clip.antiAlias,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxWidth: 420,
+                  maxHeight: 300,
+                ),
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  itemCount: matches.length,
+                  itemBuilder: (context, index) {
+                    final material = matches[index];
+                    return ListTile(
+                      dense: true,
+                      title: Text(
+                        material.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: material.gradeIs.isEmpty
+                          ? null
+                          : Text(
+                              material.gradeIs,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                      onTap: () => onSelected(material),
+                    );
+                  },
                 ),
               ),
-            )
-            .toList(growable: false),
-        onChanged: _applyMaterial,
+            ),
+          );
+        },
       ),
     );
   }
@@ -294,19 +357,28 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
     double width = 240,
     bool required = false,
     bool number = false,
+    bool readOnly = false,
+    bool rejectNegative = false,
   }) {
     return SizedBox(
       width: width,
       child: TextFormField(
         controller: controller,
+        readOnly: readOnly,
         keyboardType: number
             ? const TextInputType.numberWithOptions(decimal: true)
             : TextInputType.text,
         decoration: InputDecoration(labelText: label),
-        validator: required
-            ? (value) =>
-                  (value ?? '').trim().isEmpty ? '$label is required' : null
-            : null,
+        validator: (value) {
+          if (required && (value ?? '').trim().isEmpty) {
+            return '$label is required';
+          }
+          if (rejectNegative &&
+              (double.tryParse((value ?? '').trim()) ?? 0) < 0) {
+            return '$label cannot be negative';
+          }
+          return null;
+        },
       ),
     );
   }
