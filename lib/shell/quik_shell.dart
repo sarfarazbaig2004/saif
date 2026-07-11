@@ -23,7 +23,7 @@ import 'package:QUIK/modules/purchase/fabrication/screens/purchase_bill_screen.d
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_ledger_screen.dart';
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_master_screen.dart';
 import 'package:QUIK/modules/purchase/miraj/screens/vendor_offer_screen.dart';
-import 'package:QUIK/modules/purchase/miraj/screens/vendor_purchase_order_screen.dart';
+import 'package:QUIK/modules/purchase/purchase_orders/screens/purchase_order_list_screen.dart';
 import 'package:QUIK/modules/purchase/purchase_requisitions/screens/purchase_requisition_list_screen.dart';
 import 'package:QUIK/modules/sales/inquiries/screens_inquiry_list.dart';
 import 'package:QUIK/modules/sales/quotations/screens_quotation_list.dart';
@@ -318,7 +318,7 @@ class _QuikShellState extends State<QuikShell> {
                 _hasPermission('purchase', 'vendors') ||
                 _hasPermission('purchase', 'purchaseOrders'));
       case ShellPage.purchasePurchaseOrders:
-        return _isMirajTenant && _hasPermission('purchase', 'purchaseOrders');
+        return _hasPermission('purchase', 'purchaseOrders');
       case ShellPage.purchaseOrders:
         return _hasPermission('purchase', 'purchaseOrders');
       case ShellPage.purchaseGrn:
@@ -774,7 +774,6 @@ class _QuikShellState extends State<QuikShell> {
     return filtered;
   }
 
-
   String? _moduleIdForPage(ShellPage page) {
     switch (page) {
       case ShellPage.dashboard:
@@ -1010,17 +1009,17 @@ class _QuikShellState extends State<QuikShell> {
     if (page == ShellPage.dashboard) return 'Dashboard';
     if (page == ShellPage.settingsGeneral) return 'Settings';
     if (page == ShellPage.financeTaxInvoiceCreate) {
-      return 'Finance • Create Tax Invoice';
+      return 'Finance â€¢ Create Tax Invoice';
     }
     if (page == ShellPage.financeExportInvoiceCreate) {
-      return 'Finance • Create Export Invoice';
+      return 'Finance â€¢ Create Export Invoice';
     }
 
     if (_currentSidebarGroups.any((group) => group.children.contains(page))) {
       final group = _currentSidebarGroups.firstWhere(
         (g) => g.children.contains(page),
       );
-      return '${group.title} • ${page.label}';
+      return '${group.title} â€¢ ${page.label}';
     }
 
     return page.label;
@@ -1323,8 +1322,11 @@ class _QuikShellState extends State<QuikShell> {
 
       case ShellPage.purchasePurchaseOrders:
         return Padding(
-          padding: const EdgeInsets.all(14),
-          child: MirajVendorPurchaseOrderScreen(tenantId: widget.companyId),
+          padding: const EdgeInsets.all(10),
+          child: PurchaseOrderListScreen(
+            tenantId: widget.companyId,
+            currentUserUid: widget.userUid,
+          ),
         );
 
       case ShellPage.purchaseLedger:
