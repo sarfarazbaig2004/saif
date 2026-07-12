@@ -724,7 +724,7 @@ class _ScreensCustomerFollowUpListState
     final followUpsRef = widget.customerRef.collection('followUps');
 
     return Scaffold(
-      appBar: AppBar(title: Text('Follow-ups • ${widget.customerName}')),
+      appBar: AppBar(title: Text('Follow-ups \u2022 ${widget.customerName}')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openAddFollowUpDialog,
         icon: const Icon(Icons.add_task_outlined),

@@ -73,7 +73,7 @@ class PurchaseOrderPdfGenerator {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Text(
-                'Purchase Order • ${order.poNumber}',
+                'Purchase Order \u2022 ${order.poNumber}',
                 style: pw.TextStyle(fontSize: 8, color: _mutedColor),
               ),
               pw.Text(

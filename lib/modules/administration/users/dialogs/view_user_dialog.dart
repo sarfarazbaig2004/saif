@@ -85,7 +85,7 @@ Future<void> showViewUserDialog({
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Administration • Users • View User',
+                                  'Administration \u2022 Users \u2022 View User',
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w600,
@@ -558,11 +558,11 @@ String _permissionDisplayLabel(String key) {
   if (key.contains('.')) {
     final parts = key.split('.');
     if (parts.length == 3) {
-      return '${_moduleLabel(parts[0])} • ${_submoduleLabel(parts[1])} • ${formatPermissionActionLabel(parts[2])}';
+      return '${_moduleLabel(parts[0])} \u2022 ${_submoduleLabel(parts[1])} \u2022 ${formatPermissionActionLabel(parts[2])}';
     } else if (parts.length == 2 && parts[0] == 'dashboard') {
-      return '${_moduleLabel(parts[0])} • ${formatPermissionActionLabel(parts[1])}';
+      return '${_moduleLabel(parts[0])} \u2022 ${formatPermissionActionLabel(parts[1])}';
     } else if (parts.length == 2) {
-      return '${_moduleLabel(parts[0])} • ${_submoduleLabel(parts[1])}';
+      return '${_moduleLabel(parts[0])} \u2022 ${_submoduleLabel(parts[1])}';
     }
   }
   return permissionLabel(key);

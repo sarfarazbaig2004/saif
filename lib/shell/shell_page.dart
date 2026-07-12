@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+String buildModulePageTitle(String module, String page) {
+  return '$module \u2022 $page';
+}
+
 enum ShellPage {
   dashboard,
   platformTenantModules,

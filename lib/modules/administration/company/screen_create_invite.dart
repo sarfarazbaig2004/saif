@@ -1191,7 +1191,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Administration • Users • Invite User',
+                                'Administration \u2022 Users \u2022 Invite User',
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,

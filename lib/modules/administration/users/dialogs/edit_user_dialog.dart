@@ -241,7 +241,7 @@ Future<void> showEditUserDialog({
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Administration • Users • Edit User',
+                                      'Administration \u2022 Users \u2022 Edit User',
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
@@ -473,9 +473,10 @@ Future<void> showEditUserDialog({
                                       selectedModuleIds.remove(moduleId);
                                     }
 
-                                    permissions = _permissionsFromAllowedModules(
-                                      selectedModuleIds,
-                                    );
+                                    permissions =
+                                        _permissionsFromAllowedModules(
+                                          selectedModuleIds,
+                                        );
                                   });
                                 },
                               ),
@@ -652,7 +653,6 @@ Future<void> showEditUserDialog({
   );
 }
 
-
 Set<String> _readAllowedModuleIds(Map<String, dynamic> data) {
   final raw = data['allowedModuleIds'];
 
@@ -792,7 +792,6 @@ Set<String> _moduleIdsFromLegacyPermissions(Map<String, dynamic> permissions) {
   return ids;
 }
 
-
 Widget _buildLevelOneModuleAccessGrid({
   required Set<String> selectedModuleIds,
   required void Function(String moduleId, bool value) onChanged,
@@ -804,8 +803,8 @@ Widget _buildLevelOneModuleAccessGrid({
       final crossAxisCount = constraints.maxWidth >= 900
           ? 3
           : constraints.maxWidth >= 560
-              ? 2
-              : 1;
+          ? 2
+          : 1;
 
       return GridView.builder(
         shrinkWrap: true,
@@ -859,7 +858,6 @@ Widget _buildLevelOneModuleAccessGrid({
     },
   );
 }
-
 
 Map<String, dynamic> _permissionsFromAllowedModules(Set<String> moduleIds) {
   final permissions = buildEmptyPermissions();

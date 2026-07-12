@@ -1009,17 +1009,17 @@ class _QuikShellState extends State<QuikShell> {
     if (page == ShellPage.dashboard) return 'Dashboard';
     if (page == ShellPage.settingsGeneral) return 'Settings';
     if (page == ShellPage.financeTaxInvoiceCreate) {
-      return 'Finance â€¢ Create Tax Invoice';
+      return buildModulePageTitle('Finance', 'Create Tax Invoice');
     }
     if (page == ShellPage.financeExportInvoiceCreate) {
-      return 'Finance â€¢ Create Export Invoice';
+      return buildModulePageTitle('Finance', 'Create Export Invoice');
     }
 
     if (_currentSidebarGroups.any((group) => group.children.contains(page))) {
       final group = _currentSidebarGroups.firstWhere(
         (g) => g.children.contains(page),
       );
-      return '${group.title} â€¢ ${page.label}';
+      return buildModulePageTitle(group.title, page.label);
     }
 
     return page.label;
