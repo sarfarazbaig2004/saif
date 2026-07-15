@@ -6,6 +6,8 @@ import 'package:QUIK/core/modules/providers/module_access_provider.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_constants.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
 import 'package:QUIK/modules/administration/users/services/user_management_service.dart';
+import 'package:QUIK/modules/settings/branch_master/branch_model.dart';
+import 'package:QUIK/modules/settings/branch_master/branch_repository.dart';
 
 const Color _invitePrimaryColor = Color(0xFF17324D);
 const Color _inviteAccentColor = Color(0xFF3B82F6);
@@ -33,6 +35,8 @@ class ScreenCreateInvite extends StatefulWidget {
 class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final UserManagementService _userManagementService = UserManagementService();
+  late final BranchRepository _branchRepository;
+  late final Stream<List<BranchModel>> _branchStream;
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -48,6 +52,10 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   String selectedDepartment = 'Sales';
   String selectedDesignation = 'Sales Executive';
   String selectedAccessScope = AccessScope.company;
+
+  // UI-only branch selection. Invite access persistence will be added separately.
+  bool _allBranchesSelected = true;
+  final Set<String> _selectedBranchIds = <String>{};
 
   bool get isExportImport => widget.industry == 'export_import';
 
@@ -159,6 +167,8 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   @override
   void initState() {
     super.initState();
+    _branchRepository = BranchRepository(companyId: widget.companyId);
+    _branchStream = _branchRepository.watchBranches();
     _applyRoleDefaults(selectedRole);
     _setDefaultDesignation();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -804,6 +814,175 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     );
   }
 
+  Widget _buildBranchMultiSelectField() {
+    return StreamBuilder<List<BranchModel>>(
+      stream: _branchStream,
+      builder: (context, snapshot) {
+        final branches = (snapshot.data ?? const <BranchModel>[])
+            .where((branch) => branch.isActive && !branch.isDeleted)
+            .toList(growable: false);
+        final isLoading =
+            snapshot.connectionState == ConnectionState.waiting &&
+            !snapshot.hasData;
+        final hasError = snapshot.hasError;
+        final hasBranches = branches.isNotEmpty;
+        final validSelectedIds = _selectedBranchIds
+            .where((id) => branches.any((branch) => branch.id == id))
+            .toSet();
+        final selectedNames = branches
+            .where((branch) => validSelectedIds.contains(branch.id))
+            .map((branch) => branch.name)
+            .toList(growable: false);
+        final displayValue = !hasBranches
+            ? 'No branches available'
+            : _allBranchesSelected || selectedNames.isEmpty
+            ? 'All Branches'
+            : selectedNames.join(', ');
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: isLoading || hasError || !hasBranches
+                  ? null
+                  : () => _showBranchMultiSelectDialog(branches),
+              child: InputDecorator(
+                isEmpty: false,
+                decoration: _inputDecoration(
+                  label: 'Branch',
+                  icon: Icons.account_tree_outlined,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        isLoading ? 'Loading branches...' : displayValue,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isLoading || hasError || !hasBranches
+                              ? _inviteMutedTextColor
+                              : _inviteHeadingTextColor,
+                        ),
+                      ),
+                    ),
+                    if (isLoading)
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      Icon(
+                        Icons.arrow_drop_down,
+                        color: hasError || !hasBranches
+                            ? _inviteMutedTextColor
+                            : null,
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            if (hasError) ...[
+              const SizedBox(height: 6),
+              const Text(
+                'Branches could not be loaded. All Branches remains selected.',
+                style: TextStyle(
+                  color: _inviteMutedTextColor,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showBranchMultiSelectDialog(
+    List<BranchModel> branches,
+  ) async {
+    var selectAll = _allBranchesSelected;
+    final draftIds = Set<String>.from(_selectedBranchIds);
+
+    final result = await showDialog<({bool selectAll, Set<String> ids})>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text(
+            'Select Branches',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 440, maxHeight: 420),
+            child: ListView(
+              shrinkWrap: true,
+              children: [
+                CheckboxListTile(
+                  value: selectAll,
+                  title: const Text('All Branches'),
+                  contentPadding: EdgeInsets.zero,
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selectAll = value ?? false;
+                      if (selectAll) draftIds.clear();
+                    });
+                  },
+                ),
+                for (final branch in branches)
+                  CheckboxListTile(
+                    value: !selectAll && draftIds.contains(branch.id),
+                    title: Text(
+                      branch.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: branch.code.isEmpty ? null : Text(branch.code),
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (value) {
+                      setDialogState(() {
+                        selectAll = false;
+                        if (value == true) {
+                          draftIds.add(branch.id);
+                        } else {
+                          draftIds.remove(branch.id);
+                        }
+                      });
+                    },
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(
+                dialogContext,
+                (
+                  selectAll: selectAll || draftIds.isEmpty,
+                  ids: Set<String>.from(draftIds),
+                ),
+              ),
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result == null || !mounted) return;
+    setState(() {
+      _allBranchesSelected = result.selectAll;
+      _selectedBranchIds
+        ..clear()
+        ..addAll(result.selectAll ? const <String>{} : result.ids);
+    });
+  }
+
   Widget _buildSectionCard({
     required String title,
     required String subtitle,
@@ -1315,11 +1494,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                                 _applyRoleDefaults(nextRole);
                               },
                             ),
-                            right: _buildTextField(
-                              controller: departmentController,
-                              label: 'Department',
-                              icon: Icons.apartment_outlined,
-                            ),
+                            right: _buildBranchMultiSelectField(),
                           ),
                           const SizedBox(height: 16),
                           _buildDesktopTwoColumn(
