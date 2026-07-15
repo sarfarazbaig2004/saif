@@ -1,5 +1,6 @@
 // FILE PATH: lib/modules/settings/screen_settings_home.dart
 import 'package:QUIK/modules/settings/coating_master/coating_master_screen.dart';
+import 'package:QUIK/modules/settings/branch_master/branch_list_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -410,7 +411,14 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
             subtitle: 'Manage branch structure and branch-level setup.',
             icon: Icons.account_tree_outlined,
             enabled: isAdminOrManager,
-            onTap: () => _showComingSoon('Branches'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => BranchListScreen(
+                  companyId: widget.companyId,
+                  canAdd: isAdmin,
+                ),
+              ),
+            ),
           ),
           _ActionTile(
             title: 'Document Numbering',
