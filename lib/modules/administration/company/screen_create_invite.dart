@@ -6,8 +6,8 @@ import 'package:QUIK/core/modules/providers/module_access_provider.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_constants.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
 import 'package:QUIK/modules/administration/users/services/user_management_service.dart';
-import 'package:QUIK/modules/settings/branch_master/branch_model.dart';
-import 'package:QUIK/modules/settings/branch_master/branch_repository.dart';
+import 'package:QUIK/modules/settings/factory_master/factory_model.dart';
+import 'package:QUIK/modules/settings/factory_master/factory_repository.dart';
 
 const Color _invitePrimaryColor = Color(0xFF17324D);
 const Color _inviteAccentColor = Color(0xFF3B82F6);
@@ -35,8 +35,8 @@ class ScreenCreateInvite extends StatefulWidget {
 class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final UserManagementService _userManagementService = UserManagementService();
-  late final BranchRepository _branchRepository;
-  late final Stream<List<BranchModel>> _branchStream;
+  late final FactoryRepository _factoryRepository;
+  late final Stream<List<FactoryModel>> _factoryStream;
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -53,9 +53,9 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   String selectedDesignation = 'Sales Executive';
   String selectedAccessScope = AccessScope.company;
 
-  // UI-only branch selection. Invite access persistence will be added separately.
-  bool _allBranchesSelected = true;
-  final Set<String> _selectedBranchIds = <String>{};
+  // UI-only factory selection. Invite access persistence will be added separately.
+  bool _allFactoriesSelected = true;
+  final Set<String> _selectedFactoryIds = <String>{};
 
   bool get isExportImport => widget.industry == 'export_import';
 
@@ -167,8 +167,8 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   @override
   void initState() {
     super.initState();
-    _branchRepository = BranchRepository(companyId: widget.companyId);
-    _branchStream = _branchRepository.watchBranches();
+    _factoryRepository = FactoryRepository(companyId: widget.companyId);
+    _factoryStream = _factoryRepository.watchFactories();
     _applyRoleDefaults(selectedRole);
     _setDefaultDesignation();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -814,29 +814,29 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     );
   }
 
-  Widget _buildBranchMultiSelectField() {
-    return StreamBuilder<List<BranchModel>>(
-      stream: _branchStream,
+  Widget _buildFactoryMultiSelectField() {
+    return StreamBuilder<List<FactoryModel>>(
+      stream: _factoryStream,
       builder: (context, snapshot) {
-        final branches = (snapshot.data ?? const <BranchModel>[])
-            .where((branch) => branch.isActive && !branch.isDeleted)
+        final factories = (snapshot.data ?? const <FactoryModel>[])
+            .where((factory) => factory.isActive && !factory.isDeleted)
             .toList(growable: false);
         final isLoading =
             snapshot.connectionState == ConnectionState.waiting &&
             !snapshot.hasData;
         final hasError = snapshot.hasError;
-        final hasBranches = branches.isNotEmpty;
-        final validSelectedIds = _selectedBranchIds
-            .where((id) => branches.any((branch) => branch.id == id))
+        final hasFactories = factories.isNotEmpty;
+        final validSelectedIds = _selectedFactoryIds
+            .where((id) => factories.any((factory) => factory.id == id))
             .toSet();
-        final selectedNames = branches
-            .where((branch) => validSelectedIds.contains(branch.id))
-            .map((branch) => branch.name)
+        final selectedNames = factories
+            .where((factory) => validSelectedIds.contains(factory.id))
+            .map((factory) => factory.plantName)
             .toList(growable: false);
-        final displayValue = !hasBranches
-            ? 'No branches available'
-            : _allBranchesSelected || selectedNames.isEmpty
-            ? 'All Branches'
+        final displayValue = !hasFactories
+            ? 'No factories available'
+            : _allFactoriesSelected || selectedNames.isEmpty
+            ? 'All Factories'
             : selectedNames.join(', ');
 
         return Column(
@@ -844,24 +844,24 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
           children: [
             InkWell(
               borderRadius: BorderRadius.circular(14),
-              onTap: isLoading || hasError || !hasBranches
+              onTap: isLoading || hasError || !hasFactories
                   ? null
-                  : () => _showBranchMultiSelectDialog(branches),
+                  : () => _showFactoryMultiSelectDialog(factories),
               child: InputDecorator(
                 isEmpty: false,
                 decoration: _inputDecoration(
-                  label: 'Branch',
-                  icon: Icons.account_tree_outlined,
+                  label: 'Factory',
+                  icon: Icons.factory_outlined,
                 ),
                 child: Row(
                   children: [
                     Expanded(
                       child: Text(
-                        isLoading ? 'Loading branches...' : displayValue,
+                        isLoading ? 'Loading factories...' : displayValue,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: isLoading || hasError || !hasBranches
+                          color: isLoading || hasError || !hasFactories
                               ? _inviteMutedTextColor
                               : _inviteHeadingTextColor,
                         ),
@@ -876,7 +876,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                     else
                       Icon(
                         Icons.arrow_drop_down,
-                        color: hasError || !hasBranches
+                        color: hasError || !hasFactories
                             ? _inviteMutedTextColor
                             : null,
                       ),
@@ -887,7 +887,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
             if (hasError) ...[
               const SizedBox(height: 6),
               const Text(
-                'Branches could not be loaded. All Branches remains selected.',
+                'Factories could not be loaded. All Factories remains selected.',
                 style: TextStyle(
                   color: _inviteMutedTextColor,
                   fontSize: 12,
@@ -900,18 +900,18 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     );
   }
 
-  Future<void> _showBranchMultiSelectDialog(
-    List<BranchModel> branches,
+  Future<void> _showFactoryMultiSelectDialog(
+    List<FactoryModel> factories,
   ) async {
-    var selectAll = _allBranchesSelected;
-    final draftIds = Set<String>.from(_selectedBranchIds);
+    var selectAll = _allFactoriesSelected;
+    final draftIds = Set<String>.from(_selectedFactoryIds);
 
     final result = await showDialog<({bool selectAll, Set<String> ids})>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: const Text(
-            'Select Branches',
+            'Select Factories',
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
           content: ConstrainedBox(
@@ -921,7 +921,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
               children: [
                 CheckboxListTile(
                   value: selectAll,
-                  title: const Text('All Branches'),
+                  title: const Text('All Factories'),
                   contentPadding: EdgeInsets.zero,
                   onChanged: (value) {
                     setDialogState(() {
@@ -930,23 +930,23 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                     });
                   },
                 ),
-                for (final branch in branches)
+                for (final factory in factories)
                   CheckboxListTile(
-                    value: !selectAll && draftIds.contains(branch.id),
+                    value: !selectAll && draftIds.contains(factory.id),
                     title: Text(
-                      branch.name,
+                      factory.plantName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    subtitle: branch.code.isEmpty ? null : Text(branch.code),
+                    subtitle: factory.gstNo.isEmpty ? null : Text(factory.gstNo),
                     contentPadding: EdgeInsets.zero,
                     onChanged: (value) {
                       setDialogState(() {
                         selectAll = false;
                         if (value == true) {
-                          draftIds.add(branch.id);
+                          draftIds.add(factory.id);
                         } else {
-                          draftIds.remove(branch.id);
+                          draftIds.remove(factory.id);
                         }
                       });
                     },
@@ -976,8 +976,8 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
 
     if (result == null || !mounted) return;
     setState(() {
-      _allBranchesSelected = result.selectAll;
-      _selectedBranchIds
+      _allFactoriesSelected = result.selectAll;
+      _selectedFactoryIds
         ..clear()
         ..addAll(result.selectAll ? const <String>{} : result.ids);
     });
@@ -1494,7 +1494,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                                 _applyRoleDefaults(nextRole);
                               },
                             ),
-                            right: _buildBranchMultiSelectField(),
+                            right: _buildFactoryMultiSelectField(),
                           ),
                           const SizedBox(height: 16),
                           _buildDesktopTwoColumn(
