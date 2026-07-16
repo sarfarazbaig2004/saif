@@ -307,29 +307,31 @@ class _AddVerticalDialogState extends State<_AddVerticalDialog> {
           ),
           content: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 440, maxHeight: 420),
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                for (final factory in widget.factories)
-                  CheckboxListTile(
-                    value: draftIds.contains(factory.id),
-                    title: Text(
-                      factory.plantName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final factory in widget.factories)
+                    CheckboxListTile(
+                      value: draftIds.contains(factory.id),
+                      title: Text(
+                        factory.plantName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: (selected) {
+                        setDialogState(() {
+                          if (selected == true) {
+                            draftIds.add(factory.id);
+                          } else {
+                            draftIds.remove(factory.id);
+                          }
+                        });
+                      },
                     ),
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (selected) {
-                      setDialogState(() {
-                        if (selected == true) {
-                          draftIds.add(factory.id);
-                        } else {
-                          draftIds.remove(factory.id);
-                        }
-                      });
-                    },
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
           actions: [
