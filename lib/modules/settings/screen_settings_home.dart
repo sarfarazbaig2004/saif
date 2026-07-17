@@ -1,7 +1,8 @@
 // FILE PATH: lib/modules/settings/screen_settings_home.dart
 import 'package:QUIK/modules/settings/coating_master/coating_master_screen.dart';
+import 'package:QUIK/modules/settings/company_profile/company_profile_bank_screen.dart';
+import 'package:QUIK/modules/settings/document_layout/document_layout_designer_screen.dart';
 import 'package:QUIK/modules/settings/factory_master/factory_list_screen.dart';
-import 'package:QUIK/modules/settings/vertical_master/vertical_list_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -405,7 +406,21 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
       title: 'Workspace',
       subtitle: 'Company-level settings and workspace information.',
       children: [
-        if (canOpenCompanyProfile) _buildCompanyProfileCard(),
+        if (canOpenCompanyProfile)
+          _ActionTile(
+            title: 'Company Profile & Banking',
+            subtitle:
+                'Manage company identity, GST, PAN, address, billing information, and multiple bank accounts.',
+            icon: Icons.apartment_outlined,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => CompanyProfileBankScreen(
+                  companyId: widget.companyId,
+                  canEdit: isAdminOrManager,
+                ),
+              ),
+            ),
+          ),
         if (!isExportImport) ...[
           _ActionTile(
             title: 'Factories',
@@ -423,15 +438,15 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
             ),
           ),
           _ActionTile(
-            title: 'Verticals',
-            subtitle: 'Manage business verticals and their linked factories.',
-            icon: Icons.view_agenda_outlined,
-            enabled: isAdminOrManager,
+            title: 'Letter Head Layout',
+            subtitle:
+                'Configure the letterhead background, printable area, margins, header, and footer.',
+            icon: Icons.description_outlined,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => VerticalListScreen(
+                builder: (_) => DocumentLayoutDesignerScreen(
                   companyId: widget.companyId,
-                  canAdd: isAdmin,
+                  canEdit: isAdminOrManager,
                 ),
               ),
             ),
@@ -449,6 +464,7 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildCompanyProfileCard() {
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
       stream: FirebaseFirestore.instance
