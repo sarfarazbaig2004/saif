@@ -10,6 +10,8 @@ import 'package:QUIK/modules/customer_po/repositories/customer_po_repository.dar
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_number_service.dart';
 import 'package:QUIK/modules/sales/shared/enums/customer_po_status.dart';
 import 'package:QUIK/modules/sales/shared/models/sales_commercial_terms_model.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_model.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_repository.dart';
 import 'quotation_pdf_generator.dart';
 import 'local/helpers/quotation_local_constants.dart';
 import 'local/widgets/quotation_bottom_action_bar.dart';
@@ -67,6 +69,9 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
   String _quotationFormat = 'commercial';
   String _engineeringBomId = '';
   String _engineeringBomNo = '';
+  String? _selectedVerticalId;
+  String _selectedVerticalName = '';
+  List<VerticalModel> _verticalOptions = const <VerticalModel>[];
 
   String get _tenantId => (_companyId ?? '').trim();
 
@@ -171,6 +176,7 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     await _loadUserContext();
     await _loadCompanyProfile();
     await _loadUserSettings();
+    await _loadVerticals();
 
     if (widget.existingQuotation != null) {
       _loadExistingQuotation(widget.existingQuotation!);
@@ -184,6 +190,12 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
   }
 
   void _loadExistingQuotation(Map<String, dynamic> data) {
+    _selectedVerticalId = (data['verticalId'] ?? '').toString().trim();
+    if (_selectedVerticalId!.isEmpty) _selectedVerticalId = null;
+    _selectedVerticalName =
+        (data['verticalName'] ?? data['businessVertical'] ?? '')
+            .toString()
+            .trim();
     _approvalStatus = data['approvalStatus']?.toString() ?? 'Pending';
     _quotationStatus = data['status']?.toString() ?? 'Sent';
     _paymentStatus = data['paymentStatus']?.toString() ?? 'Pending';
@@ -282,6 +294,19 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
 
     if (_selectedCustomerId != null) {
       _fetchCustomerInsights(_selectedCustomerId!);
+    }
+  }
+
+  Future<void> _loadVerticals() async {
+    try {
+      final verticals = await VerticalRepository(
+        companyId: _tenantId,
+      ).watchVerticals().first;
+      _verticalOptions = verticals
+          .where((vertical) => vertical.isActive && !vertical.isDeleted)
+          .toList(growable: false);
+    } catch (_) {
+      _verticalOptions = const <VerticalModel>[];
     }
   }
 
@@ -541,6 +566,12 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     _quotationFormat = (seed['quotationFormat'] ?? 'commercial').toString();
     _engineeringBomId = (seed['engineeringBomId'] ?? '').toString();
     _engineeringBomNo = (seed['engineeringBomNo'] ?? '').toString();
+    _selectedVerticalId = (seed['verticalId'] ?? '').toString().trim();
+    if (_selectedVerticalId!.isEmpty) _selectedVerticalId = null;
+    _selectedVerticalName =
+        (seed['verticalName'] ?? seed['businessVertical'] ?? '')
+            .toString()
+            .trim();
 
     final seededCustomerId = (seed['customerId'] ?? '').toString().trim();
     if (seededCustomerId.isNotEmpty) {
@@ -1134,6 +1165,10 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
       _setError('Add at least one item.');
       return;
     }
+    if ((_selectedVerticalId ?? '').isEmpty) {
+      _setError('Select a business vertical before saving.');
+      return;
+    }
     if (_tenantId.isEmpty || _currentUserUid == null) {
       _setError('Missing company workspace. Quotation was not saved.');
       return;
@@ -1211,6 +1246,8 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
         'companyId': _tenantId,
         'tenantId': _tenantId,
         'subject': _subjectController.text.trim(),
+        'verticalId': (_selectedVerticalId ?? '').trim(),
+        'verticalName': _selectedVerticalName.trim(),
         'quoteDate': Timestamp.fromDate(_quoteDate),
         'status': _quotationStatus,
         'approvalStatus': _approvalStatus,
@@ -2779,6 +2816,57 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                               'Subject Line *',
                               validator: (v) => v!.isEmpty ? 'Required' : null,
                             ),
+                            DropdownButtonFormField<String>(
+                              key: ValueKey(
+                                'vertical-${_selectedVerticalId ?? ''}-${_verticalOptions.length}',
+                              ),
+                              initialValue: _verticalOptions.any(
+                                (vertical) =>
+                                    vertical.id == _selectedVerticalId,
+                              )
+                                  ? _selectedVerticalId
+                                  : null,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'Business Vertical *',
+                                prefixIcon: Icon(Icons.category_outlined),
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              items: _verticalOptions
+                                  .map(
+                                    (vertical) => DropdownMenuItem<String>(
+                                      value: vertical.id,
+                                      child: Text(
+                                        vertical.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: _isReadOnly
+                                  ? null
+                                  : (value) {
+                                      VerticalModel? selected;
+                                      for (final vertical in _verticalOptions) {
+                                        if (vertical.id == value) {
+                                          selected = vertical;
+                                          break;
+                                        }
+                                      }
+                                      setState(() {
+                                        _selectedVerticalId = selected?.id;
+                                        _selectedVerticalName =
+                                            selected?.name ?? '';
+                                      });
+                                    },
+                              validator: (_) =>
+                                  (_selectedVerticalId ?? '').isEmpty
+                                  ? 'Business vertical is required'
+                                  : null,
+                            ),
+                            const SizedBox(height: 10),
                             Row(
                               children: [
                                 Expanded(

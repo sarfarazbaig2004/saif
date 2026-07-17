@@ -15,6 +15,8 @@ import 'package:QUIK/modules/engineering/bom/repositories/engineering_bom_reposi
 import 'package:QUIK/modules/engineering/bom/screens/engineering_bom_entry_screen.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
 import 'package:QUIK/modules/sales/inquiries/controllers/add_inquiry_controllers.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_model.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_repository.dart';
 
 part 'widgets/add_inquiry_insights_section.dart';
 part 'widgets/add_inquiry_products_section.dart';
@@ -51,6 +53,9 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   String? _selectedContactId;
   List<String> _additionalContactIds = [];
   String? _assignedToUid;
+  String? _selectedVerticalId;
+  String _selectedVerticalName = '';
+  List<VerticalModel> _verticalOptions = const <VerticalModel>[];
 
   String _customerNameSnapshot = '';
   String _customerIndustrySnapshot = '';
@@ -160,7 +165,7 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       _assignedToUid = widget.currentUserUid;
     }
     _hydrateFromInquiry();
-    await _loadExtraData();
+    await Future.wait([_loadExtraData(), _loadVerticals()]);
     _inquiryDate ??= DateTime.now();
     _calculateInquiryReadiness();
   }
@@ -353,6 +358,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     if (iq == null) return;
 
     _controllers.subject.text = iq.subject;
+    _selectedVerticalId = iq.verticalId.isEmpty ? null : iq.verticalId;
+    _selectedVerticalName = iq.verticalName;
     _controllers.sourceRef.text = iq.sourceReference;
 
     final expValStr = iq.expectedValue.toString();
@@ -376,6 +383,23 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     _assignedToUid = iq.assignedToUid.isNotEmpty ? iq.assignedToUid : null;
     _nextFollowUpDate = iq.nextFollowUpDate;
     _expectedClosureDate = iq.expectedClosureDate;
+  }
+
+  Future<void> _loadVerticals() async {
+    try {
+      final verticals = await VerticalRepository(
+        companyId: _tenantId,
+      ).watchVerticals().first;
+      if (!mounted) return;
+      setState(() {
+        _verticalOptions = verticals
+            .where((vertical) => vertical.isActive && !vertical.isDeleted)
+            .toList(growable: false);
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _verticalOptions = const <VerticalModel>[]);
+    }
   }
 
   String? _firstNonEmptyString(List<dynamic> values) {
@@ -919,6 +943,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       'companyId': _tenantId,
       'tenantId': _tenantId,
       'subject': subjectStr,
+      'verticalId': (_selectedVerticalId ?? '').trim(),
+      'verticalName': _selectedVerticalName.trim(),
       'subjectSearch': subjectSearch,
       'customerSearchCache': searchCache,
       'uniqueKey': uniqueKey,
@@ -1770,6 +1796,63 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
           onChanged: (v) => _calculateInquiryReadiness(),
         ),
+
+        const SizedBox(height: 16),
+
+        DropdownButtonFormField<String>(
+          key: ValueKey(
+            'vertical-${_selectedVerticalId ?? ''}-${_verticalOptions.length}',
+          ),
+          initialValue: _verticalOptions.any(
+            (vertical) => vertical.id == _selectedVerticalId,
+          )
+              ? _selectedVerticalId
+              : null,
+          isExpanded: true,
+          decoration: _dec(
+            'Business Vertical *',
+            prefixIcon: const Icon(Icons.category_outlined),
+          ),
+          items: _verticalOptions
+              .map(
+                (vertical) => DropdownMenuItem<String>(
+                  value: vertical.id,
+                  child: Text(
+                    vertical.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              )
+              .toList(),
+          onChanged: (value) {
+            VerticalModel? selected;
+            for (final vertical in _verticalOptions) {
+              if (vertical.id == value) {
+                selected = vertical;
+                break;
+              }
+            }
+            setState(() {
+              _selectedVerticalId = selected?.id;
+              _selectedVerticalName = selected?.name ?? '';
+            });
+          },
+          validator: (_) => (_selectedVerticalId ?? '').isEmpty
+              ? 'Business vertical is required'
+              : null,
+        ),
+
+        if (_verticalOptions.isEmpty) ...[
+          const SizedBox(height: 6),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'No active verticals are configured in Settings.',
+              style: TextStyle(color: Colors.redAccent, fontSize: 12),
+            ),
+          ),
+        ],
 
         const SizedBox(height: 16),
 

@@ -10,6 +10,8 @@ class SalesInquiryModel {
   final String id;
   final String companyId;
   final String inquiryNo;
+  final String verticalId;
+  final String verticalName;
   final int revisionNo;
   final String revisionId;
   final String customerId;
@@ -33,6 +35,8 @@ class SalesInquiryModel {
     required this.id,
     required this.companyId,
     required this.inquiryNo,
+    required this.verticalId,
+    required this.verticalName,
     required this.revisionNo,
     required this.revisionId,
     required this.customerId,
@@ -58,6 +62,9 @@ class SalesInquiryModel {
       id: (map['id'] ?? '').toString(),
       companyId: (map['companyId'] ?? '').toString(),
       inquiryNo: (map['inquiryNo'] ?? '').toString(),
+      verticalId: (map['verticalId'] ?? '').toString(),
+      verticalName:
+          (map['verticalName'] ?? map['businessVertical'] ?? '').toString(),
       revisionNo: _toInt(map['revisionNo']),
       revisionId: (map['revisionId'] ?? '').toString(),
       customerId: (map['customerId'] ?? '').toString(),
@@ -92,6 +99,8 @@ class SalesInquiryModel {
       'id': id,
       'companyId': companyId,
       'inquiryNo': inquiryNo,
+      'verticalId': verticalId,
+      'verticalName': verticalName,
       'revisionNo': revisionNo,
       'revisionId': revisionId,
       'customerId': customerId,

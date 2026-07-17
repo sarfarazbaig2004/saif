@@ -12,6 +12,7 @@ import 'package:QUIK/modules/sales/inquiries/helpers/inquiry_list_helpers.dart';
 import 'package:QUIK/modules/sales/inquiries/screens_add_inquiry.dart';
 import 'package:QUIK/modules/sales/inquiries/widgets/inquiry_filter_sheet.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_repository.dart';
 
 class ScreensInquiryList extends StatefulWidget {
   const ScreensInquiryList({super.key});
@@ -26,6 +27,11 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   String _searchText = '';
   String _statusFilter = 'All';
   String _priorityFilter = 'All';
+  String _verticalFilter = 'All Verticals';
+  List<String> _verticalFilterOptions = const [
+    'All Verticals',
+    'Not Assigned',
+  ];
 
   // State Variables to hold Company ID to prevent scope leaks
   String? _companyId;
@@ -58,6 +64,18 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
       _companyId = safeTenantId;
       _loadedTenantId = safeTenantId;
       _inquiryQuery = _resolveInquiryQuery(safeTenantId);
+      try {
+        final verticals = await VerticalRepository(
+          companyId: safeTenantId,
+        ).watchVerticals().first;
+        _verticalFilterOptions = [
+          'All Verticals',
+          ...verticals
+              .where((vertical) => vertical.isActive && !vertical.isDeleted)
+              .map((vertical) => vertical.name),
+          'Not Assigned',
+        ];
+      } catch (_) {}
     }
     return userData;
   }
@@ -203,8 +221,21 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
       final matchesStatus = _statusFilter == 'All' || status == _statusFilter;
       final matchesPriority =
           _priorityFilter == 'All' || priority == _priorityFilter;
+      final verticalName =
+          (data['verticalName'] ?? data['businessVertical'] ?? '')
+              .toString()
+              .trim();
+      final matchesVertical =
+          _verticalFilter == 'All Verticals' ||
+          (_verticalFilter == 'Not Assigned'
+              ? verticalName.isEmpty
+              : verticalName == _verticalFilter);
 
-      return matchesRole && matchesSearch && matchesStatus && matchesPriority;
+      return matchesRole &&
+          matchesSearch &&
+          matchesStatus &&
+          matchesPriority &&
+          matchesVertical;
     }).toList();
 
     filtered.sort((a, b) {
@@ -225,12 +256,15 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   }
 
   bool get _hasActiveFilters =>
-      _statusFilter != 'All' || _priorityFilter != 'All';
+      _statusFilter != 'All' ||
+      _priorityFilter != 'All' ||
+      _verticalFilter != 'All Verticals';
 
   void _resetFilters() {
     setState(() {
       _statusFilter = 'All';
       _priorityFilter = 'All';
+      _verticalFilter = 'All Verticals';
     });
   }
 
@@ -243,6 +277,8 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
       builder: (_) => InquiryFilterSheet(
         statusFilter: _statusFilter,
         priorityFilter: _priorityFilter,
+        verticalFilter: _verticalFilter,
+        verticalOptions: _verticalFilterOptions,
       ),
     );
 
@@ -251,6 +287,7 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     setState(() {
       _statusFilter = result.status;
       _priorityFilter = result.priority;
+      _verticalFilter = result.vertical;
     });
   }
 
@@ -462,6 +499,10 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
       'state': customerData['state'] ?? '',
       'gstNo': customerData['gstNo'] ?? customerData['gst'] ?? '',
       'subject': inquiry.subject,
+      'verticalId': (inquiryData['verticalId'] ?? inquiry.verticalId)
+          .toString(),
+      'verticalName':
+          (inquiryData['verticalName'] ?? inquiry.verticalName).toString(),
       'notes':
           inquiryData['notes'] ??
           inquiryData['description'] ??
@@ -988,6 +1029,14 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                               priority,
                                             ),
                                             textColor: _priorityFg(priority),
+                                          ),
+                                          _InfoChip(
+                                            label: inquiry.verticalName.isEmpty
+                                                ? 'Vertical not assigned'
+                                                : inquiry.verticalName,
+                                            backgroundColor:
+                                                Colors.orange.shade50,
+                                            textColor: Colors.orange.shade900,
                                           ),
                                           if (inquiry.source.isNotEmpty)
                                             _InfoChip(

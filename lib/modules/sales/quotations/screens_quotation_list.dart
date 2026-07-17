@@ -10,6 +10,7 @@ import 'package:QUIK/modules/customer_po/screens/customer_po_detail_screen.dart'
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_number_service.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
 import 'quotation_pdf_generator.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_repository.dart';
 
 const Color primaryColor = Color(0xFF1E3A8A);
 const Color accentColor = Color(0xFF2563EB);
@@ -42,6 +43,8 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
   String _searchText = '';
   String _statusFilter = 'All';
   String _sortOption = 'Date: Newest';
+  String _verticalFilter = 'All Verticals';
+  List<String> _verticalOptions = const ['All Verticals', 'Not Assigned'];
 
   final Map<String, bool> _convertingDocs = {};
   final Map<String, String> _userNameCache = {};
@@ -172,6 +175,18 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       }
 
       _setupQueries(safeTenantId);
+      try {
+        final verticals = await VerticalRepository(
+          companyId: safeTenantId,
+        ).watchVerticals().first;
+        _verticalOptions = [
+          'All Verticals',
+          ...verticals
+              .where((vertical) => vertical.isActive && !vertical.isDeleted)
+              .map((vertical) => vertical.name),
+          'Not Assigned',
+        ];
+      } catch (_) {}
 
       if (mounted) {
         setState(() {
@@ -1050,8 +1065,21 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       final matchesStatus =
           _statusFilter == 'All' ||
           status.toLowerCase() == _statusFilter.toLowerCase();
+      final verticalName =
+          (data['verticalName'] ?? data['businessVertical'] ?? '')
+              .toString()
+              .trim();
+      final matchesVertical =
+          _verticalFilter == 'All Verticals' ||
+          (_verticalFilter == 'Not Assigned'
+              ? verticalName.isEmpty
+              : verticalName == _verticalFilter);
 
-      return !isDeleted && isLatest && matchesSearch && matchesStatus;
+      return !isDeleted &&
+          isLatest &&
+          matchesSearch &&
+          matchesStatus &&
+          matchesVertical;
     }).toList();
 
     filtered.sort((a, b) {
@@ -1083,6 +1111,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
   Future<void> _openFilterSheet() async {
     String tempStatus = _statusFilter;
     String tempSort = _sortOption;
+    String tempVertical = _verticalFilter;
 
     await showModalBottomSheet(
       context: context,
@@ -1131,6 +1160,28 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<String>(
+                      initialValue: _verticalOptions.contains(tempVertical)
+                          ? tempVertical
+                          : 'All Verticals',
+                      decoration: const InputDecoration(
+                        labelText: 'Business Vertical',
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _verticalOptions
+                          .toSet()
+                          .map(
+                            (e) => DropdownMenuItem(value: e, child: Text(e)),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setModalState(() {
+                          tempVertical = value ?? 'All Verticals';
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
                       initialValue: tempSort,
                       decoration: const InputDecoration(
                         labelText: 'Sort By',
@@ -1157,6 +1208,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                               setState(() {
                                 _statusFilter = 'All';
                                 _sortOption = 'Date: Newest';
+                                _verticalFilter = 'All Verticals';
                               });
                               Navigator.pop(context);
                             },
@@ -1169,6 +1221,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                               setState(() {
                                 _statusFilter = tempStatus;
                                 _sortOption = tempSort;
+                                _verticalFilter = tempVertical;
                               });
                               Navigator.pop(context);
                             },
@@ -1191,11 +1244,14 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
     setState(() {
       _statusFilter = 'All';
       _sortOption = 'Date: Newest';
+      _verticalFilter = 'All Verticals';
     });
   }
 
   bool get _hasActiveFilters =>
-      _statusFilter != 'All' || _sortOption != 'Date: Newest';
+      _statusFilter != 'All' ||
+      _sortOption != 'Date: Newest' ||
+      _verticalFilter != 'All Verticals';
 
   @override
   Widget build(BuildContext context) {
@@ -1727,6 +1783,22 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                         textColor: _getQuotationStatusFg(
                                           status,
                                         ),
+                                      ),
+                                      _InfoChip(
+                                        label:
+                                            (data['verticalName'] ??
+                                                    data['businessVertical'] ??
+                                                    '')
+                                                .toString()
+                                                .trim()
+                                                .isEmpty
+                                            ? 'Vertical not assigned'
+                                            : (data['verticalName'] ??
+                                                      data['businessVertical'])
+                                                  .toString(),
+                                        backgroundColor:
+                                            Colors.orange.shade50,
+                                        textColor: Colors.orange.shade900,
                                       ),
                                       if (approval != 'Pending')
                                         _InfoChip(
