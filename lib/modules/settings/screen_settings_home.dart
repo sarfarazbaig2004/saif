@@ -3,6 +3,7 @@ import 'package:QUIK/modules/settings/coating_master/coating_master_screen.dart'
 import 'package:QUIK/modules/settings/company_profile/company_profile_bank_screen.dart';
 import 'package:QUIK/modules/settings/document_layout/document_layout_designer_screen.dart';
 import 'package:QUIK/modules/settings/factory_master/factory_list_screen.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_list_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -431,6 +432,20 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => FactoryListScreen(
+                  companyId: widget.companyId,
+                  canAdd: isAdmin,
+                ),
+              ),
+            ),
+          ),
+          _ActionTile(
+            title: 'Verticals',
+            subtitle: 'Manage business verticals and their linked factories.',
+            icon: Icons.view_agenda_outlined,
+            enabled: isAdminOrManager,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => VerticalListScreen(
                   companyId: widget.companyId,
                   canAdd: isAdmin,
                 ),
