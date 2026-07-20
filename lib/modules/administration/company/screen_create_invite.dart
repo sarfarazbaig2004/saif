@@ -3,9 +3,12 @@
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/modules/providers/module_access_provider.dart';
+import 'package:QUIK/core/modules/module_registry.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_constants.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
 import 'package:QUIK/modules/administration/users/services/user_management_service.dart';
+import 'package:QUIK/modules/administration/users/widgets/level_one_module_access.dart';
+import 'package:QUIK/modules/administration/users/widgets/factory_selector_field.dart';
 import 'package:QUIK/modules/settings/factory_master/factory_model.dart';
 import 'package:QUIK/modules/settings/factory_master/factory_repository.dart';
 
@@ -138,6 +141,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   ];
 
   late Map<String, dynamic> permissions;
+  final Set<String> allowedModuleIds = <String>{};
 
   // 🔥 CHANGED: 'sales' is completely removed from the export_import array
   List<String> get activeModules {
@@ -519,68 +523,23 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
         isExportImport: isExportImport,
         permissions: filteredPermissions,
       );
+      allowedModuleIds
+        ..clear()
+        ..addAll(_moduleIdsFromPermissions(permissions));
     });
   }
 
-  Map<String, dynamic> _readModulePermissions(
-    Map<String, dynamic> permissionsMap,
-    String moduleKey,
-  ) {
-    final moduleValue = permissionsMap[moduleKey];
-
-    if (moduleKey == PermissionModules.dashboard) {
-      return moduleValue is Map<String, dynamic>
-          ? Map<String, dynamic>.from(moduleValue)
-          : <String, dynamic>{};
-    }
-
-    return moduleValue is Map<String, dynamic>
-        ? Map<String, dynamic>.from(moduleValue)
-        : <String, dynamic>{};
-  }
-
-  Map<String, dynamic> _setPermissionValue({
-    required Map<String, dynamic> permissionsMap,
-    required String moduleKey,
-    required String? submoduleKey,
-    required String action,
-    required bool value,
-  }) {
-    final updated = _deepCopyPermissions(permissionsMap);
-
-    if (submoduleKey == null || submoduleKey.isEmpty) {
-      final moduleActions = Map<String, dynamic>.from(updated[moduleKey] ?? {});
-      moduleActions[action] = value;
-      updated[moduleKey] = moduleActions;
-      return updated;
-    }
-
-    final moduleMap = Map<String, dynamic>.from(updated[moduleKey] ?? {});
-    final submoduleMap = Map<String, dynamic>.from(
-      moduleMap[submoduleKey] ?? {},
-    );
-    submoduleMap[action] = value;
-    moduleMap[submoduleKey] = submoduleMap;
-    updated[moduleKey] = moduleMap;
-
-    return updated;
-  }
-
-  Map<String, dynamic> _deepCopyPermissions(Map<String, dynamic> input) {
-    final result = <String, dynamic>{};
-
-    for (final entry in input.entries) {
-      final value = entry.value;
-      if (value is Map) {
-        result[entry.key] = _deepCopyPermissions(
-          Map<String, dynamic>.from(value),
-        );
-      } else {
-        result[entry.key] = value;
+  Set<String> _moduleIdsFromPermissions(Map<String, dynamic> value) {
+    final ids = <String>{};
+    for (final module in ModuleRegistry.activeModules) {
+      final permissionKey = module.id == ModuleIds.inventoryStore
+          ? PermissionModules.inventory
+          : module.id;
+      if (hasModuleAccess(value, permissionKey)) {
+        ids.add(module.id);
       }
     }
-
-    return result;
+    return ids;
   }
 
   int _selectedPermissionCount(
@@ -669,6 +628,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
         email: _normalizeEmail(emailController.text),
         role: selectedRole,
         permissions: permissions,
+        allowedModuleIds: allowedModuleIds.toList(),
         invitedByUid: widget.currentUid,
         name: nameController.text.trim(),
         phone: phoneController.text.trim(),
@@ -815,172 +775,23 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   }
 
   Widget _buildFactoryMultiSelectField() {
-    return StreamBuilder<List<FactoryModel>>(
-      stream: _factoryStream,
-      builder: (context, snapshot) {
-        final factories = (snapshot.data ?? const <FactoryModel>[])
-            .where((factory) => factory.isActive && !factory.isDeleted)
-            .toList(growable: false);
-        final isLoading =
-            snapshot.connectionState == ConnectionState.waiting &&
-            !snapshot.hasData;
-        final hasError = snapshot.hasError;
-        final hasFactories = factories.isNotEmpty;
-        final validSelectedIds = _selectedFactoryIds
-            .where((id) => factories.any((factory) => factory.id == id))
-            .toSet();
-        final selectedNames = factories
-            .where((factory) => validSelectedIds.contains(factory.id))
-            .map((factory) => factory.plantName)
-            .toList(growable: false);
-        final displayValue = !hasFactories
-            ? 'No factories available'
-            : _allFactoriesSelected || selectedNames.isEmpty
-            ? 'All Factories'
-            : selectedNames.join(', ');
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(14),
-              onTap: isLoading || hasError || !hasFactories
-                  ? null
-                  : () => _showFactoryMultiSelectDialog(factories),
-              child: InputDecorator(
-                isEmpty: false,
-                decoration: _inputDecoration(
-                  label: 'Factory',
-                  icon: Icons.factory_outlined,
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        isLoading ? 'Loading factories...' : displayValue,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isLoading || hasError || !hasFactories
-                              ? _inviteMutedTextColor
-                              : _inviteHeadingTextColor,
-                        ),
-                      ),
-                    ),
-                    if (isLoading)
-                      const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    else
-                      Icon(
-                        Icons.arrow_drop_down,
-                        color: hasError || !hasFactories
-                            ? _inviteMutedTextColor
-                            : null,
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            if (hasError) ...[
-              const SizedBox(height: 6),
-              const Text(
-                'Factories could not be loaded. All Factories remains selected.',
-                style: TextStyle(
-                  color: _inviteMutedTextColor,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ],
-        );
+    return FactorySelectorField(
+      factoryStream: _factoryStream,
+      allFactoriesSelected: _allFactoriesSelected,
+      selectedFactoryIds: _selectedFactoryIds,
+      decoration: _inputDecoration(
+        label: 'Factory',
+        icon: Icons.factory_outlined,
+      ),
+      onSelected: (factoryId) {
+        setState(() {
+          _allFactoriesSelected = factoryId == null;
+          _selectedFactoryIds
+            ..clear()
+            ..addAll(factoryId == null ? const <String>{} : {factoryId});
+        });
       },
     );
-  }
-
-  Future<void> _showFactoryMultiSelectDialog(
-    List<FactoryModel> factories,
-  ) async {
-    var selectAll = _allFactoriesSelected;
-    final draftIds = Set<String>.from(_selectedFactoryIds);
-
-    final result = await showDialog<({bool selectAll, Set<String> ids})>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text(
-            'Select Factories',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
-          content: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440, maxHeight: 420),
-            child: ListView(
-              shrinkWrap: true,
-              children: [
-                CheckboxListTile(
-                  value: selectAll,
-                  title: const Text('All Factories'),
-                  contentPadding: EdgeInsets.zero,
-                  onChanged: (value) {
-                    setDialogState(() {
-                      selectAll = value ?? false;
-                      if (selectAll) draftIds.clear();
-                    });
-                  },
-                ),
-                for (final factory in factories)
-                  CheckboxListTile(
-                    value: !selectAll && draftIds.contains(factory.id),
-                    title: Text(
-                      factory.plantName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: factory.gstNo.isEmpty ? null : Text(factory.gstNo),
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (value) {
-                      setDialogState(() {
-                        selectAll = false;
-                        if (value == true) {
-                          draftIds.add(factory.id);
-                        } else {
-                          draftIds.remove(factory.id);
-                        }
-                      });
-                    },
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(
-                dialogContext,
-                (
-                  selectAll: selectAll || draftIds.isEmpty,
-                  ids: Set<String>.from(draftIds),
-                ),
-              ),
-              child: const Text('Apply'),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (result == null || !mounted) return;
-    setState(() {
-      _allFactoriesSelected = result.selectAll;
-      _selectedFactoryIds
-        ..clear()
-        ..addAll(result.selectAll ? const <String>{} : result.ids);
-    });
   }
 
   Widget _buildSectionCard({
@@ -1043,6 +854,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildPermissionModuleCard({
     required String moduleKey,
     required bool isExportImport,
@@ -1544,37 +1356,19 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                     ),
                     const SizedBox(height: 18),
                     _buildSectionCard(
-                      title: 'Module Permissions',
-                      subtitle:
-                          'Permissions are aligned with your QUIK ERP modules and submodules.',
-                      child: Column(
-                        children: activeModules.map((moduleKey) {
-                          return _buildPermissionModuleCard(
-                            moduleKey: moduleKey,
-                            isExportImport: isExportImport,
-                            modulePermissions: _readModulePermissions(
-                              permissions,
-                              moduleKey,
-                            ),
-                            onActionChanged:
-                                (
-                                  String module,
-                                  String? submodule,
-                                  String action,
-                                  bool value,
-                                ) {
-                                  setState(() {
-                                    permissions = _setPermissionValue(
-                                      permissionsMap: permissions,
-                                      moduleKey: module,
-                                      submoduleKey: submodule,
-                                      action: action,
-                                      value: value,
-                                    );
-                                  });
-                                },
-                          );
-                        }).toList(),
+                      title: 'Level 1 Module Access',
+                      subtitle: 'Simple one-checkbox access for each main ERP module.',
+                      child: LevelOneModuleAccess(
+                        selectedModuleIds: allowedModuleIds,
+                        onChanged: (moduleId, value) {
+                          setState(() {
+                            if (value) {
+                              allowedModuleIds.add(moduleId);
+                            } else {
+                              allowedModuleIds.remove(moduleId);
+                            }
+                          });
+                        },
                       ),
                     ),
                     const SizedBox(height: 18),

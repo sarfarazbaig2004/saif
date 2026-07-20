@@ -7,6 +7,10 @@ import 'package:QUIK/core/modules/module_registry.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_constants.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
 import 'package:QUIK/modules/administration/users/widgets/mini_badge.dart';
+import 'package:QUIK/modules/administration/users/widgets/level_one_module_access.dart';
+import 'package:QUIK/modules/administration/users/widgets/factory_selector_field.dart';
+import 'package:QUIK/modules/administration/users/services/user_management_service.dart';
+import 'package:QUIK/modules/settings/factory_master/factory_repository.dart';
 
 typedef UserDoc = DocumentSnapshot<Map<String, dynamic>>;
 
@@ -48,6 +52,32 @@ Future<void> showEditUserDialog({
   final bool isSelfUser = doc.id == currentUid;
   bool isSaving = false;
 
+  final userManagementService = UserManagementService();
+  List<Map<String, dynamic>> tenantRoles = const <Map<String, dynamic>>[];
+  try {
+    final fetchedRoles = await userManagementService.fetchTenantRoles(
+      companyId: companyId,
+    );
+    tenantRoles = fetchedRoles
+        .where((role) => role['isActive'] == true)
+        .toList(growable: false);
+  } catch (_) {
+    // Keep the same built-in fallback source used by Invite when tenant setup is unavailable.
+  }
+
+  String roleKey(Map<String, dynamic> role) =>
+      (role['role'] ?? role['name'] ?? role['id'] ?? role['roleId'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+  String roleLabel(Map<String, dynamic> role) =>
+      (role['label'] ?? role['name'] ?? role['displayName'] ?? roleKey(role))
+          .toString()
+          .trim();
+
+  final roleOptions = tenantRoles.isNotEmpty
+      ? tenantRoles.map(roleKey).where((value) => value.isNotEmpty).toList()
+      : userRolesList;
   Set<String> selectedModuleIds = _readAllowedModuleIds(data);
 
   final List<String> departmentOptions = const [
@@ -116,9 +146,21 @@ Future<void> showEditUserDialog({
     (data['department'] ?? '').toString().trim(),
     departmentOptions,
   );
+  final departmentController = TextEditingController(text: selectedDepartment);
 
   List<String> designationOptions =
       designationOptionsByDepartment[selectedDepartment] ?? const <String>[];
+  const inviteDesignationOptions = <String>[
+    'CEO', 'GM', 'Factory Head', 'Project Head', 'Production Head',
+    'Account Head', 'Production Manager', 'Quality Manager',
+    'Quality Supervisor', 'Dispatch Incharge', 'HR Executive',
+    'Project Manager', 'Project Coordinator', 'Safety Officer',
+    'Safety Supervisor', 'Store Incharge', 'Maintenance Manager',
+    'Maintenance Executive', 'Accounts Executive', 'Production Engineer',
+    'Vice President - Business Development', 'Area Sales Manager',
+    'Sales Executive', 'Senior Sales Executive', 'Regional Sales Manager',
+  ];
+  designationOptions = inviteDesignationOptions;
 
   String selectedDesignation = _normalizeDesignationForDropdown(
     designation: (data['designation'] ?? '').toString().trim(),
@@ -128,6 +170,10 @@ Future<void> showEditUserDialog({
   String selectedAccessScope = _normalizeAccessScopeValue(
     (data['accessScope'] ?? AccessScope.company).toString(),
   );
+  // UI-only factory selection. Factory access persistence will be implemented separately.
+  final factoryStream = FactoryRepository(companyId: companyId).watchFactories();
+  bool allFactoriesSelected = true;
+  final selectedFactoryIds = <String>{};
 
   final savedPermissions = Map<String, dynamic>.from(
     data['permissions'] ?? const <String, dynamic>{},
@@ -138,6 +184,19 @@ Future<void> showEditUserDialog({
     isExportImport: isExportImport,
     permissions: savedPermissions,
   );
+
+  void applyInviteRoleDefaults(String role) {
+    final roleData = tenantRoles.where((item) => roleKey(item) == role);
+    final rolePermissions = roleData.isNotEmpty && roleData.first['permissions'] is Map
+        ? Map<String, dynamic>.from(roleData.first['permissions'] as Map)
+        : getDefaultPermissions(role);
+    permissions = _buildUiPermissionState(
+      role: role,
+      isExportImport: isExportImport,
+      permissions: rolePermissions,
+    );
+    selectedModuleIds = _readAllowedModuleIds({'permissions': permissions});
+  }
 
   final List<String> activeModules = isExportImport
       ? ['dashboard', 'crm', 'finance', 'reports']
@@ -327,37 +386,43 @@ Future<void> showEditUserDialog({
                                     left: _buildDropdownField(
                                       label: 'Role',
                                       value: selectedRole,
-                                      options: userRolesList,
+                                      options: roleOptions,
                                       icon: Icons.admin_panel_settings_outlined,
-                                      labelBuilder: formatRole,
+                                      labelBuilder: (value) {
+                                        final match = tenantRoles.where(
+                                          (role) => roleKey(role) == value,
+                                        );
+                                        return match.isEmpty
+                                            ? formatRole(value)
+                                            : roleLabel(match.first);
+                                      },
                                       onChanged: (value) {
                                         if (value == null) return;
                                         setLocalState(() {
                                           selectedRole = _normalizeRoleValue(
                                             value,
                                           );
+                                          applyInviteRoleDefaults(selectedRole);
                                         });
                                       },
                                     ),
-                                    right: _buildDropdownField(
-                                      label: 'Department',
-                                      value: selectedDepartment,
-                                      options: departmentOptions,
-                                      icon: Icons.apartment_outlined,
-                                      onChanged: (value) {
-                                        if (value == null) return;
-                                        setLocalState(() {
-                                          selectedDepartment = value;
-                                          designationOptions =
-                                              designationOptionsByDepartment[selectedDepartment] ??
-                                              const <String>[];
-                                          selectedDesignation =
-                                              designationOptions.isNotEmpty
-                                              ? designationOptions.first
-                                              : '';
-                                        });
-                                      },
-                                    ),
+                                      right: FactorySelectorField(
+                                        factoryStream: factoryStream,
+                                        allFactoriesSelected: allFactoriesSelected,
+                                        selectedFactoryIds: selectedFactoryIds,
+                                        decoration: _inputDecoration(
+                                          label: 'Factory',
+                                          icon: Icons.factory_outlined,
+                                        ),
+                                        onSelected: (factoryId) {
+                                          setLocalState(() {
+                                            allFactoriesSelected = factoryId == null;
+                                            selectedFactoryIds
+                                              ..clear()
+                                              ..addAll(factoryId == null ? const <String>{} : {factoryId});
+                                          });
+                                        },
+                                      ),
                                   ),
                                   const SizedBox(height: 16),
                                   _buildDesktopTwoColumn(
@@ -373,18 +438,17 @@ Future<void> showEditUserDialog({
                                         });
                                       },
                                     ),
-                                    right: _buildDropdownField(
-                                      label: 'Access Scope',
-                                      value: selectedAccessScope,
-                                      options: accessScopeList,
-                                      icon: Icons.lock_open_outlined,
-                                      labelBuilder: (value) =>
-                                          accessScopeLabels[value] ?? value,
+                                    right: TextFormField(
+                                      controller: departmentController,
+                                      decoration: _inputDecoration(
+                                        label: 'Department',
+                                        icon: Icons.apartment_outlined,
+                                      ),
                                       onChanged: (value) {
-                                        if (value == null) return;
+                                        selectedDepartment = value;
                                         setLocalState(() {
-                                          selectedAccessScope =
-                                              _normalizeAccessScopeValue(value);
+                                          designationOptions =
+                                              inviteDesignationOptions;
                                         });
                                       },
                                     ),
@@ -463,7 +527,7 @@ Future<void> showEditUserDialog({
                               title: 'Level 1 Module Access',
                               subtitle:
                                   'Simple one-checkbox access for each main ERP module.',
-                              child: _buildLevelOneModuleAccessGrid(
+                              child: LevelOneModuleAccess(
                                 selectedModuleIds: selectedModuleIds,
                                 onChanged: (moduleId, value) {
                                   setLocalState(() {
@@ -790,73 +854,6 @@ Set<String> _moduleIdsFromLegacyPermissions(Map<String, dynamic> permissions) {
 
   ids.add(ModuleIds.settings);
   return ids;
-}
-
-Widget _buildLevelOneModuleAccessGrid({
-  required Set<String> selectedModuleIds,
-  required void Function(String moduleId, bool value) onChanged,
-}) {
-  final modules = ModuleRegistry.activeModules;
-
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      final crossAxisCount = constraints.maxWidth >= 900
-          ? 3
-          : constraints.maxWidth >= 560
-          ? 2
-          : 1;
-
-      return GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: modules.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          mainAxisExtent: 74,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemBuilder: (context, index) {
-          final module = modules[index];
-          final selected = selectedModuleIds.contains(module.id);
-          return Container(
-            decoration: BoxDecoration(
-              color: selected ? const Color(0xFFEFF6FF) : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: selected
-                    ? const Color(0xFF93C5FD)
-                    : const Color(0xFFE2E8F0),
-              ),
-            ),
-            child: CheckboxListTile(
-              value: selected,
-              onChanged: (value) => onChanged(module.id, value ?? false),
-              title: Text(
-                module.displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: _editHeadingTextColor,
-                ),
-              ),
-              subtitle: Text(
-                selected ? 'Access enabled' : 'Access disabled',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: _editMutedTextColor,
-                ),
-              ),
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-            ),
-          );
-        },
-      );
-    },
-  );
 }
 
 Map<String, dynamic> _permissionsFromAllowedModules(Set<String> moduleIds) {
