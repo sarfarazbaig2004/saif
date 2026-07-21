@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:QUIK/core/permissions/permission_catalogue.dart';
+import 'package:QUIK/core/permissions/permission_scope.dart';
 import 'package:QUIK/modules/inventory/material_master/widgets/material_picker_dialog.dart';
 import 'package:QUIK/modules/purchase/purchase_orders/models/purchase_order_model.dart';
 import 'package:QUIK/modules/purchase/purchase_orders/repositories/purchase_order_repository.dart';
@@ -35,6 +37,10 @@ class _PurchaseOrderListScreenState extends State<PurchaseOrderListScreen> {
       PurchaseOrderRepository(tenantId: widget.tenantId);
 
   Future<void> _openForm({PurchaseOrderModel? order}) async {
+    final permission = order == null
+        ? PermissionKeys.purchaseOrdersCreate
+        : PermissionKeys.purchaseOrdersEdit;
+    if (!PermissionScope.require(context, permission)) return;
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -48,6 +54,12 @@ class _PurchaseOrderListScreenState extends State<PurchaseOrderListScreen> {
   }
 
   Future<void> _showPdf(PurchaseOrderModel order) async {
+    if (!PermissionScope.require(
+      context,
+      PermissionKeys.purchaseOrdersDownloadPdf,
+    )) {
+      return;
+    }
     try {
       final companyData = await PurchaseOrderPdfGenerator.fetchCompanyData(
         tenantId: widget.tenantId,
@@ -69,6 +81,10 @@ class _PurchaseOrderListScreenState extends State<PurchaseOrderListScreen> {
   }
 
   Future<void> _updateStatus(PurchaseOrderModel order, String status) async {
+    final permission = status == PurchaseOrderModel.statusApproved
+        ? PermissionKeys.purchaseOrdersApprove
+        : PermissionKeys.purchaseOrdersCancel;
+    if (!PermissionScope.require(context, permission)) return;
     await _repository.updateStatus(
       purchaseOrderId: order.id,
       status: status,
@@ -78,6 +94,20 @@ class _PurchaseOrderListScreenState extends State<PurchaseOrderListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final evaluator = PermissionScope.of(context);
+    final canCreate = evaluator.hasPermission(
+      PermissionKeys.purchaseOrdersCreate,
+    );
+    final canEdit = evaluator.hasPermission(PermissionKeys.purchaseOrdersEdit);
+    final canPdf = evaluator.hasPermission(
+      PermissionKeys.purchaseOrdersDownloadPdf,
+    );
+    final canApprove = evaluator.hasPermission(
+      PermissionKeys.purchaseOrdersApprove,
+    );
+    final canCancel = evaluator.hasPermission(
+      PermissionKeys.purchaseOrdersCancel,
+    );
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FB),
       body: StreamBuilder<List<PurchaseOrderModel>>(
@@ -88,7 +118,7 @@ class _PurchaseOrderListScreenState extends State<PurchaseOrderListScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _HeaderCard(onNew: () => _openForm()),
+              _HeaderCard(onNew: canCreate ? () => _openForm() : null),
               const SizedBox(height: 12),
               _FilterBar(
                 searchText: _searchText,
@@ -116,18 +146,23 @@ class _PurchaseOrderListScreenState extends State<PurchaseOrderListScreen> {
                           final order = orders[index];
                           return _PurchaseOrderCard(
                             order: order,
-                            onEdit: () => _openForm(order: order),
-                            onPdf: () => _showPdf(order),
+                            onEdit: canEdit
+                                ? () => _openForm(order: order)
+                                : null,
+                            onPdf: canPdf ? () => _showPdf(order) : null,
                             onApprove:
-                                order.status == PurchaseOrderModel.statusDraft
+                                canApprove &&
+                                    order.status ==
+                                        PurchaseOrderModel.statusDraft
                                 ? () => _updateStatus(
                                     order,
                                     PurchaseOrderModel.statusApproved,
                                   )
                                 : null,
                             onCancel:
-                                order.status !=
-                                    PurchaseOrderModel.statusCancelled
+                                canCancel &&
+                                    order.status !=
+                                        PurchaseOrderModel.statusCancelled
                                 ? () => _updateStatus(
                                     order,
                                     PurchaseOrderModel.statusCancelled,
@@ -795,7 +830,7 @@ class _PurchaseOrderFormScreenState extends State<PurchaseOrderFormScreen> {
 }
 
 class _HeaderCard extends StatelessWidget {
-  final VoidCallback onNew;
+  final VoidCallback? onNew;
 
   const _HeaderCard({required this.onNew});
 
@@ -944,8 +979,8 @@ class _FilterBar extends StatelessWidget {
 
 class _PurchaseOrderCard extends StatelessWidget {
   final PurchaseOrderModel order;
-  final VoidCallback onEdit;
-  final VoidCallback onPdf;
+  final VoidCallback? onEdit;
+  final VoidCallback? onPdf;
   final VoidCallback? onApprove;
   final VoidCallback? onCancel;
 

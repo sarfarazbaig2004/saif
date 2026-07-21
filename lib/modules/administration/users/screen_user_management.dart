@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/permissions/permission_catalogue.dart';
+import 'package:QUIK/core/permissions/permission_scope.dart';
 import 'package:QUIK/modules/administration/company/screen_create_invite.dart';
 import 'package:QUIK/modules/administration/users/dialogs/edit_user_dialog.dart';
 import 'package:QUIK/modules/administration/users/dialogs/view_user_dialog.dart';
@@ -132,6 +134,9 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
   }
 
   Future<void> _openInviteUser() async {
+    if (!PermissionScope.require(context, PermissionKeys.adminUsersInvite)) {
+      return;
+    }
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -153,6 +158,14 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
   Future<void> _handleEditUser(
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) async {
+    if (!PermissionScope.require(context, PermissionKeys.adminUsersEdit) ||
+        !PermissionScope.require(
+          context,
+          PermissionKeys.adminUsersManagePermissions,
+          message: 'You cannot change direct user permissions.',
+        )) {
+      return;
+    }
     if (!_canManageUserDoc(doc)) {
       _showProtectedSoftwareAdminMessage();
       return;
@@ -198,6 +211,7 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
             required bool isActive,
             required Map<String, dynamic> permissions,
             required List<String> allowedModuleIds,
+            required int expectedPermissionVersion,
             String? department,
             String? designation,
             String? branchName,
@@ -210,6 +224,7 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
               isActive: isActive,
               permissions: permissions,
               allowedModuleIds: allowedModuleIds,
+              expectedPermissionVersion: expectedPermissionVersion,
               department: department,
               designation: designation,
               branchName: branchName,
@@ -223,6 +238,12 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
   Future<void> _handleToggleUser({
     required QueryDocumentSnapshot<Map<String, dynamic>> doc,
   }) async {
+    if (!PermissionScope.require(
+      context,
+      PermissionKeys.adminUsersActivateDeactivate,
+    )) {
+      return;
+    }
     if (!_canManageUserDoc(doc)) {
       _showProtectedSoftwareAdminMessage();
       return;
@@ -239,6 +260,12 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
     BuildContext context,
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) async {
+    if (!PermissionScope.require(
+      context,
+      PermissionKeys.adminUsersArchiveRestore,
+    )) {
+      return;
+    }
     if (!_canManageUserDoc(doc)) {
       _showProtectedSoftwareAdminMessage();
       return;
@@ -427,6 +454,12 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
     BuildContext context,
     QueryDocumentSnapshot<Map<String, dynamic>> doc,
   ) async {
+    if (!PermissionScope.require(
+      context,
+      PermissionKeys.adminUsersCancelInvite,
+    )) {
+      return;
+    }
     final data = doc.data();
     final String email = (data['email'] ?? '').toString().trim();
     final String name = (data['name'] ?? '').toString().trim();
@@ -929,7 +962,13 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
               width: 130,
               height: 38,
               child: ElevatedButton.icon(
-                onPressed: _openInviteUser,
+                onPressed:
+                    PermissionScope.can(
+                      context,
+                      PermissionKeys.adminUsersInvite,
+                    )
+                    ? _openInviteUser
+                    : null,
                 icon: const Icon(
                   Icons.person_add_alt_1,
                   color: Colors.white,
@@ -1020,7 +1059,10 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
             width: double.infinity,
             height: 40,
             child: ElevatedButton.icon(
-              onPressed: _openInviteUser,
+              onPressed:
+                  PermissionScope.can(context, PermissionKeys.adminUsersInvite)
+                  ? _openInviteUser
+                  : null,
               icon: const Icon(
                 Icons.person_add_alt_1,
                 color: Colors.white,
@@ -1055,6 +1097,20 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
     required List<QueryDocumentSnapshot<Map<String, dynamic>>>
     locallySearchedUsers,
   }) {
+    final canEdit =
+        PermissionScope.can(context, PermissionKeys.adminUsersEdit) &&
+        PermissionScope.can(
+          context,
+          PermissionKeys.adminUsersManagePermissions,
+        );
+    final canToggle = PermissionScope.can(
+      context,
+      PermissionKeys.adminUsersActivateDeactivate,
+    );
+    final canArchive = PermissionScope.can(
+      context,
+      PermissionKeys.adminUsersArchiveRestore,
+    );
     return _buildSectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1125,6 +1181,9 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
                 onToggle: (doc) => _handleToggleUser(doc: doc),
                 onDelete: (doc) async => _confirmDeleteUser(context, doc),
                 canManageSoftwareSuperAdmin: false,
+                canEditUsers: canEdit,
+                canToggleUsers: canToggle,
+                canArchiveUsers: canArchive,
               )
             else
               Column(
@@ -1141,15 +1200,21 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
                       doc: doc,
                       currentUid: widget.currentUid,
                       onView: () async => _handleViewUser(doc),
-                      onEdit: isProtectedSoftwareAdmin
+                      onEdit: isProtectedSoftwareAdmin || !canEdit
                           ? null
                           : () async => _handleEditUser(doc),
                       onToggle:
-                          (isSelfUser || isDeleted || isProtectedSoftwareAdmin)
+                          (isSelfUser ||
+                              isDeleted ||
+                              isProtectedSoftwareAdmin ||
+                              !canToggle)
                           ? null
                           : () async => _handleToggleUser(doc: doc),
                       onDelete:
-                          (isSelfUser || isDeleted || isProtectedSoftwareAdmin)
+                          (isSelfUser ||
+                              isDeleted ||
+                              isProtectedSoftwareAdmin ||
+                              !canArchive)
                           ? null
                           : () async => _confirmDeleteUser(context, doc),
                     ),
@@ -1217,7 +1282,13 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
                   padding: const EdgeInsets.only(bottom: 10),
                   child: InviteCard(
                     doc: doc,
-                    onDelete: () => _confirmCancelInvite(context, doc),
+                    onDelete:
+                        PermissionScope.can(
+                          context,
+                          PermissionKeys.adminUsersCancelInvite,
+                        )
+                        ? () => _confirmCancelInvite(context, doc)
+                        : null,
                   ),
                 );
               }).toList(),
@@ -1457,6 +1528,10 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
           final bool isDesktop = constraints.maxWidth >= 900;
 
           if (isDesktop) {
+            return const SizedBox.shrink();
+          }
+
+          if (!PermissionScope.can(context, PermissionKeys.adminUsersInvite)) {
             return const SizedBox.shrink();
           }
 

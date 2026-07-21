@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/permissions/permission_catalogue.dart';
+import 'package:QUIK/core/permissions/permission_scope.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/dispatch/models/dispatch_model.dart';
 import 'package:QUIK/modules/dispatch/repositories/dispatch_repository.dart';
@@ -83,7 +85,12 @@ class DispatchListScreen extends StatelessWidget {
     this.mode = DispatchListMode.ready,
   });
 
-  Future<void> _openCreate(BuildContext context, String activeTenantId) async {
+  Future<void> _openCreate(
+    BuildContext context,
+    String activeTenantId,
+    String permissionKey,
+  ) async {
+    if (!PermissionScope.require(context, permissionKey)) return;
     final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -107,6 +114,14 @@ class DispatchListScreen extends StatelessWidget {
     }
 
     final repository = DispatchRepository(tenantId: activeTenantId);
+    final createPermission = switch (mode) {
+      DispatchListMode.ready => PermissionKeys.dispatchReadyCreate,
+      DispatchListMode.challans => 'dispatch.challans.create',
+      DispatchListMode.shipmentTracking || DispatchListMode.delivered => null,
+    };
+    final canCreate =
+        createPermission != null &&
+        PermissionScope.can(context, createPermission);
 
     return Column(
       children: [
@@ -117,7 +132,13 @@ class DispatchListScreen extends StatelessWidget {
               children: [
                 _Header(
                   mode: mode,
-                  onCreate: () => _openCreate(context, activeTenantId),
+                  onCreate: canCreate
+                      ? () => _openCreate(
+                          context,
+                          activeTenantId,
+                          createPermission,
+                        )
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 StreamBuilder<List<InspectionModel>>(
@@ -245,7 +266,7 @@ class DispatchListScreen extends StatelessWidget {
 
 class _Header extends StatelessWidget {
   final DispatchListMode mode;
-  final VoidCallback onCreate;
+  final VoidCallback? onCreate;
 
   const _Header({required this.mode, required this.onCreate});
 
@@ -292,11 +313,12 @@ class _Header extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          FilledButton.icon(
-            onPressed: onCreate,
-            icon: const Icon(Icons.add),
-            label: const Text('Create Dispatch'),
-          ),
+          if (onCreate != null)
+            FilledButton.icon(
+              onPressed: onCreate,
+              icon: const Icon(Icons.add),
+              label: const Text('Create Dispatch'),
+            ),
         ],
       ),
     );

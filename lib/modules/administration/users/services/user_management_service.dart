@@ -2,6 +2,9 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:convert';
+
+import 'package:QUIK/core/permissions/permission_evaluator.dart';
 
 import '../helpers/user_management_constants.dart';
 
@@ -227,28 +230,6 @@ class UserManagementService {
     return _normalizeText(phone).replaceAll(RegExp(r'[^0-9]'), '');
   }
 
-  bool _toBool(dynamic value) {
-    if (value is bool) return value;
-    if (value is num) return value != 0;
-    if (value is String) {
-      final normalized = value.trim().toLowerCase();
-      if (normalized == 'true' ||
-          normalized == '1' ||
-          normalized == 'yes' ||
-          normalized == 'y') {
-        return true;
-      }
-      if (normalized == 'false' ||
-          normalized == '0' ||
-          normalized == 'no' ||
-          normalized == 'n' ||
-          normalized.isEmpty) {
-        return false;
-      }
-    }
-    return false;
-  }
-
   String _deriveStatus({required bool isActive, required bool isDeleted}) {
     if (isDeleted) return UserStatus.archived;
     return isActive ? UserStatus.active : UserStatus.inactive;
@@ -314,49 +295,12 @@ class UserManagementService {
         .replaceAll(RegExp(r'^_|_$'), '');
   }
 
-  Map<String, dynamic> _sanitizeRawNestedMap(Map<String, dynamic>? input) {
-    if (input == null || input.isEmpty) {
-      return <String, dynamic>{};
-    }
-
-    final sanitized = <String, dynamic>{};
-
-    for (final entry in input.entries) {
-      final key = _normalizeText(entry.key);
-      if (key.isEmpty) continue;
-
-      final value = entry.value;
-
-      if (value is Map) {
-        sanitized[key] = _sanitizeRawNestedMap(
-          Map<String, dynamic>.from(value),
-        );
-        continue;
-      }
-
-      if (value == null) {
-        sanitized[key] = false;
-        continue;
-      }
-
-      sanitized[key] = _toBool(value);
-    }
-
-    return sanitized;
-  }
-
   Map<String, dynamic> _normalizePermissionsForRole({
     required String role,
     required Map<String, dynamic>? permissions,
   }) {
-    final normalizedRole = _normalizeRole(role);
-    final sanitized = _sanitizeRawNestedMap(permissions);
-
-    if (sanitized.isEmpty) {
-      return getDefaultPermissions(normalizedRole);
-    }
-
-    return mergePermissionsWithCanonicalShape(sanitized);
+    final parsed = PermissionEvaluator.parsePermissions(permissions);
+    return PermissionEvaluator.toStorageMap(parsed.keys);
   }
 
   bool _deepMapEquals(Map<String, dynamic> a, Map<String, dynamic> b) {
@@ -442,6 +386,12 @@ class UserManagementService {
       role: normalizedRole,
       permissions: permissions,
     );
+    final canonicalKeys = PermissionEvaluator.parsePermissions(
+      canonicalPermissions,
+    ).keys;
+    final derivedModuleIds = PermissionEvaluator.deriveAllowedModuleIds(
+      canonicalKeys,
+    );
 
     final status = _deriveStatus(isActive: isActive, isDeleted: isDeleted);
 
@@ -465,7 +415,10 @@ class UserManagementService {
       'isDeleted': isDeleted,
       'status': status,
       'permissions': canonicalPermissions,
-      if (allowedModuleIds != null) 'allowedModuleIds': allowedModuleIds,
+      'allowedModuleIds': derivedModuleIds,
+      'permissionSchemaVersion': PermissionEvaluator.schemaVersion,
+      'permissionsUpdatedAt': FieldValue.serverTimestamp(),
+      'permissionsUpdatedBy': updatedByUid,
       if (normalizedEmail.isNotEmpty) 'email': normalizedEmail,
       if (normalizedDisplayName.isNotEmpty)
         'displayName': normalizedDisplayName,
@@ -524,6 +477,7 @@ class UserManagementService {
     String? phone,
     String? photoUrl,
     bool isDeleted = false,
+    int? expectedPermissionVersion,
   }) async {
     _assertCompanyScoped(
       companyId: companyId,
@@ -552,6 +506,7 @@ class UserManagementService {
     try {
       await firestore.runTransaction((transaction) async {
         final companySnap = await transaction.get(companyRef);
+        var nextPermissionVersion = 1;
 
         if (companySnap.exists) {
           final existingData = companySnap.data() ?? <String, dynamic>{};
@@ -560,6 +515,15 @@ class UserManagementService {
           if (existingCompanyId.isNotEmpty && existingCompanyId != companyId) {
             throw StateError('User document company scope mismatch.');
           }
+          final currentPermissionVersion =
+              (existingData['permissionVersion'] as num?)?.toInt() ?? 0;
+          if (expectedPermissionVersion != null &&
+              currentPermissionVersion != expectedPermissionVersion) {
+            throw StateError(
+              'Permissions were changed by another administrator. Reopen the user and try again.',
+            );
+          }
+          nextPermissionVersion = currentPermissionVersion + 1;
         }
 
         final companyPayload = _companyUserPayload(
@@ -595,6 +559,7 @@ class UserManagementService {
         transaction.set(companyRef, {
           ...companyPayload,
           ...companyCreateAudit,
+          'permissionVersion': nextPermissionVersion,
         }, SetOptions(merge: true));
 
         final globalPayload = _globalMembershipPayload(
@@ -689,6 +654,7 @@ class UserManagementService {
     String? phone,
     String? photoUrl,
     bool isDeleted = false,
+    int? expectedPermissionVersion,
   }) {
     return upsertUser(
       companyId: companyId,
@@ -711,6 +677,7 @@ class UserManagementService {
       phone: phone,
       photoUrl: photoUrl,
       isDeleted: isDeleted,
+      expectedPermissionVersion: expectedPermissionVersion,
     );
   }
 
@@ -972,15 +939,9 @@ class UserManagementService {
           permissions: permissions,
         );
 
-        final existingPermissionsRaw = data['permissions'];
-        final existingPermissions = existingPermissionsRaw is Map
-            ? normalizePermissionsForStorage(
-                _sanitizeRawNestedMap(
-                  Map<String, dynamic>.from(existingPermissionsRaw),
-                ),
-                role: currentRole,
-              )
-            : getDefaultPermissions(currentRole);
+        final existingPermissions = PermissionEvaluator.toStorageMap(
+          PermissionEvaluator.parsePermissions(data['permissions']).keys,
+        );
 
         if (_deepMapEquals(existingPermissions, normalizedPermissions)) {
           return;
@@ -990,6 +951,14 @@ class UserManagementService {
           'companyId': companyId,
           'uid': userUid,
           'permissions': normalizedPermissions,
+          'allowedModuleIds': PermissionEvaluator.deriveAllowedModuleIds(
+            PermissionEvaluator.parsePermissions(normalizedPermissions).keys,
+          ),
+          'permissionSchemaVersion': PermissionEvaluator.schemaVersion,
+          'permissionVersion':
+              ((data['permissionVersion'] as num?)?.toInt() ?? 0) + 1,
+          'permissionsUpdatedAt': FieldValue.serverTimestamp(),
+          'permissionsUpdatedBy': updatedByUid,
           ..._baseUpdateAudit(updatedByUid: updatedByUid),
         }, SetOptions(merge: true));
       });
@@ -1039,23 +1008,10 @@ class UserManagementService {
         final isActive = companyData['isActive'] == true;
         final isDeleted = companyData['isDeleted'] == true;
 
-        final existingPermissionsRaw = companyData['permissions'];
-        final existingPermissions = existingPermissionsRaw is Map
-            ? _sanitizeRawNestedMap(
-                Map<String, dynamic>.from(existingPermissionsRaw),
-              )
-            : <String, dynamic>{};
-
-        final roleNormalizedPermissions = _normalizePermissionsForRole(
-          role: normalizedRole,
-          permissions: existingPermissions.isEmpty ? null : existingPermissions,
-        );
-
         transaction.set(companyRef, {
           'role': normalizedRole,
           'roleLabel': _roleLabelFor(normalizedRole, role),
           'isAdmin': isSuperAccessRole(normalizedRole),
-          'permissions': roleNormalizedPermissions,
           ..._baseUpdateAudit(updatedByUid: updatedByUid),
         }, SetOptions(merge: true));
 
@@ -1221,6 +1177,12 @@ class UserManagementService {
       role: normalizedRole,
       permissions: permissions,
     );
+    final canonicalKeys = PermissionEvaluator.parsePermissions(
+      canonicalPermissions,
+    ).keys;
+    final derivedModuleIds = PermissionEvaluator.deriveAllowedModuleIds(
+      canonicalKeys,
+    );
 
     if (normalizedEmail.isEmpty) {
       throw ArgumentError('Email is required to create an invite.');
@@ -1236,6 +1198,11 @@ class UserManagementService {
     }
 
     final inviteRef = _companyInvitesCollection(companyId).doc();
+    final inviteLockRef = _companyDoc(companyId)
+        .collection('invite_email_locks')
+        .doc(
+          base64Url.encode(utf8.encode(normalizedEmail)).replaceAll('=', ''),
+        );
 
     String inviteCode = _generateInviteCode();
     for (int i = 0; i < 5; i++) {
@@ -1248,34 +1215,64 @@ class UserManagementService {
     }
 
     try {
-      await inviteRef.set({
-        'inviteId': inviteRef.id,
-        'companyId': companyId,
-        'code': inviteCode,
-        'name': _normalizeText(name),
-        'email': normalizedEmail,
-        'phone': normalizedPhone,
-        'role': normalizedRole,
-        'roleLabel': _roleLabelFor(normalizedRole, role),
-        'permissions': canonicalPermissions,
-        if (allowedModuleIds != null) 'allowedModuleIds': allowedModuleIds,
-        'department': _normalizeText(department),
-        'designation': _normalizeText(designation),
-        'branchId': normalizedBranchId,
-        'branchName': normalizedBranchName,
-        'reportingManagerUid': _normalizeText(reportingManagerUid),
-        'reportingManagerName': _normalizeText(reportingManagerName),
-        'accessScope': _normalizeText(accessScope).isEmpty
-            ? AccessScope.company
-            : _normalizeText(accessScope),
-        'status': 'pending',
-        'isActive': true,
-        'isDeleted': false,
-        'expiresAt': Timestamp.fromDate(DateTime.now().add(expiry)),
-        'createdAt': FieldValue.serverTimestamp(),
-        'createdByUid': invitedByUid,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'updatedByUid': invitedByUid,
+      await firestore.runTransaction((transaction) async {
+        final lockSnapshot = await transaction.get(inviteLockRef);
+        if (lockSnapshot.exists) {
+          final lockedInviteId = _normalizeText(
+            lockSnapshot.data()?['pendingInviteId'],
+          );
+          if (lockedInviteId.isNotEmpty) {
+            final lockedInvite = await transaction.get(
+              _inviteDoc(companyId: companyId, inviteId: lockedInviteId),
+            );
+            if (lockedInvite.exists &&
+                _normalizeText(lockedInvite.data()?['status']).toLowerCase() ==
+                    'pending') {
+              throw StateError(
+                'A pending invite already exists for this email.',
+              );
+            }
+          }
+        }
+
+        transaction.set(inviteRef, {
+          'inviteId': inviteRef.id,
+          'companyId': companyId,
+          'code': inviteCode,
+          'name': _normalizeText(name),
+          'email': normalizedEmail,
+          'phone': normalizedPhone,
+          'role': normalizedRole,
+          'roleLabel': _roleLabelFor(normalizedRole, role),
+          'permissions': canonicalPermissions,
+          'allowedModuleIds': derivedModuleIds,
+          'permissionSchemaVersion': PermissionEvaluator.schemaVersion,
+          'permissionsUpdatedAt': FieldValue.serverTimestamp(),
+          'permissionsUpdatedBy': invitedByUid,
+          'department': _normalizeText(department),
+          'designation': _normalizeText(designation),
+          'branchId': normalizedBranchId,
+          'branchName': normalizedBranchName,
+          'reportingManagerUid': _normalizeText(reportingManagerUid),
+          'reportingManagerName': _normalizeText(reportingManagerName),
+          'accessScope': _normalizeText(accessScope).isEmpty
+              ? AccessScope.company
+              : _normalizeText(accessScope),
+          'status': 'pending',
+          'isActive': true,
+          'isDeleted': false,
+          'expiresAt': Timestamp.fromDate(DateTime.now().add(expiry)),
+          'createdAt': FieldValue.serverTimestamp(),
+          'createdByUid': invitedByUid,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'updatedByUid': invitedByUid,
+        });
+        transaction.set(inviteLockRef, {
+          'email': normalizedEmail,
+          'pendingInviteId': inviteRef.id,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'updatedByUid': invitedByUid,
+        });
       });
     } on FirebaseException catch (e) {
       throw StateError('Failed to create invite: ${e.message ?? e.code}');

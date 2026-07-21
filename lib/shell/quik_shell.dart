@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:QUIK/shell/widgets/shell_common_widgets.dart';
 import 'package:QUIK/core/inventory/providers/inventory_config_provider.dart';
 import 'package:QUIK/core/modules/module_registry.dart';
+import 'package:QUIK/core/permissions/permission_catalogue.dart';
+import 'package:QUIK/core/permissions/permission_evaluator.dart';
+import 'package:QUIK/core/permissions/permission_scope.dart';
 import 'package:QUIK/core/modules/providers/module_access_provider.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/administration/inventory/screen_inventory_profile_settings.dart';
@@ -92,7 +95,9 @@ class _QuikShellState extends State<QuikShell> {
   // Live State tracked securely via Firestore streams
   String _currentRole = 'viewer';
   Map<String, dynamic> _currentPermissions = {};
-  Set<String> _currentAllowedModuleIds = {};
+  PermissionEvaluator _permissionEvaluator = PermissionEvaluator(
+    permissions: const [],
+  );
   List<SidebarGroup<ShellPage>> _currentSidebarGroups = [];
 
   @override
@@ -140,22 +145,11 @@ class _QuikShellState extends State<QuikShell> {
   }
 
   bool get isAdminOrManager {
-    final r = _currentRole;
-    return r == 'owner' ||
-        r == 'software_super_admin' ||
-        r == 'company_super_admin' ||
-        r == 'founder' ||
-        r == 'ceo' ||
-        r == 'superadmin';
+    return _permissionEvaluator.isFullAccess;
   }
 
   bool get _canViewComplianceLegal {
-    if (isAdminOrManager) return true;
-    return _currentRole == 'finance' ||
-        _currentRole == 'hr' ||
-        _currentRole == 'production' ||
-        _currentRole == 'qa' ||
-        _hasPermission('administration', 'complianceLegal');
+    return _permissionEvaluator.hasPermission('administration.compliance.view');
   }
 
   bool get _isMirajTenant {
@@ -169,31 +163,13 @@ class _QuikShellState extends State<QuikShell> {
     String submodule, {
     String action = 'view',
   }) {
-    if (isAdminOrManager) return true;
-
-    final moduleData = _currentPermissions[module];
-    if (moduleData is Map && moduleData.containsKey(submodule)) {
-      final subData = moduleData[submodule];
-      if (subData is Map) {
-        return subData[action] == true;
-      }
-      return subData == true;
-    }
-
-    if (_currentPermissions.containsKey(submodule)) {
-      final legacySubData = _currentPermissions[submodule];
-      if (legacySubData is Map) {
-        return legacySubData[action] == true;
-      }
-      return legacySubData == true && action == 'view';
-    }
-
-    if (_currentPermissions.containsKey('$module.$submodule')) {
-      return _currentPermissions['$module.$submodule'] == true &&
-          action == 'view';
-    }
-
-    return false;
+    final parsed = PermissionEvaluator.parsePermissions({
+      module: {
+        submodule: {action: true},
+      },
+    });
+    if (parsed.keys.isEmpty) return false;
+    return _permissionEvaluator.hasPermission(parsed.keys.first);
   }
 
   bool get canInquiries {
@@ -241,12 +217,6 @@ class _QuikShellState extends State<QuikShell> {
     if (pageModuleId != null && !_isModuleEnabled(pageModuleId)) {
       return false;
     }
-    if (pageModuleId != null &&
-        _currentAllowedModuleIds.isNotEmpty &&
-        _currentAllowedModuleIds.contains(pageModuleId)) {
-      return true;
-    }
-
     if (_isGeneralInventoryPage(page) &&
         _isFabricationInventory &&
         !_isFabricationInventoryCompatiblePage(page)) {
@@ -255,6 +225,14 @@ class _QuikShellState extends State<QuikShell> {
 
     if (_isFabricationOnlyInventoryPage(page) && !_isFabricationInventory) {
       return false;
+    }
+
+    final cataloguePermission =
+        AmanPermissionCatalogue.routeViewPermission[page.name];
+    if (cataloguePermission != null) {
+      final moduleId = cataloguePermission.split('.').first;
+      return _isModuleEnabled(moduleId) &&
+          _permissionEvaluator.hasPermission(cataloguePermission);
     }
 
     switch (page) {
@@ -437,10 +415,6 @@ class _QuikShellState extends State<QuikShell> {
         page == ShellPage.productionWorkCenters ||
         page == ShellPage.productionBom ||
         page == ShellPage.productionBoq ||
-        page == ShellPage.productionJobCards ||
-        page == ShellPage.productionContractorJobs ||
-        page == ShellPage.productionGalvanizing ||
-        page == ShellPage.productionInspections ||
         page == ShellPage.productionEntries ||
         page == ShellPage.productionMaterialRequirements;
   }
@@ -898,8 +872,7 @@ class _QuikShellState extends State<QuikShell> {
       return true;
     }
 
-    if (_currentAllowedModuleIds.isNotEmpty &&
-        !_currentAllowedModuleIds.contains(moduleId)) {
+    if (!_permissionEvaluator.canViewModule(moduleId)) {
       return false;
     }
 
@@ -1153,13 +1126,13 @@ class _QuikShellState extends State<QuikShell> {
             ? Map<String, dynamic>.from(rawPermissions)
             : widget.permissions;
 
-        final dynamic rawAllowedModuleIds = companyUserData['allowedModuleIds'];
-        _currentAllowedModuleIds = rawAllowedModuleIds is Iterable
-            ? rawAllowedModuleIds
-                  .map((value) => value.toString().trim())
-                  .where((value) => value.isNotEmpty)
-                  .toSet()
-            : <String>{};
+        final evaluatorData = Map<String, dynamic>.from(companyUserData);
+        if (!evaluatorData.containsKey('permissions') &&
+            widget.permissions.isNotEmpty) {
+          evaluatorData['permissions'] = widget.permissions;
+        }
+        evaluatorData['role'] = _currentRole;
+        _permissionEvaluator = PermissionEvaluator.fromUserData(evaluatorData);
 
         final bool isDeleted = companyUserData['isDeleted'] == true;
         final bool isActive = companyUserData.containsKey('isActive')
@@ -1208,7 +1181,12 @@ class _QuikShellState extends State<QuikShell> {
                 child: Column(
                   children: [
                     _buildTopHeader(),
-                    Expanded(child: _buildActiveBody()),
+                    Expanded(
+                      child: PermissionScope(
+                        evaluator: _permissionEvaluator,
+                        child: _buildActiveBody(),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1240,8 +1218,7 @@ class _QuikShellState extends State<QuikShell> {
           companyId: widget.companyId,
           userName: widget.companyName,
           currentUserId: widget.userUid,
-          permissions: _currentPermissions,
-          role: _currentRole,
+          permissionEvaluator: _permissionEvaluator,
         );
 
       case ShellPage.salesInquiries:

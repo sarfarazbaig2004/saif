@@ -24,6 +24,9 @@ class UserModel {
   final String accessScope;
   final String industry;
   final Map<String, dynamic> permissions;
+  final List<String> allowedModuleIds;
+  final int permissionSchemaVersion;
+  final int permissionVersion;
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? deletedAt;
@@ -51,6 +54,9 @@ class UserModel {
     required this.accessScope,
     required this.industry,
     required this.permissions,
+    required this.allowedModuleIds,
+    required this.permissionSchemaVersion,
+    required this.permissionVersion,
     required this.createdAt,
     required this.updatedAt,
     required this.deletedAt,
@@ -87,6 +93,9 @@ class UserModel {
       'accessScope': accessScope,
       'industry': industry,
       'permissions': _normalizeMap(permissions),
+      'allowedModuleIds': allowedModuleIds,
+      'permissionSchemaVersion': permissionSchemaVersion,
+      'permissionVersion': permissionVersion,
       'createdAt': _dateTimeToTimestamp(createdAt),
       'updatedAt': _dateTimeToTimestamp(updatedAt),
       'deletedAt': _dateTimeToTimestamp(deletedAt),
@@ -180,6 +189,10 @@ class UserModel {
       accessScope: _readString(map, ['accessScope'], fallback: 'company'),
       industry: finalIndustry,
       permissions: permissionsValue,
+      allowedModuleIds: _readStringList(map['allowedModuleIds']),
+      permissionSchemaVersion:
+          (map['permissionSchemaVersion'] as num?)?.toInt() ?? 0,
+      permissionVersion: (map['permissionVersion'] as num?)?.toInt() ?? 0,
       createdAt: _readDateTime(map['createdAt']),
       updatedAt: _readDateTime(map['updatedAt']),
       deletedAt: _readDateTime(map['deletedAt']),
@@ -222,6 +235,9 @@ class UserModel {
     String? accessScope,
     String? industry,
     Map<String, dynamic>? permissions,
+    List<String>? allowedModuleIds,
+    int? permissionSchemaVersion,
+    int? permissionVersion,
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
@@ -251,6 +267,10 @@ class UserModel {
       permissions: permissions != null
           ? _normalizeMap(permissions)
           : this.permissions,
+      allowedModuleIds: allowedModuleIds ?? this.allowedModuleIds,
+      permissionSchemaVersion:
+          permissionSchemaVersion ?? this.permissionSchemaVersion,
+      permissionVersion: permissionVersion ?? this.permissionVersion,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       deletedAt: deletedAt ?? this.deletedAt,
@@ -319,6 +339,16 @@ class UserModel {
     }
 
     return <String, dynamic>{};
+  }
+
+  static List<String> _readStringList(dynamic value) {
+    if (value is! Iterable || value is String) return const [];
+    return value
+        .map((entry) => entry.toString().trim())
+        .where((entry) => entry.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
   }
 
   static DateTime? _readDateTime(dynamic value) {

@@ -8,6 +8,8 @@ class InviteModel {
   final String status;
   final bool isActive;
   final Map<String, dynamic> permissions;
+  final List<String> allowedModuleIds;
+  final int permissionSchemaVersion;
   final String companyId;
   final String companyName;
   final String createdByUid;
@@ -23,6 +25,8 @@ class InviteModel {
     required this.status,
     required this.isActive,
     required this.permissions,
+    required this.allowedModuleIds,
+    required this.permissionSchemaVersion,
     required this.companyId,
     required this.companyName,
     required this.createdByUid,
@@ -40,6 +44,8 @@ class InviteModel {
       'status': status,
       'isActive': isActive,
       'permissions': permissions,
+      'allowedModuleIds': allowedModuleIds,
+      'permissionSchemaVersion': permissionSchemaVersion,
       'companyId': companyId,
       'companyName': companyName,
       'createdByUid': createdByUid,
@@ -58,6 +64,14 @@ class InviteModel {
       status: (map['status'] ?? 'pending').toString(),
       isActive: map['isActive'] ?? true,
       permissions: Map<String, dynamic>.from(map['permissions'] ?? {}),
+      allowedModuleIds: map['allowedModuleIds'] is Iterable
+          ? (map['allowedModuleIds'] as Iterable)
+                .map((value) => value.toString())
+                .toSet()
+                .toList()
+          : const [],
+      permissionSchemaVersion:
+          (map['permissionSchemaVersion'] as num?)?.toInt() ?? 0,
       companyId: (map['companyId'] ?? '').toString(),
       companyName: (map['companyName'] ?? '').toString(),
       createdByUid: (map['createdByUid'] ?? '').toString(),

@@ -76,6 +76,65 @@ function callableString(value: unknown): string {
   return (value ?? "").toString().trim();
 }
 
+const permissionModuleOrder = [
+  "dashboard", "crm", "sales", "customer_po", "projects_job_cards",
+  "planning_scheduling", "engineering", "inventory_store", "purchase",
+  "production", "contractor_job_work", "galvanizing", "inspection_qa",
+  "dispatch", "hr_admin", "finance", "reports", "administration",
+  "settings",
+];
+
+/** Returns whether a trusted company-user profile contains a permission. */
+function hasDetailedPermission(
+  userData: FirebaseFirestore.DocumentData,
+  key: string,
+): boolean {
+  const role = callableString(userData.role).toLowerCase();
+  if (role === "software_super_admin" || role === "company_super_admin") {
+    return true;
+  }
+  const parts = key.split(".");
+  if (parts.length !== 3) return false;
+  const permissions = userData.permissions;
+  const hasPermissionLeaves = permissions && typeof permissions === "object" &&
+    !Array.isArray(permissions) && Object.keys(permissions).length > 0;
+  const schemaVersion = Number(userData.permissionSchemaVersion ?? 0);
+  if (!hasPermissionLeaves) {
+    // Match the Flutter evaluator's temporary pre-v1 compatibility behavior.
+    // Schema-v1 empty permissions are intentionally no-access.
+    return schemaVersion < 1 && Array.isArray(userData.allowedModuleIds) &&
+      userData.allowedModuleIds.includes(parts[0]);
+  }
+  const modulePermissions = permissions[parts[0]];
+  if (!modulePermissions || typeof modulePermissions !== "object") {
+    return permissions[key] === true;
+  }
+  const submodulePermissions = modulePermissions[parts[1]];
+  if (!submodulePermissions || typeof submodulePermissions !== "object") {
+    return submodulePermissions === true && parts[2] === "view";
+  }
+  return submodulePermissions[parts[2]] === true;
+}
+
+/** Derives compatibility Level-1 ids from the canonical permission map. */
+function deriveAllowedModuleIds(permissions: unknown): string[] {
+  if (!permissions || typeof permissions !== "object" ||
+      Array.isArray(permissions)) {
+    return [];
+  }
+  const map = permissions as Record<string, unknown>;
+  return permissionModuleOrder.filter((moduleId) => {
+    const moduleValue = map[moduleId];
+    return moduleValue !== null && typeof moduleValue === "object" &&
+      Object.values(moduleValue as Record<string, unknown>).some((value) => {
+        if (value === true) return true;
+        return value !== null && typeof value === "object" &&
+          Object.values(value as Record<string, unknown>)
+            .some((action) => action === true);
+      });
+  });
+}
+
 /**
  * Returns true when a value is blank-like.
  * @param {unknown} value source value
@@ -1014,6 +1073,10 @@ export const sendJoinCompanyOtp = onCall(
       reportingManagerName: inviteData.reportingManagerName ?? "",
       accessScope: inviteData.accessScope ?? "company",
       permissions: inviteData.permissions ?? {},
+      allowedModuleIds: Array.isArray(inviteData.allowedModuleIds) ?
+        inviteData.allowedModuleIds :
+        deriveAllowedModuleIds(inviteData.permissions ?? {}),
+      permissionSchemaVersion: inviteData.permissionSchemaVersion ?? 1,
       verified: false,
       status: "pending",
       otp,
@@ -1104,6 +1167,22 @@ export const verifyJoinCompanyOtp = onCall(
       throw new HttpsError("invalid-argument", "Invalid OTP");
     }
 
+    if (callableString(data.status).toLowerCase() === "completed" &&
+        callableString(data.finalUid)) {
+      return {
+        success: true,
+        idempotent: true,
+        uid: callableString(data.finalUid),
+        email: callableString(data.email).toLowerCase(),
+        fullName: callableString(data.fullName),
+        companyId: callableString(data.companyId),
+        companyName: callableString(data.companyName),
+        inviteId: callableString(data.inviteId),
+        role: callableString(data.role || "sales").toLowerCase(),
+        permissions: data.acceptedPermissions ?? data.permissions ?? {},
+      };
+    }
+
     const email = callableString(data.email).toLowerCase();
     const fullName = callableString(data.fullName);
     const companyId = callableString(data.companyId);
@@ -1119,7 +1198,10 @@ export const verifyJoinCompanyOtp = onCall(
     const reportingManagerUid = callableString(data.reportingManagerUid);
     const reportingManagerName = callableString(data.reportingManagerName);
     const accessScope = callableString(data.accessScope) || "company";
-    const permissions = data.permissions ?? {};
+    let permissions = data.permissions ?? {};
+    let allowedModuleIds = Array.isArray(data.allowedModuleIds) ?
+      data.allowedModuleIds : deriveAllowedModuleIds(permissions);
+    let permissionSchemaVersion = data.permissionSchemaVersion ?? 1;
 
     if (!email || !fullName || !companyId) {
       throw new HttpsError(
@@ -1204,7 +1286,11 @@ export const verifyJoinCompanyOtp = onCall(
             );
           }
 
-          if (inviteStatus && inviteStatus !== "pending") {
+          const acceptedByUid = callableString(inviteData.acceptedByUid);
+          const isSameAcceptedInvite = inviteStatus === "accepted" &&
+            acceptedByUid === uid;
+          if (inviteStatus && inviteStatus !== "pending" &&
+              !isSameAcceptedInvite) {
             throw new HttpsError(
               "failed-precondition",
               "This invite is no longer pending",
@@ -1217,6 +1303,13 @@ export const verifyJoinCompanyOtp = onCall(
               "Invite email does not match verified email",
             );
           }
+
+          // The invite document, read inside this transaction, is authoritative.
+          // Never accept a permission set supplied by the client or cached draft.
+          permissions = inviteData.permissions ?? {};
+          allowedModuleIds = Array.isArray(inviteData.allowedModuleIds) ?
+            inviteData.allowedModuleIds : deriveAllowedModuleIds(permissions);
+          permissionSchemaVersion = inviteData.permissionSchemaVersion ?? 1;
         }
 
         const rootPayload = {
@@ -1272,6 +1365,11 @@ export const verifyJoinCompanyOtp = onCall(
           isDeleted: false,
           status,
           permissions,
+          allowedModuleIds,
+          permissionSchemaVersion,
+          permissionVersion: 1,
+          permissionsUpdatedAt: timestamp,
+          permissionsUpdatedBy: uid,
           joinedAt: timestamp,
           createdAt: timestamp,
           createdByUid: uid,
@@ -1298,6 +1396,8 @@ export const verifyJoinCompanyOtp = onCall(
           verified: true,
           status: "completed",
           finalUid: uid,
+          acceptedPermissions: permissions,
+          acceptedAllowedModuleIds: allowedModuleIds,
           ...legacyRequestSecretDeletes(),
           updatedAt: timestamp,
         }, {merge: true});
@@ -1390,10 +1490,13 @@ export const createCompanyUser = onCall(
       );
     }
 
-    if (callerData.role !== "admin") {
+    if (!hasDetailedPermission(
+      callerData,
+      "administration.users.invite",
+    )) {
       throw new HttpsError(
         "permission-denied",
-        "Only admins can create users",
+        "The caller cannot invite or create company users",
       );
     }
 
@@ -1476,6 +1579,11 @@ export const createCompanyUser = onCall(
       isDeleted: false,
       status: "active",
       permissions,
+      allowedModuleIds: deriveAllowedModuleIds(permissions),
+      permissionSchemaVersion: 1,
+      permissionVersion: 1,
+      permissionsUpdatedAt: timestamp,
+      permissionsUpdatedBy: callerUid,
       createdAt: timestamp,
       updatedAt: timestamp,
       createdBy: callerUid,
@@ -1508,4 +1616,3 @@ export const createCompanyUser = onCall(
     };
   },
 );
-
