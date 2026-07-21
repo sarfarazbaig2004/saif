@@ -200,19 +200,9 @@ Future<void> showEditUserDialog({
 
   final initialEvaluator = PermissionEvaluator.fromUserData(data);
   Set<String> selectedPermissions = initialEvaluator.permissions.toSet();
-  Map<String, dynamic> permissions = PermissionEvaluator.toStorageMap(
-    selectedPermissions,
+  final permissionCountNotifier = ValueNotifier<int>(
+    selectedPermissions.length,
   );
-  selectedModuleIds = PermissionEvaluator.deriveAllowedModuleIds(
-    selectedPermissions,
-  ).toSet();
-
-  final List<String> activeModules = isExportImport
-      ? ['dashboard', 'crm', 'finance', 'reports']
-      : permissionModuleOrder;
-  debugPrint('EDIT USER activeModules = $activeModules');
-  debugPrint('EDIT USER permissionModuleOrder = $permissionModuleOrder');
-  debugPrint('EDIT USER permissions keys = ${permissions.keys.toList()}');
 
   await showDialog<void>(
     context: context,
@@ -220,8 +210,6 @@ Future<void> showEditUserDialog({
     builder: (_) {
       return StatefulBuilder(
         builder: (context, setLocalState) {
-          debugPrint('VISIBLE PERMISSION SCREEN ROLE = $selectedRole');
-          debugPrint('VISIBLE PERMISSION SCREEN MODULES = $activeModules');
           Future<void> saveUser() async {
             if (isSaving) return;
 
@@ -533,20 +521,23 @@ Future<void> showEditUserDialog({
                               title: 'Permission Summary',
                               subtitle:
                                   'Review role mapping, department, designation, and selected permissions.',
-                              child: _buildEditSummary(
-                                selectedRole: selectedRole,
-                                selectedDepartment: selectedDepartment,
-                                selectedDesignation: selectedDesignation,
-                                selectedAccessScope: selectedAccessScope,
-                                selectedPermissionsCount:
-                                    selectedPermissions.length,
+                              child: ValueListenableBuilder<int>(
+                                valueListenable: permissionCountNotifier,
+                                builder: (context, permissionCount, _) =>
+                                    _buildEditSummary(
+                                      selectedRole: selectedRole,
+                                      selectedDepartment: selectedDepartment,
+                                      selectedDesignation: selectedDesignation,
+                                      selectedAccessScope: selectedAccessScope,
+                                      selectedPermissionsCount: permissionCount,
+                                    ),
                               ),
                             ),
                             const SizedBox(height: 18),
                             _buildSectionCard(
-                              title: 'Employee Permissions',
+                              title: 'Module Permissions',
                               subtitle:
-                                  'Direct access selected here is independent of role and other organizational fields.',
+                                  'Permissions are aligned with your QUIK ERP modules and submodules.',
                               child: PermissionEditor(
                                 selectedPermissions: selectedPermissions,
                                 visibleModuleIds: isExportImport
@@ -558,15 +549,10 @@ Future<void> showEditUserDialog({
                                         ModuleIds.settings,
                                       }
                                     : null,
-                                onChanged: (value) => setLocalState(() {
+                                onChanged: (value) {
                                   selectedPermissions = value;
-                                  permissions =
-                                      PermissionEvaluator.toStorageMap(value);
-                                  selectedModuleIds =
-                                      PermissionEvaluator.deriveAllowedModuleIds(
-                                        value,
-                                      ).toSet();
-                                }),
+                                  permissionCountNotifier.value = value.length;
+                                },
                               ),
                             ),
                             const SizedBox(height: 18),
@@ -739,6 +725,7 @@ Future<void> showEditUserDialog({
       );
     },
   );
+  permissionCountNotifier.dispose();
 }
 
 // Deprecated compatibility helper retained for old dialog payload shapes.

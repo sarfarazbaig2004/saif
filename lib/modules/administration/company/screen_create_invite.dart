@@ -143,11 +143,13 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   ];
 
   Set<String> selectedPermissions = <String>{};
+  late final ValueNotifier<int> _permissionCountNotifier;
 
   // 🔥 CHANGED: 'sales' is completely removed from the export_import array
   @override
   void initState() {
     super.initState();
+    _permissionCountNotifier = ValueNotifier<int>(selectedPermissions.length);
     _factoryRepository = FactoryRepository(companyId: widget.companyId);
     _factoryStream = _factoryRepository.watchFactories();
     _setDefaultDesignation();
@@ -160,6 +162,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
 
   @override
   void dispose() {
+    _permissionCountNotifier.dispose();
     nameController.dispose();
     emailController.dispose();
     phoneController.dispose();
@@ -969,11 +972,14 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'Selected permissions: ${selectedPermissions.length}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: _inviteMutedTextColor,
+                ValueListenableBuilder<int>(
+                  valueListenable: _permissionCountNotifier,
+                  builder: (context, count, _) => Text(
+                    'Selected permissions: $count',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: _inviteMutedTextColor,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1225,9 +1231,9 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                     ),
                     const SizedBox(height: 18),
                     _buildSectionCard(
-                      title: 'Employee Permissions',
+                      title: 'Module Permissions',
                       subtitle:
-                          'Direct access selected here is the source of truth. Role changes do not alter it.',
+                          'Permissions are aligned with your QUIK ERP modules and submodules.',
                       child: PermissionEditor(
                         selectedPermissions: selectedPermissions,
                         visibleModuleIds: AmanPermissionCatalogue.modules
@@ -1240,9 +1246,10 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                             )
                             .map((module) => module.id)
                             .toSet(),
-                        onChanged: (value) => setState(() {
+                        onChanged: (value) {
                           selectedPermissions = value;
-                        }),
+                          _permissionCountNotifier.value = value.length;
+                        },
                       ),
                     ),
                     const SizedBox(height: 18),
