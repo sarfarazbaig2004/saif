@@ -7,6 +7,8 @@ class Inquiry {
 
   final String inquiryNumber;
   final String subject;
+  final String verticalId;
+  final String verticalName;
 
   final String customerId;
   final String customerName;
@@ -60,6 +62,8 @@ class Inquiry {
     required this.companyId,
     required this.inquiryNumber,
     required this.subject,
+    required this.verticalId,
+    required this.verticalName,
     required this.customerId,
     required this.customerName,
     required this.contactId,
@@ -143,6 +147,11 @@ class Inquiry {
       companyId: _toStr(data['companyId']),
       inquiryNumber: _toStr(data['inquiryNumber']),
       subject: _toStr(data['subject']),
+      verticalId: _toStr(data['verticalId']),
+      verticalName: _firstNonEmpty([
+        data['verticalName'],
+        data['businessVertical'],
+      ]),
       customerId: _toStr(data['customerId']),
       customerName: _toStr(data['customerName']),
       contactId: _toStr(data['contactId']),
@@ -202,6 +211,11 @@ class Inquiry {
       companyId: _toStr(data['companyId']),
       inquiryNumber: _toStr(data['inquiryNumber']),
       subject: _toStr(data['subject']),
+      verticalId: _toStr(data['verticalId']),
+      verticalName: _firstNonEmpty([
+        data['verticalName'],
+        data['businessVertical'],
+      ]),
       customerId: _toStr(data['customerId']),
       customerName: _toStr(data['customerName']),
       contactId: _toStr(data['contactId']),
@@ -246,6 +260,8 @@ class Inquiry {
 
       'inquiryNumber': inquiryNumber,
       'subject': subject,
+      'verticalId': verticalId,
+      'verticalName': verticalName,
 
       'customerId': customerId,
       'customerName': customerName,
@@ -312,6 +328,8 @@ class Inquiry {
     String? companyId,
     String? inquiryNumber,
     String? subject,
+    String? verticalId,
+    String? verticalName,
     String? customerId,
     String? customerName,
     String? contactId,
@@ -364,6 +382,8 @@ class Inquiry {
       companyId: companyId ?? this.companyId,
       inquiryNumber: inquiryNumber ?? this.inquiryNumber,
       subject: subject ?? this.subject,
+      verticalId: verticalId ?? this.verticalId,
+      verticalName: verticalName ?? this.verticalName,
       customerId: customerId ?? this.customerId,
       customerName: customerName ?? this.customerName,
       contactId: contactId ?? this.contactId,

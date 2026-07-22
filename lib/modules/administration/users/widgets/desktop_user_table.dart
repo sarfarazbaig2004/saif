@@ -21,6 +21,9 @@ class DesktopUserTable extends StatelessWidget {
   final Future<void> Function(UserDoc doc) onToggle;
   final Future<void> Function(UserDoc doc) onDelete;
   final bool canManageSoftwareSuperAdmin;
+  final bool canEditUsers;
+  final bool canToggleUsers;
+  final bool canArchiveUsers;
 
   const DesktopUserTable({
     super.key,
@@ -34,6 +37,9 @@ class DesktopUserTable extends StatelessWidget {
     required this.onToggle,
     required this.onDelete,
     this.canManageSoftwareSuperAdmin = false,
+    this.canEditUsers = true,
+    this.canToggleUsers = true,
+    this.canArchiveUsers = true,
   });
 
   static const double _tableMinWidth = 1040;
@@ -287,9 +293,11 @@ class DesktopUserTable extends StatelessWidget {
   }) {
     final protectedSoftwareAdmin =
         isSoftwareSuperAdmin && !canManageSoftwareSuperAdmin;
-    final canEdit = !protectedSoftwareAdmin;
-    final canToggle = !isSelfUser && !isDeleted && !protectedSoftwareAdmin;
-    final canDelete = !isSelfUser && !isDeleted && !protectedSoftwareAdmin;
+    final canEdit = canEditUsers && !protectedSoftwareAdmin;
+    final canToggle =
+        canToggleUsers && !isSelfUser && !isDeleted && !protectedSoftwareAdmin;
+    final canDelete =
+        canArchiveUsers && !isSelfUser && !isDeleted && !protectedSoftwareAdmin;
 
     return SizedBox(
       width: 110,

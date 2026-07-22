@@ -4,9 +4,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/modules/module_registry.dart';
+import 'package:QUIK/core/permissions/permission_evaluator.dart';
+import 'package:QUIK/core/permissions/vertical_permission_assignment.dart';
+import 'package:QUIK/core/permissions/vertical_permission_editor.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_constants.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
+import 'package:QUIK/modules/administration/users/models/organization_access_selection.dart';
 import 'package:QUIK/modules/administration/users/widgets/mini_badge.dart';
+import 'package:QUIK/modules/administration/users/widgets/vertical_factory_access_selector.dart';
+import 'package:QUIK/modules/administration/users/services/user_management_service.dart';
+import 'package:QUIK/modules/settings/factory_master/factory_model.dart';
+import 'package:QUIK/modules/settings/factory_master/factory_repository.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_model.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_repository.dart';
 
 typedef UserDoc = DocumentSnapshot<Map<String, dynamic>>;
 
@@ -30,15 +40,23 @@ Future<void> showEditUserDialog({
     required bool isActive,
     required Map<String, dynamic> permissions,
     required List<String> allowedModuleIds,
+    required int expectedPermissionVersion,
     String? department,
     String? designation,
     String? branchName,
     String? accessScope,
+    String? verticalSelectionMode,
+    List<String>? verticalIds,
+    String? factorySelectionMode,
+    List<String>? factoryIds,
+    Map<String, dynamic>? verticalPermissions,
   })
   onSaveUser,
 }) async {
   final data = doc.data() ?? <String, dynamic>{};
   final bool isExportImport = industry == 'export_import';
+  final expectedPermissionVersion =
+      (data['permissionVersion'] as num?)?.toInt() ?? 0;
 
   String selectedRole = _normalizeRoleValue(
     (data['role'] ?? UserRoles.sales).toString(),
@@ -48,7 +66,33 @@ Future<void> showEditUserDialog({
   final bool isSelfUser = doc.id == currentUid;
   bool isSaving = false;
 
-  Set<String> selectedModuleIds = _readAllowedModuleIds(data);
+  final userManagementService = UserManagementService();
+  List<Map<String, dynamic>> tenantRoles = const <Map<String, dynamic>>[];
+  try {
+    final fetchedRoles = await userManagementService.fetchTenantRoles(
+      companyId: companyId,
+    );
+    tenantRoles = fetchedRoles
+        .where((role) => role['isActive'] == true)
+        .toList(growable: false);
+  } catch (_) {
+    // Keep the same built-in fallback source used by Invite when tenant setup is unavailable.
+  }
+
+  String roleKey(Map<String, dynamic> role) =>
+      (role['role'] ?? role['name'] ?? role['id'] ?? role['roleId'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
+  String roleLabel(Map<String, dynamic> role) =>
+      (role['label'] ?? role['name'] ?? role['displayName'] ?? roleKey(role))
+          .toString()
+          .trim();
+
+  final roleOptions = tenantRoles.isNotEmpty
+      ? tenantRoles.map(roleKey).where((value) => value.isNotEmpty).toList()
+      : userRolesList;
+  Set<String> selectedModuleIds = <String>{};
 
   final List<String> departmentOptions = const [
     'Sales',
@@ -116,9 +160,38 @@ Future<void> showEditUserDialog({
     (data['department'] ?? '').toString().trim(),
     departmentOptions,
   );
+  final departmentController = TextEditingController(text: selectedDepartment);
 
   List<String> designationOptions =
       designationOptionsByDepartment[selectedDepartment] ?? const <String>[];
+  const inviteDesignationOptions = <String>[
+    'CEO',
+    'GM',
+    'Factory Head',
+    'Project Head',
+    'Production Head',
+    'Account Head',
+    'Production Manager',
+    'Quality Manager',
+    'Quality Supervisor',
+    'Dispatch Incharge',
+    'HR Executive',
+    'Project Manager',
+    'Project Coordinator',
+    'Safety Officer',
+    'Safety Supervisor',
+    'Store Incharge',
+    'Maintenance Manager',
+    'Maintenance Executive',
+    'Accounts Executive',
+    'Production Engineer',
+    'Vice President - Business Development',
+    'Area Sales Manager',
+    'Sales Executive',
+    'Senior Sales Executive',
+    'Regional Sales Manager',
+  ];
+  designationOptions = inviteDesignationOptions;
 
   String selectedDesignation = _normalizeDesignationForDropdown(
     designation: (data['designation'] ?? '').toString().trim(),
@@ -128,23 +201,39 @@ Future<void> showEditUserDialog({
   String selectedAccessScope = _normalizeAccessScopeValue(
     (data['accessScope'] ?? AccessScope.company).toString(),
   );
-
-  final savedPermissions = Map<String, dynamic>.from(
-    data['permissions'] ?? const <String, dynamic>{},
+  final Stream<List<FactoryModel>> factoryStream = FactoryRepository(
+    companyId: companyId,
+  ).watchFactories();
+  final Stream<List<VerticalModel>> verticalStream = VerticalRepository(
+    companyId: companyId,
+  ).watchVerticals();
+  AccessSelectionMode verticalMode = AccessSelectionMode.fromStorage(
+    data['verticalSelectionMode'],
+  );
+  AccessSelectionMode factoryMode = AccessSelectionMode.fromStorage(
+    data['factorySelectionMode'],
+  );
+  final selectedVerticalIds = normalizeSelectionIds(
+    readSelectionIds(data['verticalIds']),
+    verticalMode,
+  );
+  final selectedFactoryIds = normalizeSelectionIds(
+    readSelectionIds(data['factoryIds']),
+    factoryMode,
   );
 
-  Map<String, dynamic> permissions = _buildUiPermissionState(
-    role: selectedRole,
-    isExportImport: isExportImport,
-    permissions: savedPermissions,
+  final initialEvaluator = PermissionEvaluator.fromUserData(data);
+  Map<String, Set<String>> permissionsByVertical =
+      VerticalPermissionAssignments.parse(data['verticalPermissions']);
+  Set<String> selectedPermissions = permissionsByVertical.isEmpty
+      ? initialEvaluator.permissions.toSet()
+      : VerticalPermissionAssignments.unionForVerticals(
+          assignments: permissionsByVertical,
+          selectedVerticalIds: selectedVerticalIds,
+        );
+  final permissionCountNotifier = ValueNotifier<int>(
+    selectedPermissions.length,
   );
-
-  final List<String> activeModules = isExportImport
-      ? ['dashboard', 'crm', 'finance', 'reports']
-      : permissionModuleOrder;
-  debugPrint('EDIT USER activeModules = $activeModules');
-  debugPrint('EDIT USER permissionModuleOrder = $permissionModuleOrder');
-  debugPrint('EDIT USER permissions keys = ${permissions.keys.toList()}');
 
   await showDialog<void>(
     context: context,
@@ -152,21 +241,43 @@ Future<void> showEditUserDialog({
     builder: (_) {
       return StatefulBuilder(
         builder: (context, setLocalState) {
-          debugPrint('VISIBLE PERMISSION SCREEN ROLE = $selectedRole');
-          debugPrint('VISIBLE PERMISSION SCREEN MODULES = $activeModules');
           Future<void> saveUser() async {
             if (isSaving) return;
+
+            final targetHasCentralBypass = PermissionEvaluator.fullAccessRoles
+                .contains(selectedRole.trim().toLowerCase());
+            final verticalsWithoutPermissions = selectedVerticalIds
+                .where(
+                  (verticalId) =>
+                      (permissionsByVertical[verticalId] ?? const <String>{})
+                          .isEmpty,
+                )
+                .toList(growable: false);
+            if (!targetHasCentralBypass &&
+                (selectedPermissions.isEmpty ||
+                    verticalsWithoutPermissions.isNotEmpty)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Select at least one permission for every selected vertical.',
+                  ),
+                  backgroundColor: dangerColor,
+                ),
+              );
+              return;
+            }
 
             setLocalState(() {
               isSaving = true;
             });
 
             try {
-              final normalizedPermissions = _buildUiPermissionState(
-                role: selectedRole,
-                isExportImport: isExportImport,
-                permissions: permissions,
+              final normalizedPermissions = PermissionEvaluator.toStorageMap(
+                selectedPermissions,
               );
+              selectedModuleIds = PermissionEvaluator.deriveAllowedModuleIds(
+                selectedPermissions,
+              ).toSet();
 
               await onSaveUser(
                 companyId: companyId,
@@ -175,9 +286,18 @@ Future<void> showEditUserDialog({
                 isActive: isDeleted ? false : isActive,
                 permissions: normalizedPermissions,
                 allowedModuleIds: selectedModuleIds.toList()..sort(),
+                expectedPermissionVersion: expectedPermissionVersion,
                 department: selectedDepartment.trim(),
                 designation: selectedDesignation.trim(),
                 accessScope: selectedAccessScope.trim(),
+                verticalSelectionMode: verticalMode.storageValue,
+                verticalIds: selectedVerticalIds.toList()..sort(),
+                factorySelectionMode: factoryMode.storageValue,
+                factoryIds: selectedFactoryIds.toList()..sort(),
+                verticalPermissions: VerticalPermissionAssignments.toStorageMap(
+                  assignments: permissionsByVertical,
+                  selectedVerticalIds: selectedVerticalIds,
+                ),
               );
 
               if (!context.mounted) return;
@@ -206,12 +326,6 @@ Future<void> showEditUserDialog({
               }
             }
           }
-
-          final visiblePermissions = _buildUiPermissionState(
-            role: selectedRole,
-            isExportImport: isExportImport,
-            permissions: permissions,
-          );
 
           return Dialog(
             insetPadding: const EdgeInsets.symmetric(
@@ -323,13 +437,75 @@ Future<void> showEditUserDialog({
                                   'Update the employee role and structured organizational assignment.',
                               child: Column(
                                 children: [
+                                  VerticalFactoryAccessSelector(
+                                    verticalStream: verticalStream,
+                                    factoryStream: factoryStream,
+                                    verticalMode: verticalMode,
+                                    selectedVerticalIds: selectedVerticalIds,
+                                    factoryMode: factoryMode,
+                                    selectedFactoryIds: selectedFactoryIds,
+                                    verticalDecoration: _inputDecoration(
+                                      label: 'Vertical',
+                                      icon: Icons.account_tree_outlined,
+                                    ),
+                                    factoryDecoration: _inputDecoration(
+                                      label: 'Factory',
+                                      icon: Icons.factory_outlined,
+                                    ),
+                                    onVerticalChanged: (mode, ids) {
+                                      setLocalState(() {
+                                        final shouldSeedFromLegacy =
+                                            permissionsByVertical.isEmpty &&
+                                            selectedPermissions.isNotEmpty;
+                                        for (final verticalId in ids) {
+                                          permissionsByVertical.putIfAbsent(
+                                            verticalId,
+                                            () => shouldSeedFromLegacy
+                                                ? Set<String>.from(
+                                                    selectedPermissions,
+                                                  )
+                                                : <String>{},
+                                          );
+                                        }
+                                        verticalMode = mode;
+                                        selectedVerticalIds
+                                          ..clear()
+                                          ..addAll(ids);
+                                        selectedPermissions =
+                                            VerticalPermissionAssignments.unionForVerticals(
+                                              assignments:
+                                                  permissionsByVertical,
+                                              selectedVerticalIds:
+                                                  selectedVerticalIds,
+                                            );
+                                        permissionCountNotifier.value =
+                                            selectedPermissions.length;
+                                      });
+                                    },
+                                    onFactoryChanged: (mode, ids) {
+                                      setLocalState(() {
+                                        factoryMode = mode;
+                                        selectedFactoryIds
+                                          ..clear()
+                                          ..addAll(ids);
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
                                   _buildDesktopTwoColumn(
                                     left: _buildDropdownField(
                                       label: 'Role',
                                       value: selectedRole,
-                                      options: userRolesList,
+                                      options: roleOptions,
                                       icon: Icons.admin_panel_settings_outlined,
-                                      labelBuilder: formatRole,
+                                      labelBuilder: (value) {
+                                        final match = tenantRoles.where(
+                                          (role) => roleKey(role) == value,
+                                        );
+                                        return match.isEmpty
+                                            ? formatRole(value)
+                                            : roleLabel(match.first);
+                                      },
                                       onChanged: (value) {
                                         if (value == null) return;
                                         setLocalState(() {
@@ -340,28 +516,6 @@ Future<void> showEditUserDialog({
                                       },
                                     ),
                                     right: _buildDropdownField(
-                                      label: 'Department',
-                                      value: selectedDepartment,
-                                      options: departmentOptions,
-                                      icon: Icons.apartment_outlined,
-                                      onChanged: (value) {
-                                        if (value == null) return;
-                                        setLocalState(() {
-                                          selectedDepartment = value;
-                                          designationOptions =
-                                              designationOptionsByDepartment[selectedDepartment] ??
-                                              const <String>[];
-                                          selectedDesignation =
-                                              designationOptions.isNotEmpty
-                                              ? designationOptions.first
-                                              : '';
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _buildDesktopTwoColumn(
-                                    left: _buildDropdownField(
                                       label: 'Designation',
                                       value: selectedDesignation,
                                       options: designationOptions,
@@ -373,21 +527,24 @@ Future<void> showEditUserDialog({
                                         });
                                       },
                                     ),
-                                    right: _buildDropdownField(
-                                      label: 'Access Scope',
-                                      value: selectedAccessScope,
-                                      options: accessScopeList,
-                                      icon: Icons.lock_open_outlined,
-                                      labelBuilder: (value) =>
-                                          accessScopeLabels[value] ?? value,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildDesktopTwoColumn(
+                                    left: TextFormField(
+                                      controller: departmentController,
+                                      decoration: _inputDecoration(
+                                        label: 'Department',
+                                        icon: Icons.apartment_outlined,
+                                      ),
                                       onChanged: (value) {
-                                        if (value == null) return;
+                                        selectedDepartment = value;
                                         setLocalState(() {
-                                          selectedAccessScope =
-                                              _normalizeAccessScopeValue(value);
+                                          designationOptions =
+                                              inviteDesignationOptions;
                                         });
                                       },
                                     ),
+                                    right: const SizedBox(),
                                   ),
                                 ],
                               ),
@@ -445,39 +602,47 @@ Future<void> showEditUserDialog({
                               title: 'Permission Summary',
                               subtitle:
                                   'Review role mapping, department, designation, and selected permissions.',
-                              child: _buildEditSummary(
-                                selectedRole: selectedRole,
-                                selectedDepartment: selectedDepartment,
-                                selectedDesignation: selectedDesignation,
-                                selectedAccessScope: selectedAccessScope,
-                                selectedPermissionsCount:
-                                    _selectedPermissionCount(
-                                      visiblePermissions,
-                                      activeModules,
-                                      isExportImport: isExportImport,
+                              child: ValueListenableBuilder<int>(
+                                valueListenable: permissionCountNotifier,
+                                builder: (context, permissionCount, _) =>
+                                    _buildEditSummary(
+                                      selectedRole: selectedRole,
+                                      selectedDepartment: selectedDepartment,
+                                      selectedDesignation: selectedDesignation,
+                                      selectedAccessScope: selectedAccessScope,
+                                      selectedPermissionsCount: permissionCount,
                                     ),
                               ),
                             ),
                             const SizedBox(height: 18),
                             _buildSectionCard(
-                              title: 'Level 1 Module Access',
+                              title: 'Module Permissions',
                               subtitle:
-                                  'Simple one-checkbox access for each main ERP module.',
-                              child: _buildLevelOneModuleAccessGrid(
-                                selectedModuleIds: selectedModuleIds,
-                                onChanged: (moduleId, value) {
-                                  setLocalState(() {
-                                    if (value) {
-                                      selectedModuleIds.add(moduleId);
-                                    } else {
-                                      selectedModuleIds.remove(moduleId);
-                                    }
-
-                                    permissions =
-                                        _permissionsFromAllowedModules(
-                                          selectedModuleIds,
-                                        );
-                                  });
+                                  'Permissions are aligned with your QUIK ERP modules and submodules.',
+                              child: VerticalPermissionEditor(
+                                verticalStream: verticalStream,
+                                selectedVerticalIds: selectedVerticalIds,
+                                permissionsByVertical: permissionsByVertical,
+                                fallbackPermissions: selectedPermissions,
+                                visibleModuleIds: isExportImport
+                                    ? const {
+                                        ModuleIds.dashboard,
+                                        ModuleIds.crm,
+                                        ModuleIds.finance,
+                                        ModuleIds.reports,
+                                        ModuleIds.settings,
+                                      }
+                                    : null,
+                                onChanged: (value) {
+                                  permissionsByVertical = value;
+                                  selectedPermissions =
+                                      VerticalPermissionAssignments.unionForVerticals(
+                                        assignments: permissionsByVertical,
+                                        selectedVerticalIds:
+                                            selectedVerticalIds,
+                                      );
+                                  permissionCountNotifier.value =
+                                      selectedPermissions.length;
                                 },
                               ),
                             ),
@@ -651,8 +816,11 @@ Future<void> showEditUserDialog({
       );
     },
   );
+  permissionCountNotifier.dispose();
 }
 
+// Deprecated compatibility helper retained for old dialog payload shapes.
+// ignore: unused_element
 Set<String> _readAllowedModuleIds(Map<String, dynamic> data) {
   final raw = data['allowedModuleIds'];
 
@@ -792,73 +960,8 @@ Set<String> _moduleIdsFromLegacyPermissions(Map<String, dynamic> permissions) {
   return ids;
 }
 
-Widget _buildLevelOneModuleAccessGrid({
-  required Set<String> selectedModuleIds,
-  required void Function(String moduleId, bool value) onChanged,
-}) {
-  final modules = ModuleRegistry.activeModules;
-
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      final crossAxisCount = constraints.maxWidth >= 900
-          ? 3
-          : constraints.maxWidth >= 560
-          ? 2
-          : 1;
-
-      return GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: modules.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          mainAxisExtent: 74,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemBuilder: (context, index) {
-          final module = modules[index];
-          final selected = selectedModuleIds.contains(module.id);
-          return Container(
-            decoration: BoxDecoration(
-              color: selected ? const Color(0xFFEFF6FF) : Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: selected
-                    ? const Color(0xFF93C5FD)
-                    : const Color(0xFFE2E8F0),
-              ),
-            ),
-            child: CheckboxListTile(
-              value: selected,
-              onChanged: (value) => onChanged(module.id, value ?? false),
-              title: Text(
-                module.displayName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: _editHeadingTextColor,
-                ),
-              ),
-              subtitle: Text(
-                selected ? 'Access enabled' : 'Access disabled',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: _editMutedTextColor,
-                ),
-              ),
-              controlAffinity: ListTileControlAffinity.leading,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-            ),
-          );
-        },
-      );
-    },
-  );
-}
-
+// Deprecated compatibility helper retained for old dialog payload shapes.
+// ignore: unused_element
 Map<String, dynamic> _permissionsFromAllowedModules(Set<String> moduleIds) {
   final permissions = buildEmptyPermissions();
 
@@ -1438,6 +1541,8 @@ Widget _buildActionGroup({
   );
 }
 
+// Deprecated compatibility helper retained for old dialog payload shapes.
+// ignore: unused_element
 Map<String, dynamic> _buildUiPermissionState({
   required String role,
   required bool isExportImport,
@@ -1512,6 +1617,8 @@ Map<String, dynamic> _deepCopyPermissions(Map<String, dynamic> input) {
   return result;
 }
 
+// Deprecated compatibility helper retained for old dialog payload shapes.
+// ignore: unused_element
 int _selectedPermissionCount(
   Map<String, dynamic> permissions,
   List<String> activeModules, {

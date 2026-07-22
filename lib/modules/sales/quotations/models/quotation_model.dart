@@ -9,6 +9,8 @@ class SalesQuotationModel {
   final String id;
   final String companyId;
   final String quotationNo;
+  final String verticalId;
+  final String verticalName;
   final int revisionNo;
   final String revisionId;
 
@@ -44,6 +46,8 @@ class SalesQuotationModel {
     required this.id,
     required this.companyId,
     required this.quotationNo,
+    required this.verticalId,
+    required this.verticalName,
     required this.revisionNo,
     required this.revisionId,
     required this.linkedInquiryId,
@@ -72,6 +76,9 @@ class SalesQuotationModel {
       id: (map['id'] ?? '').toString(),
       companyId: (map['companyId'] ?? '').toString(),
       quotationNo: (map['quotationNo'] ?? '').toString(),
+      verticalId: (map['verticalId'] ?? '').toString(),
+      verticalName:
+          (map['verticalName'] ?? map['businessVertical'] ?? '').toString(),
       revisionNo: _toInt(map['revisionNo']),
       revisionId: (map['revisionId'] ?? '').toString(),
       linkedInquiryId: (map['linkedInquiryId'] ?? '').toString(),
@@ -108,6 +115,8 @@ class SalesQuotationModel {
       'id': id,
       'companyId': companyId,
       'quotationNo': quotationNo,
+      'verticalId': verticalId,
+      'verticalName': verticalName,
       'revisionNo': revisionNo,
       'revisionId': revisionId,
       'linkedInquiryId': linkedInquiryId,

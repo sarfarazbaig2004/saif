@@ -5,6 +5,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/models/inquiry_model.dart';
+import 'package:QUIK/core/permissions/permission_catalogue.dart';
+import 'package:QUIK/core/permissions/permission_evaluator.dart';
+import 'package:QUIK/core/permissions/permission_scope.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
 import 'package:QUIK/modules/sales/costing/screens/costing_sheet_screen.dart';
@@ -12,6 +15,7 @@ import 'package:QUIK/modules/sales/inquiries/helpers/inquiry_list_helpers.dart';
 import 'package:QUIK/modules/sales/inquiries/screens_add_inquiry.dart';
 import 'package:QUIK/modules/sales/inquiries/widgets/inquiry_filter_sheet.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_repository.dart';
 
 class ScreensInquiryList extends StatefulWidget {
   const ScreensInquiryList({super.key});
@@ -26,6 +30,8 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   String _searchText = '';
   String _statusFilter = 'All';
   String _priorityFilter = 'All';
+  String _verticalFilter = 'All Verticals';
+  List<String> _verticalFilterOptions = const ['All Verticals', 'Not Assigned'];
 
   // State Variables to hold Company ID to prevent scope leaks
   String? _companyId;
@@ -58,6 +64,18 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
       _companyId = safeTenantId;
       _loadedTenantId = safeTenantId;
       _inquiryQuery = _resolveInquiryQuery(safeTenantId);
+      try {
+        final verticals = await VerticalRepository(
+          companyId: safeTenantId,
+        ).watchVerticals().first;
+        _verticalFilterOptions = [
+          'All Verticals',
+          ...verticals
+              .where((vertical) => vertical.isActive && !vertical.isDeleted)
+              .map((vertical) => vertical.name),
+          'Not Assigned',
+        ];
+      } catch (_) {}
     }
     return userData;
   }
@@ -110,29 +128,9 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
 
   // --- ROBUST PERMISSION SYSTEM ---
   bool _hasInquiryPermission(Map<String, dynamic> userData) {
-    final allowedModuleIds = userData['allowedModuleIds'];
-    if (allowedModuleIds is Iterable &&
-        allowedModuleIds.map((e) => e.toString()).contains('sales')) {
-      return true;
-    }
-
-    final role = _getString(userData, 'role').toLowerCase();
-
-    if (_isAdminOrManager(role)) return true;
-
-    final permissions = userData['permissions'];
-    if (permissions is Map) {
-      final salesPerms = permissions['sales'];
-      if (salesPerms is Map) {
-        final inquiryPerms = salesPerms['inquiries'];
-        if (inquiryPerms is Map) {
-          if (inquiryPerms['view'] == true) return true;
-        }
-      }
-      if (permissions['inquiries'] == true) return true;
-    }
-
-    return false;
+    return PermissionEvaluator.fromUserData(
+      userData,
+    ).hasPermission(PermissionKeys.salesInquiriesView);
   }
 
   // --- SMART FIRESTORE AUTO-FALLBACK QUERY ---
@@ -147,12 +145,11 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     required String role,
     required String currentUserUid,
   }) {
-    final normalizedSearch = _searchText.toLowerCase();final filtered = docs.where((doc) {
+    final normalizedSearch = _searchText.toLowerCase();
+    final filtered = docs.where((doc) {
       final data = doc.data();
 
       bool matchesRole = true;
-
-      
 
       final inquiryCode = _getString(data, 'inquiryCode').isEmpty
           ? _getString(data, 'inquiryNumber').toLowerCase()
@@ -203,8 +200,21 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
       final matchesStatus = _statusFilter == 'All' || status == _statusFilter;
       final matchesPriority =
           _priorityFilter == 'All' || priority == _priorityFilter;
+      final verticalName =
+          (data['verticalName'] ?? data['businessVertical'] ?? '')
+              .toString()
+              .trim();
+      final matchesVertical =
+          _verticalFilter == 'All Verticals' ||
+          (_verticalFilter == 'Not Assigned'
+              ? verticalName.isEmpty
+              : verticalName == _verticalFilter);
 
-      return matchesRole && matchesSearch && matchesStatus && matchesPriority;
+      return matchesRole &&
+          matchesSearch &&
+          matchesStatus &&
+          matchesPriority &&
+          matchesVertical;
     }).toList();
 
     filtered.sort((a, b) {
@@ -225,12 +235,15 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   }
 
   bool get _hasActiveFilters =>
-      _statusFilter != 'All' || _priorityFilter != 'All';
+      _statusFilter != 'All' ||
+      _priorityFilter != 'All' ||
+      _verticalFilter != 'All Verticals';
 
   void _resetFilters() {
     setState(() {
       _statusFilter = 'All';
       _priorityFilter = 'All';
+      _verticalFilter = 'All Verticals';
     });
   }
 
@@ -243,6 +256,8 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
       builder: (_) => InquiryFilterSheet(
         statusFilter: _statusFilter,
         priorityFilter: _priorityFilter,
+        verticalFilter: _verticalFilter,
+        verticalOptions: _verticalFilterOptions,
       ),
     );
 
@@ -251,6 +266,7 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     setState(() {
       _statusFilter = result.status;
       _priorityFilter = result.priority;
+      _verticalFilter = result.vertical;
     });
   }
 
@@ -261,6 +277,9 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     required String currentUserUid,
     required String role,
   }) async {
+    if (!PermissionScope.require(context, PermissionKeys.salesInquiriesEdit)) {
+      return;
+    }
     final targetCompanyId = (_companyId ?? '').trim();
 
     if (targetCompanyId.isEmpty) {
@@ -298,6 +317,12 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
   }
 
   Future<void> _deleteInquiry(String inquiryId) async {
+    if (!PermissionScope.require(
+      context,
+      PermissionKeys.salesInquiriesDelete,
+    )) {
+      return;
+    }
     final companyId = (_companyId ?? '').trim();
     if (companyId.isEmpty) {
       _showSnack(
@@ -368,6 +393,12 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     required Inquiry inquiry,
     required Map<String, dynamic> inquiryData,
   }) async {
+    if (!PermissionScope.require(
+      context,
+      PermissionKeys.salesInquiriesConvert,
+    )) {
+      return;
+    }
     final targetCompanyId = (_companyId ?? '').trim();
 
     if (targetCompanyId.isEmpty) {
@@ -462,6 +493,10 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
       'state': customerData['state'] ?? '',
       'gstNo': customerData['gstNo'] ?? customerData['gst'] ?? '',
       'subject': inquiry.subject,
+      'verticalId': (inquiryData['verticalId'] ?? inquiry.verticalId)
+          .toString(),
+      'verticalName': (inquiryData['verticalName'] ?? inquiry.verticalName)
+          .toString(),
       'notes':
           inquiryData['notes'] ??
           inquiryData['description'] ??
@@ -505,6 +540,12 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     required BuildContext context,
     required QueryDocumentSnapshot<Map<String, dynamic>> doc,
   }) async {
+    if (!PermissionScope.require(
+      context,
+      PermissionKeys.salesInquiriesCreateCosting,
+    )) {
+      return;
+    }
     final targetCompanyId = (_companyId ?? '').trim();
     if (targetCompanyId.isEmpty) {
       _showSnack('Missing company workspace.', isError: true);
@@ -590,39 +631,48 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
             backgroundColor: Colors.white,
             surfaceTintColor: Colors.transparent,
           ),
-          floatingActionButton: FloatingActionButton(
-            tooltip: 'Add Inquiry',
-            backgroundColor: const Color(0xFF2563EB),
-            foregroundColor: Colors.white,
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ScreensAddInquiry(
-                    companyId: compId,
-                    currentUserUid: firebaseUser.uid,
-                    currentUserRole: role,
-                  ),
-                ),
-              );
+          floatingActionButton:
+              PermissionScope.can(context, PermissionKeys.salesInquiriesCreate)
+              ? FloatingActionButton(
+                  tooltip: 'Add Inquiry',
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  onPressed: () async {
+                    if (!PermissionScope.require(
+                      context,
+                      PermissionKeys.salesInquiriesCreate,
+                    )) {
+                      return;
+                    }
+                    final result = await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ScreensAddInquiry(
+                          companyId: compId,
+                          currentUserUid: firebaseUser.uid,
+                          currentUserRole: role,
+                        ),
+                      ),
+                    );
 
-              if (result == true && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Inquiry added'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-                setState(() {
-                  _profileDataFuture = _loadProfileAndQuery(
-                    firebaseUser.uid,
-                    selectedTenantId,
-                  );
-                });
-              }
-            },
-            child: const Icon(Icons.add),
-          ),
+                    if (result == true && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Inquiry added'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      setState(() {
+                        _profileDataFuture = _loadProfileAndQuery(
+                          firebaseUser.uid,
+                          selectedTenantId,
+                        );
+                      });
+                    }
+                  },
+                  child: const Icon(Icons.add),
+                )
+              : null,
           body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: _inquiryQuery!.snapshots(),
             builder: (context, snapshot) {
@@ -942,31 +992,51 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                                 }
                                               },
                                               itemBuilder: (context) => [
-                                                const PopupMenuItem(
-                                                  value: 'open',
-                                                  child: Text('Open Inquiry'),
-                                                ),
-                                                const PopupMenuItem(
-                                                  value: 'quote',
-                                                  child: Text(
-                                                    'Create Quotation',
+                                                if (PermissionScope.can(
+                                                  context,
+                                                  PermissionKeys
+                                                      .salesInquiriesEdit,
+                                                ))
+                                                  const PopupMenuItem(
+                                                    value: 'open',
+                                                    child: Text('Open Inquiry'),
                                                   ),
-                                                ),
-                                                const PopupMenuItem(
-                                                  value: 'costing',
-                                                  child: Text(
-                                                    'Create Costing Sheet',
-                                                  ),
-                                                ),
-                                                const PopupMenuItem(
-                                                  value: 'delete',
-                                                  child: Text(
-                                                    'Delete Inquiry',
-                                                    style: TextStyle(
-                                                      color: Colors.red,
+                                                if (PermissionScope.can(
+                                                  context,
+                                                  PermissionKeys
+                                                      .salesInquiriesConvert,
+                                                ))
+                                                  const PopupMenuItem(
+                                                    value: 'quote',
+                                                    child: Text(
+                                                      'Create Quotation',
                                                     ),
                                                   ),
-                                                ),
+                                                if (PermissionScope.can(
+                                                  context,
+                                                  PermissionKeys
+                                                      .salesInquiriesCreateCosting,
+                                                ))
+                                                  const PopupMenuItem(
+                                                    value: 'costing',
+                                                    child: Text(
+                                                      'Create Costing Sheet',
+                                                    ),
+                                                  ),
+                                                if (PermissionScope.can(
+                                                  context,
+                                                  PermissionKeys
+                                                      .salesInquiriesDelete,
+                                                ))
+                                                  const PopupMenuItem(
+                                                    value: 'delete',
+                                                    child: Text(
+                                                      'Delete Inquiry',
+                                                      style: TextStyle(
+                                                        color: Colors.red,
+                                                      ),
+                                                    ),
+                                                  ),
                                               ],
                                             ),
                                           ),
@@ -988,6 +1058,14 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                               priority,
                                             ),
                                             textColor: _priorityFg(priority),
+                                          ),
+                                          _InfoChip(
+                                            label: inquiry.verticalName.isEmpty
+                                                ? 'Vertical not assigned'
+                                                : inquiry.verticalName,
+                                            backgroundColor:
+                                                Colors.orange.shade50,
+                                            textColor: Colors.orange.shade900,
                                           ),
                                           if (inquiry.source.isNotEmpty)
                                             _InfoChip(
@@ -1319,5 +1397,3 @@ Color _priorityFg(String priority) {
       return Colors.grey.shade800;
   }
 }
-
-

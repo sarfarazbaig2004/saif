@@ -1,5 +1,9 @@
 // FILE PATH: lib/modules/settings/screen_settings_home.dart
 import 'package:QUIK/modules/settings/coating_master/coating_master_screen.dart';
+import 'package:QUIK/modules/settings/company_profile/company_profile_bank_screen.dart';
+import 'package:QUIK/modules/settings/document_layout/document_layout_designer_screen.dart';
+import 'package:QUIK/modules/settings/factory_master/factory_list_screen.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_list_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -108,75 +112,189 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 760;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildHeader(compact),
+            const SizedBox(height: 12),
+            _buildTopSummaryRow(),
+            const SizedBox(height: 12),
+            Expanded(
+              child: compact
+                  ? Column(
+                      children: [
+                        SizedBox(
+                          height: 58,
+                          child: _buildLeftNav(horizontal: true),
+                        ),
+                        const SizedBox(height: 10),
+                        Expanded(child: _buildRightPanel()),
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(width: 250, child: _buildLeftNav()),
+                        const SizedBox(width: 12),
+                        Expanded(child: _buildRightPanel()),
+                      ],
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildHeader(bool compact) {
+    final breadcrumb = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        _buildTopSummaryRow(),
-        const SizedBox(height: 10),
-        Expanded(
-          child: Row(
-            children: [
-              SizedBox(width: 250, child: _buildLeftNav()),
-              const SizedBox(width: 10),
-              Expanded(child: _buildRightPanel()),
-            ],
+        const Icon(Icons.apartment_outlined, size: 18, color: zMuted),
+        const SizedBox(width: 8),
+        const Flexible(
+          child: Text(
+            'Workspace',
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: zMuted, fontWeight: FontWeight.w700),
           ),
         ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Icon(Icons.chevron_right_rounded, size: 18, color: zMuted),
+        ),
+        const Text(
+          'Settings',
+          style: TextStyle(color: zText, fontWeight: FontWeight.w900),
+        ),
+      ],
+    );
+    final selector = Container(
+      constraints: const BoxConstraints(maxWidth: 320),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: zBorder),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.business_outlined, size: 18, color: zBlue),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              widget.companyName.trim().isEmpty
+                  ? widget.companyId
+                  : widget.companyName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: zText, fontWeight: FontWeight.w800),
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(Icons.lock_outline_rounded, size: 14, color: zMuted),
+        ],
+      ),
+    );
+    if (compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          breadcrumb,
+          const SizedBox(height: 10),
+          Align(alignment: Alignment.centerRight, child: selector),
+        ],
+      );
+    }
+    return Row(
+      children: [
+        Expanded(child: breadcrumb),
+        selector,
       ],
     );
   }
 
   Widget _buildTopSummaryRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: _SummaryCard(
-            title: 'Workspace',
-            value: widget.companyName,
-            icon: Icons.business_outlined,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _SummaryCard(
-            title: 'Company ID',
-            value: widget.companyId,
-            icon: Icons.badge_outlined,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _SummaryCard(
-            title: 'Role',
-            value: widget.role.toUpperCase(),
-            icon: Icons.shield_outlined,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _SummaryCard(
-            title: 'Account',
-            value: widget.userEmail,
-            icon: Icons.person_outline,
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 900
+            ? 4
+            : constraints.maxWidth >= 520
+            ? 2
+            : 1;
+        final width = (constraints.maxWidth - ((columns - 1) * 8)) / columns;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            SizedBox(
+              width: width,
+              child: _SummaryCard(
+                title: 'Workspace',
+                value: widget.companyName,
+                icon: Icons.business_outlined,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _SummaryCard(
+                title: 'Company ID',
+                value: widget.companyId,
+                icon: Icons.badge_outlined,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _SummaryCard(
+                title: 'Role',
+                value: _readableRole(widget.role),
+                icon: Icons.shield_outlined,
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _SummaryCard(
+                title: 'Account',
+                value: widget.userEmail,
+                icon: Icons.person_outline,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildLeftNav() {
+  String _readableRole(String value) => value
+      .trim()
+      .toLowerCase()
+      .split(RegExp(r'[_\s]+'))
+      .where((part) => part.isNotEmpty)
+      .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+      .join(' ');
+
+  Widget _buildLeftNav({bool horizontal = false}) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: zBorder),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Column(
+      child: ListView(
+        scrollDirection: horizontal ? Axis.horizontal : Axis.vertical,
         children: _navItems.map((item) {
           final selected = _activeSection == item.section;
 
           return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
+            padding: EdgeInsets.only(
+              bottom: horizontal ? 0 : 6,
+              right: horizontal ? 6 : 0,
+            ),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
               onTap: () => setState(() => _activeSection = item.section),
@@ -186,28 +304,48 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
                   vertical: 11,
                 ),
                 decoration: BoxDecoration(
-                  color: selected ? zBlueSoft : Colors.transparent,
+                  color: selected
+                      ? const Color(0xFFFFF3E8)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: selected ? zBlue.withValues(alpha: 0.15) : zBorder,
+                    color: selected
+                        ? const Color(0xFFFF8A34).withValues(alpha: 0.35)
+                        : Colors.transparent,
                   ),
                 ),
                 child: Row(
                   children: [
-                    Icon(item.icon, size: 18, color: selected ? zBlue : zMuted),
+                    Icon(
+                      item.icon,
+                      size: 18,
+                      color: selected ? const Color(0xFFEA6A00) : zMuted,
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
+                    if (horizontal)
+                      Text(
                         item.title,
                         style: TextStyle(
-                          color: selected ? zBlue : zText,
+                          color: selected ? const Color(0xFFB94F00) : zText,
                           fontWeight: selected
                               ? FontWeight.w800
                               : FontWeight.w600,
                           fontSize: 13.5,
                         ),
+                      )
+                    else
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          style: TextStyle(
+                            color: selected ? const Color(0xFFB94F00) : zText,
+                            fontWeight: selected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                            fontSize: 13.5,
+                          ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -243,17 +381,9 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
         _ActionTile(
           title: 'My Profile',
           subtitle:
-              'AMAN Infra account profile changes are managed by the administrator.',
+              'View and update your profile and workspace registration details.',
           icon: Icons.person_outline,
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Contact the AMAN Infra administrator for profile changes.',
-                ),
-              ),
-            );
-          },
+          onTap: _showProfileDetails,
         ),
         _ActionTile(
           title: 'Change Password',
@@ -262,10 +392,11 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
           onTap: () => _showChangePasswordDialog(context),
         ),
         _ActionTile(
-          title: 'Notification Preferences',
-          subtitle: 'Control reminders and alerts for your account.',
+          title: 'Notification Center',
+          subtitle:
+              'Notification preferences are not configured yet. Coming soon.',
           icon: Icons.notifications_active_outlined,
-          onTap: () => _showComingSoon('Notification Preferences'),
+          onTap: () => _showComingSoon('Notification Center'),
         ),
       ],
     );
@@ -278,20 +409,62 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
       children: [
         if (canOpenCompanyProfile)
           _ActionTile(
-            title: 'Company Profile',
+            title: 'Company Profile & Banking',
             subtitle:
-                'Manage company identity, GST, PAN, address, and branding.',
+                'Manage company identity, GST, PAN, address, billing information, and multiple bank accounts.',
             icon: Icons.apartment_outlined,
-            enabled: canOpenCompanyProfile,
-            onTap: widget.onOpenCompanyProfile,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => CompanyProfileBankScreen(
+                  companyId: widget.companyId,
+                  canEdit: isAdminOrManager,
+                ),
+              ),
+            ),
           ),
         if (!isExportImport) ...[
           _ActionTile(
-            title: 'Branches',
-            subtitle: 'Manage branch structure and branch-level setup.',
-            icon: Icons.account_tree_outlined,
+            title: 'Factories',
+            subtitle:
+                'Manage factories, plants, addresses, and GST registration details.',
+            icon: Icons.factory_outlined,
             enabled: isAdminOrManager,
-            onTap: () => _showComingSoon('Branches'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => FactoryListScreen(
+                  companyId: widget.companyId,
+                  canAdd: isAdmin,
+                ),
+              ),
+            ),
+          ),
+          _ActionTile(
+            title: 'Verticals',
+            subtitle: 'Manage business verticals and their linked factories.',
+            icon: Icons.view_agenda_outlined,
+            enabled: isAdminOrManager,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => VerticalListScreen(
+                  companyId: widget.companyId,
+                  canAdd: isAdmin,
+                ),
+              ),
+            ),
+          ),
+          _ActionTile(
+            title: 'Letter Head Layout',
+            subtitle:
+                'Configure the letterhead background, printable area, margins, header, and footer.',
+            icon: Icons.description_outlined,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => DocumentLayoutDesignerScreen(
+                  companyId: widget.companyId,
+                  canEdit: isAdminOrManager,
+                ),
+              ),
+            ),
           ),
           _ActionTile(
             title: 'Document Numbering',
@@ -304,6 +477,211 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
         ],
       ],
     );
+  }
+
+  // ignore: unused_element
+  Widget _buildCompanyProfileCard() {
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('companies')
+          .doc(widget.companyId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final data = snapshot.data?.data() ?? const <String, dynamic>{};
+        final name = (data['companyName'] ?? widget.companyName)
+            .toString()
+            .trim();
+        final gstin = (data['gstin'] ?? '').toString().trim();
+        final location = [data['city'], data['state']]
+            .map((value) => (value ?? '').toString().trim())
+            .where((value) => value.isNotEmpty)
+            .join(', ');
+        final details = [
+          if (name.isNotEmpty) name,
+          if (gstin.isNotEmpty) 'GSTIN $gstin',
+          if (location.isNotEmpty) location,
+        ].join(' â€¢ ');
+        return _ActionTile(
+          title: 'Company Profile',
+          subtitle: snapshot.hasError
+              ? 'Company details could not be loaded.'
+              : (details.isEmpty
+                    ? 'Optional company details are not configured.'
+                    : details),
+          icon: Icons.apartment_outlined,
+          onTap: snapshot.hasData
+              ? () => _showCompanyProfileDialog(data)
+              : null,
+        );
+      },
+    );
+  }
+
+  void _showProfileDetails() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text(
+          'My Profile',
+          style: TextStyle(fontWeight: FontWeight.w900),
+        ),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ProfileValue(label: 'Account', value: widget.userEmail),
+              _ProfileValue(label: 'Role', value: _readableRole(widget.role)),
+              _ProfileValue(label: 'Workspace', value: widget.companyName),
+              const SizedBox(height: 8),
+              const Text(
+                'Profile identity changes remain administrator-managed under Aman permissions.',
+                style: TextStyle(color: zMuted, height: 1.4),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showCompanyProfileDialog(Map<String, dynamic> existing) async {
+    const fields = <(String, String)>[
+      ('companyName', 'Legal / Company Name'),
+      ('gstin', 'GSTIN'),
+      ('pan', 'PAN'),
+      ('address', 'Registered Address'),
+      ('city', 'City'),
+      ('state', 'State'),
+      ('pincode', 'Pincode'),
+      ('email', 'Company Email'),
+      ('phone', 'Phone'),
+      ('website', 'Website'),
+    ];
+    final controllers = <String, TextEditingController>{
+      for (final field in fields)
+        field.$1: TextEditingController(
+          text: (existing[field.$1] ?? '').toString(),
+        ),
+    };
+    var saving = false;
+    String? error;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: !saving,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setLocalState) => AlertDialog(
+          title: const Text(
+            'Workspace Profile',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final field in fields) ...[
+                    TextField(
+                      controller: controllers[field.$1],
+                      decoration: InputDecoration(labelText: field.$2),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  if (error != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        error!,
+                        style: const TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      final updates = <String, dynamic>{};
+                      for (final field in fields) {
+                        final next = controllers[field.$1]!.text.trim();
+                        final previous = (existing[field.$1] ?? '')
+                            .toString()
+                            .trim();
+                        if (next.isNotEmpty && next != previous) {
+                          updates[field.$1] = next;
+                        }
+                      }
+                      if (updates.isEmpty) {
+                        Navigator.pop(dialogContext);
+                        return;
+                      }
+                      setLocalState(() {
+                        saving = true;
+                        error = null;
+                      });
+                      try {
+                        updates['updatedAt'] = FieldValue.serverTimestamp();
+                        updates['updatedBy'] =
+                            FirebaseAuth.instance.currentUser?.uid;
+                        await FirebaseFirestore.instance
+                            .collection('companies')
+                            .doc(widget.companyId)
+                            .update(updates);
+                        if (!mounted) return;
+                        Navigator.pop(dialogContext);
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Workspace profile updated successfully.',
+                            ),
+                          ),
+                        );
+                      } on FirebaseException catch (exception) {
+                        setLocalState(() {
+                          saving = false;
+                          error =
+                              exception.message ??
+                              'Workspace profile update failed.';
+                        });
+                      } catch (_) {
+                        setLocalState(() {
+                          saving = false;
+                          error = 'Workspace profile update failed.';
+                        });
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Save Changes'),
+            ),
+          ],
+        ),
+      ),
+    );
+    for (final controller in controllers.values) {
+      controller.dispose();
+    }
   }
 
   Widget _buildAccessSection() {
@@ -733,6 +1111,41 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
       default:
         return e.message ?? 'Something went wrong.';
     }
+  }
+}
+
+class _ProfileValue extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ProfileValue({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 92,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: zMuted,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value.trim().isEmpty ? 'Not configured' : value,
+              style: const TextStyle(color: zText, fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

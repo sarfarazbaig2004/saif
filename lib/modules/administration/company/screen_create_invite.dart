@@ -2,10 +2,21 @@
 
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/modules/module_registry.dart';
 import 'package:QUIK/core/modules/providers/module_access_provider.dart';
+import 'package:QUIK/core/permissions/permission_catalogue.dart';
+import 'package:QUIK/core/permissions/permission_evaluator.dart';
+import 'package:QUIK/core/permissions/vertical_permission_assignment.dart';
+import 'package:QUIK/core/permissions/vertical_permission_editor.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_constants.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
+import 'package:QUIK/modules/administration/users/models/organization_access_selection.dart';
 import 'package:QUIK/modules/administration/users/services/user_management_service.dart';
+import 'package:QUIK/modules/administration/users/widgets/vertical_factory_access_selector.dart';
+import 'package:QUIK/modules/settings/factory_master/factory_model.dart';
+import 'package:QUIK/modules/settings/factory_master/factory_repository.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_model.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_repository.dart';
 
 const Color _invitePrimaryColor = Color(0xFF17324D);
 const Color _inviteAccentColor = Color(0xFF3B82F6);
@@ -33,6 +44,10 @@ class ScreenCreateInvite extends StatefulWidget {
 class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final UserManagementService _userManagementService = UserManagementService();
+  late final FactoryRepository _factoryRepository;
+  late final Stream<List<FactoryModel>> _factoryStream;
+  late final VerticalRepository _verticalRepository;
+  late final Stream<List<VerticalModel>> _verticalStream;
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -48,6 +63,11 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   String selectedDepartment = 'Sales';
   String selectedDesignation = 'Sales Executive';
   String selectedAccessScope = AccessScope.company;
+
+  AccessSelectionMode _verticalMode = AccessSelectionMode.multiple;
+  AccessSelectionMode _factoryMode = AccessSelectionMode.multiple;
+  final Set<String> _selectedVerticalIds = <String>{};
+  final Set<String> _selectedFactoryIds = <String>{};
 
   bool get isExportImport => widget.industry == 'export_import';
 
@@ -129,37 +149,19 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     'Regional Sales Manager',
   ];
 
-  late Map<String, dynamic> permissions;
+  Set<String> selectedPermissions = <String>{};
+  Map<String, Set<String>> _permissionsByVertical = <String, Set<String>>{};
+  late final ValueNotifier<int> _permissionCountNotifier;
 
   // 🔥 CHANGED: 'sales' is completely removed from the export_import array
-  List<String> get activeModules {
-    final enabledModules = permissionModuleOrder
-        .where(
-          (moduleKey) =>
-              moduleKey == PermissionModules.dashboard ||
-              _currentEnabledModuleIds.contains(moduleKey),
-        )
-        .toList(growable: false);
-
-    if (isExportImport) {
-      return enabledModules
-          .where((moduleKey) {
-            if (moduleKey == PermissionModules.sales) return false;
-            if (moduleKey == PermissionModules.crm) return true;
-            if (moduleKey == PermissionModules.finance) return true;
-            if (moduleKey == PermissionModules.reports) return true;
-            return moduleKey == PermissionModules.dashboard;
-          })
-          .toList(growable: false);
-    }
-
-    return enabledModules;
-  }
-
   @override
   void initState() {
     super.initState();
-    _applyRoleDefaults(selectedRole);
+    _permissionCountNotifier = ValueNotifier<int>(selectedPermissions.length);
+    _factoryRepository = FactoryRepository(companyId: widget.companyId);
+    _factoryStream = _factoryRepository.watchFactories();
+    _verticalRepository = VerticalRepository(companyId: widget.companyId);
+    _verticalStream = _verticalRepository.watchVerticals();
     _setDefaultDesignation();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -170,6 +172,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
 
   @override
   void dispose() {
+    _permissionCountNotifier.dispose();
     nameController.dispose();
     emailController.dispose();
     phoneController.dispose();
@@ -242,28 +245,6 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     }
 
     return formatRole(roleKey);
-  }
-
-  Map<String, dynamic> _filterPermissionsByEnabledModules(
-    Map<String, dynamic> permissions,
-  ) {
-    final result = <String, dynamic>{};
-
-    for (final entry in permissions.entries) {
-      final moduleKey = entry.key;
-      if (moduleKey == PermissionModules.dashboard ||
-          _currentEnabledModuleIds.contains(moduleKey)) {
-        if (entry.value is Map<String, dynamic>) {
-          result[moduleKey] = Map<String, dynamic>.from(
-            entry.value as Map<String, dynamic>,
-          );
-        } else {
-          result[moduleKey] = entry.value;
-        }
-      }
-    }
-
-    return result;
   }
 
   Future<void> _loadTenantMetadata() async {
@@ -445,164 +426,21 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   }
 
   // 🔥 CHANGED: Sales module and inquiryReport completely removed from defaults
-  Map<String, dynamic> _getIndustryDefaultPermissions({
-    required String role,
-    required bool isExportImport,
-  }) {
-    if (isExportImport) {
-      if (role.toLowerCase() == 'admin') {
-        return {
-          'dashboard': {'dashboard': true},
-          'crm': {'customers': true},
-          'finance': {
-            'taxInvoice': true,
-            'paymentReceived': true,
-            'outstanding': true,
-            'expenseEntries': true,
-          },
-          'reports': {
-            'salesReport': true,
-            'customerReport': true,
-            'paymentReport': true,
-          },
-        };
-      } else {
-        return {
-          'dashboard': {'dashboard': true},
-          'crm': {'customers': true},
-        };
-      }
-    }
-    return getDefaultPermissions(role);
-  }
-
-  Map<String, dynamic> _buildUiPermissionState({
-    required String role,
-    required bool isExportImport,
-    required Map<String, dynamic>? permissions,
-  }) {
-    return mergePermissionsWithCanonicalShape(
-      permissions ??
-          _getIndustryDefaultPermissions(
-            role: role,
-            isExportImport: isExportImport,
-          ),
-    );
-  }
-
   void _applyRoleDefaults(String role) {
     final roleDoc = _findRoleDoc(role);
-    final rawPermissions = roleDoc != null && roleDoc['permissions'] is Map
-        ? Map<String, dynamic>.from(roleDoc['permissions'] as Map)
-        : _getIndustryDefaultPermissions(
-            role: role,
-            isExportImport: isExportImport,
-          );
-
-    final filteredPermissions = _filterPermissionsByEnabledModules(
-      rawPermissions,
-    );
-
+    if (roleDoc == null) return;
+    final roleDepartment = (roleDoc['department'] ?? '').toString().trim();
+    final roleDesignation = (roleDoc['designation'] ?? '').toString().trim();
     setState(() {
-      permissions = _buildUiPermissionState(
-        role: role,
-        isExportImport: isExportImport,
-        permissions: filteredPermissions,
-      );
+      if (roleDepartment.isNotEmpty) {
+        selectedDepartment = roleDepartment;
+        departmentController.text = roleDepartment;
+      }
+      if (roleDesignation.isNotEmpty &&
+          _designationOptions.contains(roleDesignation)) {
+        selectedDesignation = roleDesignation;
+      }
     });
-  }
-
-  Map<String, dynamic> _readModulePermissions(
-    Map<String, dynamic> permissionsMap,
-    String moduleKey,
-  ) {
-    final moduleValue = permissionsMap[moduleKey];
-
-    if (moduleKey == PermissionModules.dashboard) {
-      return moduleValue is Map<String, dynamic>
-          ? Map<String, dynamic>.from(moduleValue)
-          : <String, dynamic>{};
-    }
-
-    return moduleValue is Map<String, dynamic>
-        ? Map<String, dynamic>.from(moduleValue)
-        : <String, dynamic>{};
-  }
-
-  Map<String, dynamic> _setPermissionValue({
-    required Map<String, dynamic> permissionsMap,
-    required String moduleKey,
-    required String? submoduleKey,
-    required String action,
-    required bool value,
-  }) {
-    final updated = _deepCopyPermissions(permissionsMap);
-
-    if (submoduleKey == null || submoduleKey.isEmpty) {
-      final moduleActions = Map<String, dynamic>.from(updated[moduleKey] ?? {});
-      moduleActions[action] = value;
-      updated[moduleKey] = moduleActions;
-      return updated;
-    }
-
-    final moduleMap = Map<String, dynamic>.from(updated[moduleKey] ?? {});
-    final submoduleMap = Map<String, dynamic>.from(
-      moduleMap[submoduleKey] ?? {},
-    );
-    submoduleMap[action] = value;
-    moduleMap[submoduleKey] = submoduleMap;
-    updated[moduleKey] = moduleMap;
-
-    return updated;
-  }
-
-  Map<String, dynamic> _deepCopyPermissions(Map<String, dynamic> input) {
-    final result = <String, dynamic>{};
-
-    for (final entry in input.entries) {
-      final value = entry.value;
-      if (value is Map) {
-        result[entry.key] = _deepCopyPermissions(
-          Map<String, dynamic>.from(value),
-        );
-      } else {
-        result[entry.key] = value;
-      }
-    }
-
-    return result;
-  }
-
-  int _selectedPermissionCount(
-    Map<String, dynamic> permissionsMap,
-    List<String> activeMods,
-  ) {
-    int count = 0;
-
-    for (final moduleKey in activeMods) {
-      final moduleValue = permissionsMap[moduleKey];
-
-      if (moduleKey == PermissionModules.dashboard) {
-        if (moduleValue is Map) {
-          for (final value in moduleValue.values) {
-            if (value == true) count++;
-          }
-        }
-        continue;
-      }
-
-      if (moduleValue is Map) {
-        for (final submoduleValue in moduleValue.values) {
-          if (submoduleValue is Map) {
-            for (final actionValue in submoduleValue.values) {
-              if (actionValue == true) count++;
-            }
-          }
-        }
-      }
-    }
-
-    return count;
   }
 
   int _countEnabledActionsInModule({
@@ -651,6 +489,38 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   Future<void> _createInvite() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final normalizedSelection = PermissionEvaluator.normalizeDependencies(
+      selectedPermissions,
+    );
+    final verticalsWithoutPermissions = _selectedVerticalIds
+        .where(
+          (verticalId) =>
+              (_permissionsByVertical[verticalId] ?? const <String>{}).isEmpty,
+        )
+        .toList(growable: false);
+    if (_selectedVerticalIds.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Select at least one vertical before creating the invite.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (verticalsWithoutPermissions.isNotEmpty || normalizedSelection.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Select at least one permission for every selected vertical.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => isLoading = true);
 
     try {
@@ -658,13 +528,24 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
         companyId: widget.companyId,
         email: _normalizeEmail(emailController.text),
         role: selectedRole,
-        permissions: permissions,
+        permissions: PermissionEvaluator.toStorageMap(normalizedSelection),
+        allowedModuleIds: PermissionEvaluator.deriveAllowedModuleIds(
+          normalizedSelection,
+        ),
         invitedByUid: widget.currentUid,
         name: nameController.text.trim(),
         phone: phoneController.text.trim(),
         department: departmentController.text.trim(),
         designation: selectedDesignation,
         accessScope: selectedAccessScope,
+        verticalSelectionMode: _verticalMode.storageValue,
+        verticalIds: _selectedVerticalIds.toList()..sort(),
+        factorySelectionMode: _factoryMode.storageValue,
+        factoryIds: _selectedFactoryIds.toList()..sort(),
+        verticalPermissions: VerticalPermissionAssignments.toStorageMap(
+          assignments: _permissionsByVertical,
+          selectedVerticalIds: _selectedVerticalIds,
+        ),
       );
 
       if (!mounted) return;
@@ -682,7 +563,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
             'Role: ${formatRole(selectedRole)}\n'
             'Department: ${departmentController.text.trim()}\n'
             'Designation: $selectedDesignation\n'
-            'Selected permissions: ${_selectedPermissionCount(permissions, activeModules)}',
+            'Selected permissions: ${normalizedSelection.length}',
           ),
           actions: [
             TextButton(
@@ -804,6 +685,56 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     );
   }
 
+  Widget _buildVerticalFactoryAccessSelector() {
+    return VerticalFactoryAccessSelector(
+      verticalStream: _verticalStream,
+      factoryStream: _factoryStream,
+      verticalMode: _verticalMode,
+      selectedVerticalIds: _selectedVerticalIds,
+      factoryMode: _factoryMode,
+      selectedFactoryIds: _selectedFactoryIds,
+      verticalDecoration: _inputDecoration(
+        label: 'Vertical',
+        icon: Icons.account_tree_outlined,
+      ),
+      factoryDecoration: _inputDecoration(
+        label: 'Factory',
+        icon: Icons.factory_outlined,
+      ),
+      onVerticalChanged: (mode, ids) {
+        setState(() {
+          final shouldSeedFromLegacy =
+              _permissionsByVertical.isEmpty && selectedPermissions.isNotEmpty;
+          for (final verticalId in ids) {
+            _permissionsByVertical.putIfAbsent(
+              verticalId,
+              () => shouldSeedFromLegacy
+                  ? Set<String>.from(selectedPermissions)
+                  : <String>{},
+            );
+          }
+          _verticalMode = mode;
+          _selectedVerticalIds
+            ..clear()
+            ..addAll(ids);
+          selectedPermissions = VerticalPermissionAssignments.unionForVerticals(
+            assignments: _permissionsByVertical,
+            selectedVerticalIds: _selectedVerticalIds,
+          );
+          _permissionCountNotifier.value = selectedPermissions.length;
+        });
+      },
+      onFactoryChanged: (mode, ids) {
+        setState(() {
+          _factoryMode = mode;
+          _selectedFactoryIds
+            ..clear()
+            ..addAll(ids);
+        });
+      },
+    );
+  }
+
   Widget _buildSectionCard({
     required String title,
     required String subtitle,
@@ -864,6 +795,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     );
   }
 
+  // ignore: unused_element
   Widget _buildPermissionModuleCard({
     required String moduleKey,
     required bool isExportImport,
@@ -1105,11 +1037,14 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'Selected permissions: ${_selectedPermissionCount(permissions, activeModules)}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: _inviteMutedTextColor,
+                ValueListenableBuilder<int>(
+                  valueListenable: _permissionCountNotifier,
+                  builder: (context, count, _) => Text(
+                    'Selected permissions: $count',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: _inviteMutedTextColor,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1300,6 +1235,8 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                       ),
                       child: Column(
                         children: [
+                          _buildVerticalFactoryAccessSelector(),
+                          const SizedBox(height: 16),
                           _buildDesktopTwoColumn(
                             left: _buildDropdownField(
                               label: 'Role',
@@ -1307,23 +1244,11 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                               options: availableRoles,
                               icon: Icons.admin_panel_settings_outlined,
                               labelBuilder: _roleLabelFromKey,
-                              onChanged: (value) {
-                                final nextRole = value ?? selectedRole;
-                                setState(() {
-                                  selectedRole = nextRole;
-                                });
-                                _applyRoleDefaults(nextRole);
-                              },
+                              onChanged: (value) => setState(() {
+                                selectedRole = value ?? selectedRole;
+                              }),
                             ),
-                            right: _buildTextField(
-                              controller: departmentController,
-                              label: 'Department',
-                              icon: Icons.apartment_outlined,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildDesktopTwoColumn(
-                            left: _buildDropdownField(
+                            right: _buildDropdownField(
                               label: 'Designation',
                               value: selectedDesignation,
                               options: _designationOptionsForSelectedDepartment,
@@ -1334,11 +1259,15 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                                 });
                               },
                             ),
-                            right: _buildTextField(
+                          ),
+                          const SizedBox(height: 16),
+                          _buildDesktopTwoColumn(
+                            left: _buildTextField(
                               controller: departmentController,
                               label: 'Department',
                               icon: Icons.apartment_outlined,
                             ),
+                            right: const SizedBox(),
                           ),
                           const SizedBox(height: 16),
                           SwitchListTile.adaptive(
@@ -1372,34 +1301,31 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                       title: 'Module Permissions',
                       subtitle:
                           'Permissions are aligned with your QUIK ERP modules and submodules.',
-                      child: Column(
-                        children: activeModules.map((moduleKey) {
-                          return _buildPermissionModuleCard(
-                            moduleKey: moduleKey,
-                            isExportImport: isExportImport,
-                            modulePermissions: _readModulePermissions(
-                              permissions,
-                              moduleKey,
-                            ),
-                            onActionChanged:
-                                (
-                                  String module,
-                                  String? submodule,
-                                  String action,
-                                  bool value,
-                                ) {
-                                  setState(() {
-                                    permissions = _setPermissionValue(
-                                      permissionsMap: permissions,
-                                      moduleKey: module,
-                                      submoduleKey: submodule,
-                                      action: action,
-                                      value: value,
-                                    );
-                                  });
-                                },
-                          );
-                        }).toList(),
+                      child: VerticalPermissionEditor(
+                        verticalStream: _verticalStream,
+                        selectedVerticalIds: _selectedVerticalIds,
+                        permissionsByVertical: _permissionsByVertical,
+                        fallbackPermissions: selectedPermissions,
+                        visibleModuleIds: AmanPermissionCatalogue.modules
+                            .where(
+                              (module) =>
+                                  module.id == ModuleIds.dashboard ||
+                                  module.id == ModuleIds.settings ||
+                                  _currentEnabledModuleIds.isEmpty ||
+                                  _currentEnabledModuleIds.contains(module.id),
+                            )
+                            .map((module) => module.id)
+                            .toSet(),
+                        onChanged: (value) {
+                          _permissionsByVertical = value;
+                          selectedPermissions =
+                              VerticalPermissionAssignments.unionForVerticals(
+                                assignments: _permissionsByVertical,
+                                selectedVerticalIds: _selectedVerticalIds,
+                              );
+                          _permissionCountNotifier.value =
+                              selectedPermissions.length;
+                        },
                       ),
                     ),
                     const SizedBox(height: 18),

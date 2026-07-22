@@ -3,18 +3,27 @@ import 'package:flutter/material.dart';
 class InquiryFilterResult {
   final String status;
   final String priority;
+  final String vertical;
 
-  const InquiryFilterResult({required this.status, required this.priority});
+  const InquiryFilterResult({
+    required this.status,
+    required this.priority,
+    required this.vertical,
+  });
 }
 
 class InquiryFilterSheet extends StatefulWidget {
   final String statusFilter;
   final String priorityFilter;
+  final String verticalFilter;
+  final List<String> verticalOptions;
 
   const InquiryFilterSheet({
     super.key,
     required this.statusFilter,
     required this.priorityFilter,
+    required this.verticalFilter,
+    required this.verticalOptions,
   });
 
   static const statuses = [
@@ -39,12 +48,14 @@ class InquiryFilterSheet extends StatefulWidget {
 class _InquiryFilterSheetState extends State<InquiryFilterSheet> {
   late String tempStatus;
   late String tempPriority;
+  late String tempVertical;
 
   @override
   void initState() {
     super.initState();
     tempStatus = widget.statusFilter;
     tempPriority = widget.priorityFilter;
+    tempVertical = widget.verticalFilter;
   }
 
   @override
@@ -90,6 +101,26 @@ class _InquiryFilterSheetState extends State<InquiryFilterSheet> {
             const SizedBox(height: 10),
 
             DropdownButtonFormField<String>(
+              initialValue: widget.verticalOptions.contains(tempVertical)
+                  ? tempVertical
+                  : 'All Verticals',
+              decoration: const InputDecoration(
+                labelText: 'Business Vertical',
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+              items: widget.verticalOptions
+                  .toSet()
+                  .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                  .toList(),
+              onChanged: (value) {
+                setState(() => tempVertical = value ?? 'All Verticals');
+              },
+            ),
+
+            const SizedBox(height: 10),
+
+            DropdownButtonFormField<String>(
               initialValue: tempPriority,
               decoration: const InputDecoration(
                 labelText: 'Priority',
@@ -118,6 +149,7 @@ class _InquiryFilterSheetState extends State<InquiryFilterSheet> {
                         const InquiryFilterResult(
                           status: 'All',
                           priority: 'All',
+                          vertical: 'All Verticals',
                         ),
                       );
                     },
@@ -132,6 +164,7 @@ class _InquiryFilterSheetState extends State<InquiryFilterSheet> {
                         InquiryFilterResult(
                           status: tempStatus,
                           priority: tempPriority,
+                          vertical: tempVertical,
                         ),
                       );
                     },

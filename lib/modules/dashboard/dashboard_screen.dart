@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:QUIK/core/app/aman_app_config.dart';
+import 'package:QUIK/core/permissions/permission_evaluator.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/modules/dashboard/dashboard_charts.dart';
@@ -14,16 +15,14 @@ class DashboardScreen extends StatefulWidget {
   final String companyId;
   final String userName;
   final String currentUserId;
-  final Map<String, dynamic> permissions;
-  final String role;
+  final PermissionEvaluator permissionEvaluator;
 
   const DashboardScreen({
     super.key,
     required this.companyId,
     required this.userName,
     required this.currentUserId,
-    required this.permissions,
-    required this.role,
+    required this.permissionEvaluator,
   });
 
   @override
@@ -67,37 +66,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _service = DashboardService(companyId: _activeTenantId);
   }
 
-  bool get _isAdminRole {
-    final role = widget.role.trim().toLowerCase();
-
-    return {
-      'admin',
-      'owner',
-      'ceo',
-      'manager',
-      'superadmin',
-      'company_super_admin',
-      'software_super_admin',
-      'founder',
-    }.contains(role);
-  }
-
   bool hasPermission(String module, String submodule) {
-    if (_isAdminRole) return true;
-
-    final moduleData = widget.permissions[module];
-
-    if (moduleData is Map && moduleData.containsKey(submodule)) {
-      final value = moduleData[submodule];
-
-      if (value is Map) {
-        return value['view'] == true;
-      }
-
-      return value == true;
-    }
-
-    return false;
+    final parsed = PermissionEvaluator.parsePermissions({
+      module: {
+        submodule: {'view': true},
+      },
+    });
+    return parsed.keys.isNotEmpty &&
+        widget.permissionEvaluator.hasPermission(parsed.keys.first);
   }
 
   String get _workspaceDisplayName {

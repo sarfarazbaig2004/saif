@@ -9,7 +9,7 @@ typedef InviteDoc = QueryDocumentSnapshot<Map<String, dynamic>>;
 
 class InviteCard extends StatelessWidget {
   final InviteDoc doc;
-  final Future<void> Function() onDelete;
+  final Future<void> Function()? onDelete;
 
   const InviteCard({super.key, required this.doc, required this.onDelete});
 
@@ -199,7 +199,7 @@ class InviteCard extends StatelessWidget {
     String status,
     bool isExpired,
   ) {
-    final canCancel = status == 'pending' && !isExpired;
+    final canCancel = status == 'pending' && !isExpired && onDelete != null;
 
     return IconButton(
       tooltip: canCancel ? 'Cancel Invite' : 'Invite cannot be cancelled',
@@ -228,7 +228,7 @@ class InviteCard extends StatelessWidget {
 
               if (confirm == true) {
                 try {
-                  await onDelete();
+                  await onDelete!();
                 } catch (e) {
                   if (!context.mounted) return;
 
