@@ -4,14 +4,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/modules/module_registry.dart';
-import 'package:QUIK/core/permissions/permission_editor.dart';
 import 'package:QUIK/core/permissions/permission_evaluator.dart';
+import 'package:QUIK/core/permissions/vertical_permission_assignment.dart';
+import 'package:QUIK/core/permissions/vertical_permission_editor.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_constants.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
+import 'package:QUIK/modules/administration/users/models/organization_access_selection.dart';
 import 'package:QUIK/modules/administration/users/widgets/mini_badge.dart';
-import 'package:QUIK/modules/administration/users/widgets/factory_selector_field.dart';
+import 'package:QUIK/modules/administration/users/widgets/vertical_factory_access_selector.dart';
 import 'package:QUIK/modules/administration/users/services/user_management_service.dart';
+import 'package:QUIK/modules/settings/factory_master/factory_model.dart';
 import 'package:QUIK/modules/settings/factory_master/factory_repository.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_model.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_repository.dart';
 
 typedef UserDoc = DocumentSnapshot<Map<String, dynamic>>;
 
@@ -40,6 +45,11 @@ Future<void> showEditUserDialog({
     String? designation,
     String? branchName,
     String? accessScope,
+    String? verticalSelectionMode,
+    List<String>? verticalIds,
+    String? factorySelectionMode,
+    List<String>? factoryIds,
+    Map<String, dynamic>? verticalPermissions,
   })
   onSaveUser,
 }) async {
@@ -191,15 +201,36 @@ Future<void> showEditUserDialog({
   String selectedAccessScope = _normalizeAccessScopeValue(
     (data['accessScope'] ?? AccessScope.company).toString(),
   );
-  // UI-only factory selection. Factory access persistence will be implemented separately.
-  final factoryStream = FactoryRepository(
+  final Stream<List<FactoryModel>> factoryStream = FactoryRepository(
     companyId: companyId,
   ).watchFactories();
-  bool allFactoriesSelected = true;
-  final selectedFactoryIds = <String>{};
+  final Stream<List<VerticalModel>> verticalStream = VerticalRepository(
+    companyId: companyId,
+  ).watchVerticals();
+  AccessSelectionMode verticalMode = AccessSelectionMode.fromStorage(
+    data['verticalSelectionMode'],
+  );
+  AccessSelectionMode factoryMode = AccessSelectionMode.fromStorage(
+    data['factorySelectionMode'],
+  );
+  final selectedVerticalIds = normalizeSelectionIds(
+    readSelectionIds(data['verticalIds']),
+    verticalMode,
+  );
+  final selectedFactoryIds = normalizeSelectionIds(
+    readSelectionIds(data['factoryIds']),
+    factoryMode,
+  );
 
   final initialEvaluator = PermissionEvaluator.fromUserData(data);
-  Set<String> selectedPermissions = initialEvaluator.permissions.toSet();
+  Map<String, Set<String>> permissionsByVertical =
+      VerticalPermissionAssignments.parse(data['verticalPermissions']);
+  Set<String> selectedPermissions = permissionsByVertical.isEmpty
+      ? initialEvaluator.permissions.toSet()
+      : VerticalPermissionAssignments.unionForVerticals(
+          assignments: permissionsByVertical,
+          selectedVerticalIds: selectedVerticalIds,
+        );
   final permissionCountNotifier = ValueNotifier<int>(
     selectedPermissions.length,
   );
@@ -215,11 +246,20 @@ Future<void> showEditUserDialog({
 
             final targetHasCentralBypass = PermissionEvaluator.fullAccessRoles
                 .contains(selectedRole.trim().toLowerCase());
-            if (selectedPermissions.isEmpty && !targetHasCentralBypass) {
+            final verticalsWithoutPermissions = selectedVerticalIds
+                .where(
+                  (verticalId) =>
+                      (permissionsByVertical[verticalId] ?? const <String>{})
+                          .isEmpty,
+                )
+                .toList(growable: false);
+            if (!targetHasCentralBypass &&
+                (selectedPermissions.isEmpty ||
+                    verticalsWithoutPermissions.isNotEmpty)) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text(
-                    'Select at least one permission before saving this user.',
+                    'Select at least one permission for every selected vertical.',
                   ),
                   backgroundColor: dangerColor,
                 ),
@@ -250,6 +290,14 @@ Future<void> showEditUserDialog({
                 department: selectedDepartment.trim(),
                 designation: selectedDesignation.trim(),
                 accessScope: selectedAccessScope.trim(),
+                verticalSelectionMode: verticalMode.storageValue,
+                verticalIds: selectedVerticalIds.toList()..sort(),
+                factorySelectionMode: factoryMode.storageValue,
+                factoryIds: selectedFactoryIds.toList()..sort(),
+                verticalPermissions: VerticalPermissionAssignments.toStorageMap(
+                  assignments: permissionsByVertical,
+                  selectedVerticalIds: selectedVerticalIds,
+                ),
               );
 
               if (!context.mounted) return;
@@ -389,6 +437,61 @@ Future<void> showEditUserDialog({
                                   'Update the employee role and structured organizational assignment.',
                               child: Column(
                                 children: [
+                                  VerticalFactoryAccessSelector(
+                                    verticalStream: verticalStream,
+                                    factoryStream: factoryStream,
+                                    verticalMode: verticalMode,
+                                    selectedVerticalIds: selectedVerticalIds,
+                                    factoryMode: factoryMode,
+                                    selectedFactoryIds: selectedFactoryIds,
+                                    verticalDecoration: _inputDecoration(
+                                      label: 'Vertical',
+                                      icon: Icons.account_tree_outlined,
+                                    ),
+                                    factoryDecoration: _inputDecoration(
+                                      label: 'Factory',
+                                      icon: Icons.factory_outlined,
+                                    ),
+                                    onVerticalChanged: (mode, ids) {
+                                      setLocalState(() {
+                                        final shouldSeedFromLegacy =
+                                            permissionsByVertical.isEmpty &&
+                                            selectedPermissions.isNotEmpty;
+                                        for (final verticalId in ids) {
+                                          permissionsByVertical.putIfAbsent(
+                                            verticalId,
+                                            () => shouldSeedFromLegacy
+                                                ? Set<String>.from(
+                                                    selectedPermissions,
+                                                  )
+                                                : <String>{},
+                                          );
+                                        }
+                                        verticalMode = mode;
+                                        selectedVerticalIds
+                                          ..clear()
+                                          ..addAll(ids);
+                                        selectedPermissions =
+                                            VerticalPermissionAssignments.unionForVerticals(
+                                              assignments:
+                                                  permissionsByVertical,
+                                              selectedVerticalIds:
+                                                  selectedVerticalIds,
+                                            );
+                                        permissionCountNotifier.value =
+                                            selectedPermissions.length;
+                                      });
+                                    },
+                                    onFactoryChanged: (mode, ids) {
+                                      setLocalState(() {
+                                        factoryMode = mode;
+                                        selectedFactoryIds
+                                          ..clear()
+                                          ..addAll(ids);
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
                                   _buildDesktopTwoColumn(
                                     left: _buildDropdownField(
                                       label: 'Role',
@@ -412,33 +515,7 @@ Future<void> showEditUserDialog({
                                         });
                                       },
                                     ),
-                                    right: FactorySelectorField(
-                                      factoryStream: factoryStream,
-                                      allFactoriesSelected:
-                                          allFactoriesSelected,
-                                      selectedFactoryIds: selectedFactoryIds,
-                                      decoration: _inputDecoration(
-                                        label: 'Factory',
-                                        icon: Icons.factory_outlined,
-                                      ),
-                                      onSelected: (factoryId) {
-                                        setLocalState(() {
-                                          allFactoriesSelected =
-                                              factoryId == null;
-                                          selectedFactoryIds
-                                            ..clear()
-                                            ..addAll(
-                                              factoryId == null
-                                                  ? const <String>{}
-                                                  : {factoryId},
-                                            );
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  _buildDesktopTwoColumn(
-                                    left: _buildDropdownField(
+                                    right: _buildDropdownField(
                                       label: 'Designation',
                                       value: selectedDesignation,
                                       options: designationOptions,
@@ -450,7 +527,10 @@ Future<void> showEditUserDialog({
                                         });
                                       },
                                     ),
-                                    right: TextFormField(
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildDesktopTwoColumn(
+                                    left: TextFormField(
                                       controller: departmentController,
                                       decoration: _inputDecoration(
                                         label: 'Department',
@@ -464,6 +544,7 @@ Future<void> showEditUserDialog({
                                         });
                                       },
                                     ),
+                                    right: const SizedBox(),
                                   ),
                                 ],
                               ),
@@ -538,8 +619,11 @@ Future<void> showEditUserDialog({
                               title: 'Module Permissions',
                               subtitle:
                                   'Permissions are aligned with your QUIK ERP modules and submodules.',
-                              child: PermissionEditor(
-                                selectedPermissions: selectedPermissions,
+                              child: VerticalPermissionEditor(
+                                verticalStream: verticalStream,
+                                selectedVerticalIds: selectedVerticalIds,
+                                permissionsByVertical: permissionsByVertical,
+                                fallbackPermissions: selectedPermissions,
                                 visibleModuleIds: isExportImport
                                     ? const {
                                         ModuleIds.dashboard,
@@ -550,8 +634,15 @@ Future<void> showEditUserDialog({
                                       }
                                     : null,
                                 onChanged: (value) {
-                                  selectedPermissions = value;
-                                  permissionCountNotifier.value = value.length;
+                                  permissionsByVertical = value;
+                                  selectedPermissions =
+                                      VerticalPermissionAssignments.unionForVerticals(
+                                        assignments: permissionsByVertical,
+                                        selectedVerticalIds:
+                                            selectedVerticalIds,
+                                      );
+                                  permissionCountNotifier.value =
+                                      selectedPermissions.length;
                                 },
                               ),
                             ),

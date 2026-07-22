@@ -216,6 +216,11 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
             String? designation,
             String? branchName,
             String? accessScope,
+            String? verticalSelectionMode,
+            List<String>? verticalIds,
+            String? factorySelectionMode,
+            List<String>? factoryIds,
+            Map<String, dynamic>? verticalPermissions,
           }) {
             return _userManagementService.updateUser(
               companyId: companyId,
@@ -229,6 +234,11 @@ class _ScreenUserManagementState extends State<ScreenUserManagement> {
               designation: designation,
               branchName: branchName,
               accessScope: accessScope,
+              verticalSelectionMode: verticalSelectionMode,
+              verticalIds: verticalIds,
+              factorySelectionMode: factorySelectionMode,
+              factoryIds: factoryIds,
+              verticalPermissions: verticalPermissions,
               updatedByUid: widget.currentUid,
             );
           },

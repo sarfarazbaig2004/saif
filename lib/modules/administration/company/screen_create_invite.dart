@@ -5,14 +5,18 @@ import 'package:flutter/material.dart';
 import 'package:QUIK/core/modules/module_registry.dart';
 import 'package:QUIK/core/modules/providers/module_access_provider.dart';
 import 'package:QUIK/core/permissions/permission_catalogue.dart';
-import 'package:QUIK/core/permissions/permission_editor.dart';
 import 'package:QUIK/core/permissions/permission_evaluator.dart';
+import 'package:QUIK/core/permissions/vertical_permission_assignment.dart';
+import 'package:QUIK/core/permissions/vertical_permission_editor.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_constants.dart';
 import 'package:QUIK/modules/administration/users/helpers/user_management_formatters.dart';
+import 'package:QUIK/modules/administration/users/models/organization_access_selection.dart';
 import 'package:QUIK/modules/administration/users/services/user_management_service.dart';
-import 'package:QUIK/modules/administration/users/widgets/factory_selector_field.dart';
+import 'package:QUIK/modules/administration/users/widgets/vertical_factory_access_selector.dart';
 import 'package:QUIK/modules/settings/factory_master/factory_model.dart';
 import 'package:QUIK/modules/settings/factory_master/factory_repository.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_model.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_repository.dart';
 
 const Color _invitePrimaryColor = Color(0xFF17324D);
 const Color _inviteAccentColor = Color(0xFF3B82F6);
@@ -42,6 +46,8 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   final UserManagementService _userManagementService = UserManagementService();
   late final FactoryRepository _factoryRepository;
   late final Stream<List<FactoryModel>> _factoryStream;
+  late final VerticalRepository _verticalRepository;
+  late final Stream<List<VerticalModel>> _verticalStream;
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -58,8 +64,9 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   String selectedDesignation = 'Sales Executive';
   String selectedAccessScope = AccessScope.company;
 
-  // UI-only factory selection. Invite access persistence will be added separately.
-  bool _allFactoriesSelected = true;
+  AccessSelectionMode _verticalMode = AccessSelectionMode.multiple;
+  AccessSelectionMode _factoryMode = AccessSelectionMode.multiple;
+  final Set<String> _selectedVerticalIds = <String>{};
   final Set<String> _selectedFactoryIds = <String>{};
 
   bool get isExportImport => widget.industry == 'export_import';
@@ -143,6 +150,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
   ];
 
   Set<String> selectedPermissions = <String>{};
+  Map<String, Set<String>> _permissionsByVertical = <String, Set<String>>{};
   late final ValueNotifier<int> _permissionCountNotifier;
 
   // 🔥 CHANGED: 'sales' is completely removed from the export_import array
@@ -152,6 +160,8 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     _permissionCountNotifier = ValueNotifier<int>(selectedPermissions.length);
     _factoryRepository = FactoryRepository(companyId: widget.companyId);
     _factoryStream = _factoryRepository.watchFactories();
+    _verticalRepository = VerticalRepository(companyId: widget.companyId);
+    _verticalStream = _verticalRepository.watchVerticals();
     _setDefaultDesignation();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -482,11 +492,28 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     final normalizedSelection = PermissionEvaluator.normalizeDependencies(
       selectedPermissions,
     );
-    if (normalizedSelection.isEmpty) {
+    final verticalsWithoutPermissions = _selectedVerticalIds
+        .where(
+          (verticalId) =>
+              (_permissionsByVertical[verticalId] ?? const <String>{}).isEmpty,
+        )
+        .toList(growable: false);
+    if (_selectedVerticalIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Select at least one permission before creating the invite.',
+            'Select at least one vertical before creating the invite.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    if (verticalsWithoutPermissions.isNotEmpty || normalizedSelection.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Select at least one permission for every selected vertical.',
           ),
           backgroundColor: Colors.red,
         ),
@@ -511,6 +538,14 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
         department: departmentController.text.trim(),
         designation: selectedDesignation,
         accessScope: selectedAccessScope,
+        verticalSelectionMode: _verticalMode.storageValue,
+        verticalIds: _selectedVerticalIds.toList()..sort(),
+        factorySelectionMode: _factoryMode.storageValue,
+        factoryIds: _selectedFactoryIds.toList()..sort(),
+        verticalPermissions: VerticalPermissionAssignments.toStorageMap(
+          assignments: _permissionsByVertical,
+          selectedVerticalIds: _selectedVerticalIds,
+        ),
       );
 
       if (!mounted) return;
@@ -650,21 +685,51 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
     );
   }
 
-  Widget _buildFactoryMultiSelectField() {
-    return FactorySelectorField(
+  Widget _buildVerticalFactoryAccessSelector() {
+    return VerticalFactoryAccessSelector(
+      verticalStream: _verticalStream,
       factoryStream: _factoryStream,
-      allFactoriesSelected: _allFactoriesSelected,
+      verticalMode: _verticalMode,
+      selectedVerticalIds: _selectedVerticalIds,
+      factoryMode: _factoryMode,
       selectedFactoryIds: _selectedFactoryIds,
-      decoration: _inputDecoration(
+      verticalDecoration: _inputDecoration(
+        label: 'Vertical',
+        icon: Icons.account_tree_outlined,
+      ),
+      factoryDecoration: _inputDecoration(
         label: 'Factory',
         icon: Icons.factory_outlined,
       ),
-      onSelected: (factoryId) {
+      onVerticalChanged: (mode, ids) {
         setState(() {
-          _allFactoriesSelected = factoryId == null;
+          final shouldSeedFromLegacy =
+              _permissionsByVertical.isEmpty && selectedPermissions.isNotEmpty;
+          for (final verticalId in ids) {
+            _permissionsByVertical.putIfAbsent(
+              verticalId,
+              () => shouldSeedFromLegacy
+                  ? Set<String>.from(selectedPermissions)
+                  : <String>{},
+            );
+          }
+          _verticalMode = mode;
+          _selectedVerticalIds
+            ..clear()
+            ..addAll(ids);
+          selectedPermissions = VerticalPermissionAssignments.unionForVerticals(
+            assignments: _permissionsByVertical,
+            selectedVerticalIds: _selectedVerticalIds,
+          );
+          _permissionCountNotifier.value = selectedPermissions.length;
+        });
+      },
+      onFactoryChanged: (mode, ids) {
+        setState(() {
+          _factoryMode = mode;
           _selectedFactoryIds
             ..clear()
-            ..addAll(factoryId == null ? const <String>{} : {factoryId});
+            ..addAll(ids);
         });
       },
     );
@@ -1170,6 +1235,8 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                       ),
                       child: Column(
                         children: [
+                          _buildVerticalFactoryAccessSelector(),
+                          const SizedBox(height: 16),
                           _buildDesktopTwoColumn(
                             left: _buildDropdownField(
                               label: 'Role',
@@ -1181,11 +1248,7 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                                 selectedRole = value ?? selectedRole;
                               }),
                             ),
-                            right: _buildFactoryMultiSelectField(),
-                          ),
-                          const SizedBox(height: 16),
-                          _buildDesktopTwoColumn(
-                            left: _buildDropdownField(
+                            right: _buildDropdownField(
                               label: 'Designation',
                               value: selectedDesignation,
                               options: _designationOptionsForSelectedDepartment,
@@ -1196,11 +1259,15 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                                 });
                               },
                             ),
-                            right: _buildTextField(
+                          ),
+                          const SizedBox(height: 16),
+                          _buildDesktopTwoColumn(
+                            left: _buildTextField(
                               controller: departmentController,
                               label: 'Department',
                               icon: Icons.apartment_outlined,
                             ),
+                            right: const SizedBox(),
                           ),
                           const SizedBox(height: 16),
                           SwitchListTile.adaptive(
@@ -1234,8 +1301,11 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                       title: 'Module Permissions',
                       subtitle:
                           'Permissions are aligned with your QUIK ERP modules and submodules.',
-                      child: PermissionEditor(
-                        selectedPermissions: selectedPermissions,
+                      child: VerticalPermissionEditor(
+                        verticalStream: _verticalStream,
+                        selectedVerticalIds: _selectedVerticalIds,
+                        permissionsByVertical: _permissionsByVertical,
+                        fallbackPermissions: selectedPermissions,
                         visibleModuleIds: AmanPermissionCatalogue.modules
                             .where(
                               (module) =>
@@ -1247,8 +1317,14 @@ class _ScreenCreateInviteState extends State<ScreenCreateInvite> {
                             .map((module) => module.id)
                             .toSet(),
                         onChanged: (value) {
-                          selectedPermissions = value;
-                          _permissionCountNotifier.value = value.length;
+                          _permissionsByVertical = value;
+                          selectedPermissions =
+                              VerticalPermissionAssignments.unionForVerticals(
+                                assignments: _permissionsByVertical,
+                                selectedVerticalIds: _selectedVerticalIds,
+                              );
+                          _permissionCountNotifier.value =
+                              selectedPermissions.length;
                         },
                       ),
                     ),

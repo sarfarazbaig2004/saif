@@ -22,6 +22,12 @@ class UserModel {
   final String reportingManagerUid;
   final String reportingManagerName;
   final String accessScope;
+  final String verticalSelectionMode;
+  final List<String> verticalIds;
+  final String factorySelectionMode;
+  final List<String> factoryIds;
+  final Map<String, dynamic> verticalPermissions;
+  final int verticalPermissionSchemaVersion;
   final String industry;
   final Map<String, dynamic> permissions;
   final List<String> allowedModuleIds;
@@ -52,6 +58,12 @@ class UserModel {
     required this.reportingManagerUid,
     required this.reportingManagerName,
     required this.accessScope,
+    required this.verticalSelectionMode,
+    required this.verticalIds,
+    required this.factorySelectionMode,
+    required this.factoryIds,
+    required this.verticalPermissions,
+    required this.verticalPermissionSchemaVersion,
     required this.industry,
     required this.permissions,
     required this.allowedModuleIds,
@@ -91,6 +103,12 @@ class UserModel {
       'reportingManagerUid': reportingManagerUid,
       'reportingManagerName': reportingManagerName,
       'accessScope': accessScope,
+      'verticalSelectionMode': verticalSelectionMode,
+      'verticalIds': verticalIds,
+      'factorySelectionMode': factorySelectionMode,
+      'factoryIds': factoryIds,
+      'verticalPermissions': _normalizeMap(verticalPermissions),
+      'verticalPermissionSchemaVersion': verticalPermissionSchemaVersion,
       'industry': industry,
       'permissions': _normalizeMap(permissions),
       'allowedModuleIds': allowedModuleIds,
@@ -187,6 +205,13 @@ class UserModel {
         fallback: _readString(map, ['reportingManagerName'], fallback: ''),
       ),
       accessScope: _readString(map, ['accessScope'], fallback: 'company'),
+      verticalSelectionMode: _readSelectionMode(map['verticalSelectionMode']),
+      verticalIds: _readStringList(map['verticalIds']),
+      factorySelectionMode: _readSelectionMode(map['factorySelectionMode']),
+      factoryIds: _readStringList(map['factoryIds']),
+      verticalPermissions: _normalizeMap(map['verticalPermissions']),
+      verticalPermissionSchemaVersion:
+          (map['verticalPermissionSchemaVersion'] as num?)?.toInt() ?? 0,
       industry: finalIndustry,
       permissions: permissionsValue,
       allowedModuleIds: _readStringList(map['allowedModuleIds']),
@@ -233,6 +258,12 @@ class UserModel {
     String? reportingManagerUid,
     String? reportingManagerName,
     String? accessScope,
+    String? verticalSelectionMode,
+    List<String>? verticalIds,
+    String? factorySelectionMode,
+    List<String>? factoryIds,
+    Map<String, dynamic>? verticalPermissions,
+    int? verticalPermissionSchemaVersion,
     String? industry,
     Map<String, dynamic>? permissions,
     List<String>? allowedModuleIds,
@@ -263,6 +294,17 @@ class UserModel {
       reportingManagerUid: reportingManagerUid ?? this.reportingManagerUid,
       reportingManagerName: reportingManagerName ?? this.reportingManagerName,
       accessScope: accessScope ?? this.accessScope,
+      verticalSelectionMode:
+          verticalSelectionMode ?? this.verticalSelectionMode,
+      verticalIds: verticalIds ?? this.verticalIds,
+      factorySelectionMode: factorySelectionMode ?? this.factorySelectionMode,
+      factoryIds: factoryIds ?? this.factoryIds,
+      verticalPermissions: verticalPermissions != null
+          ? _normalizeMap(verticalPermissions)
+          : this.verticalPermissions,
+      verticalPermissionSchemaVersion:
+          verticalPermissionSchemaVersion ??
+          this.verticalPermissionSchemaVersion,
       industry: industry ?? this.industry,
       permissions: permissions != null
           ? _normalizeMap(permissions)
@@ -349,6 +391,12 @@ class UserModel {
         .toSet()
         .toList()
       ..sort();
+  }
+
+  static String _readSelectionMode(dynamic value) {
+    return value?.toString().trim().toLowerCase() == 'single'
+        ? 'single'
+        : 'multiple';
   }
 
   static DateTime? _readDateTime(dynamic value) {

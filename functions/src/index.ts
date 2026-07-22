@@ -1072,6 +1072,17 @@ export const sendJoinCompanyOtp = onCall(
       reportingManagerUid: inviteData.reportingManagerUid ?? "",
       reportingManagerName: inviteData.reportingManagerName ?? "",
       accessScope: inviteData.accessScope ?? "company",
+      verticalSelectionMode:
+        inviteData.verticalSelectionMode === "single" ? "single" : "multiple",
+      verticalIds: Array.isArray(inviteData.verticalIds) ?
+        inviteData.verticalIds : [],
+      factorySelectionMode:
+        inviteData.factorySelectionMode === "single" ? "single" : "multiple",
+      factoryIds: Array.isArray(inviteData.factoryIds) ?
+        inviteData.factoryIds : [],
+      verticalPermissions: inviteData.verticalPermissions ?? {},
+      verticalPermissionSchemaVersion:
+        inviteData.verticalPermissionSchemaVersion ?? 1,
       permissions: inviteData.permissions ?? {},
       allowedModuleIds: Array.isArray(inviteData.allowedModuleIds) ?
         inviteData.allowedModuleIds :
@@ -1198,6 +1209,17 @@ export const verifyJoinCompanyOtp = onCall(
     const reportingManagerUid = callableString(data.reportingManagerUid);
     const reportingManagerName = callableString(data.reportingManagerName);
     const accessScope = callableString(data.accessScope) || "company";
+    let verticalSelectionMode =
+      callableString(data.verticalSelectionMode) === "single" ?
+        "single" : "multiple";
+    let verticalIds = Array.isArray(data.verticalIds) ? data.verticalIds : [];
+    let factorySelectionMode =
+      callableString(data.factorySelectionMode) === "single" ?
+        "single" : "multiple";
+    let factoryIds = Array.isArray(data.factoryIds) ? data.factoryIds : [];
+    let verticalPermissions = data.verticalPermissions ?? {};
+    let verticalPermissionSchemaVersion =
+      data.verticalPermissionSchemaVersion ?? 1;
     let permissions = data.permissions ?? {};
     let allowedModuleIds = Array.isArray(data.allowedModuleIds) ?
       data.allowedModuleIds : deriveAllowedModuleIds(permissions);
@@ -1304,12 +1326,25 @@ export const verifyJoinCompanyOtp = onCall(
             );
           }
 
-          // The invite document, read inside this transaction, is authoritative.
-          // Never accept a permission set supplied by the client or cached draft.
+          // The invite read inside this transaction is authoritative.
+          // Never accept permissions supplied by the client or cached draft.
           permissions = inviteData.permissions ?? {};
           allowedModuleIds = Array.isArray(inviteData.allowedModuleIds) ?
             inviteData.allowedModuleIds : deriveAllowedModuleIds(permissions);
           permissionSchemaVersion = inviteData.permissionSchemaVersion ?? 1;
+          verticalSelectionMode =
+            inviteData.verticalSelectionMode === "single" ?
+              "single" : "multiple";
+          verticalIds = Array.isArray(inviteData.verticalIds) ?
+            inviteData.verticalIds : [];
+          factorySelectionMode =
+            inviteData.factorySelectionMode === "single" ?
+              "single" : "multiple";
+          factoryIds = Array.isArray(inviteData.factoryIds) ?
+            inviteData.factoryIds : [];
+          verticalPermissions = inviteData.verticalPermissions ?? {};
+          verticalPermissionSchemaVersion =
+            inviteData.verticalPermissionSchemaVersion ?? 1;
         }
 
         const rootPayload = {
@@ -1360,6 +1395,12 @@ export const verifyJoinCompanyOtp = onCall(
           reportingManagerUid,
           reportingManagerName,
           accessScope,
+          verticalSelectionMode,
+          verticalIds,
+          factorySelectionMode,
+          factoryIds,
+          verticalPermissions,
+          verticalPermissionSchemaVersion,
           isAdmin: role === "admin",
           isActive: true,
           isDeleted: false,
@@ -1398,6 +1439,7 @@ export const verifyJoinCompanyOtp = onCall(
           finalUid: uid,
           acceptedPermissions: permissions,
           acceptedAllowedModuleIds: allowedModuleIds,
+          acceptedVerticalPermissions: verticalPermissions,
           ...legacyRequestSecretDeletes(),
           updatedAt: timestamp,
         }, {merge: true});

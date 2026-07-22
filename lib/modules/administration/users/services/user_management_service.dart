@@ -344,6 +344,47 @@ class UserManagementService {
     return explicit.isNotEmpty ? explicit : normalizedRole;
   }
 
+  String _normalizeSelectionMode(String? value) {
+    return _normalizeText(value).toLowerCase() == 'single'
+        ? 'single'
+        : 'multiple';
+  }
+
+  List<String> _normalizeSelectionIds(Iterable<String>? values) {
+    final normalized =
+        (values ?? const <String>[])
+            .map((value) => value.trim())
+            .where((value) => value.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    return normalized;
+  }
+
+  Map<String, dynamic> _normalizeVerticalPermissions({
+    required Map<String, dynamic>? assignments,
+    required Iterable<String>? verticalIds,
+  }) {
+    final result = <String, dynamic>{};
+    for (final verticalId in _normalizeSelectionIds(verticalIds)) {
+      final rawAssignment = assignments?[verticalId];
+      final rawPermissions = rawAssignment is Map
+          ? rawAssignment['permissions']
+          : null;
+      final selection = PermissionEvaluator.parsePermissions(
+        rawPermissions,
+      ).keys;
+      result[verticalId] = <String, dynamic>{
+        'permissions': PermissionEvaluator.toStorageMap(selection),
+        'allowedModuleIds': PermissionEvaluator.deriveAllowedModuleIds(
+          selection,
+        ),
+        'permissionSchemaVersion': PermissionEvaluator.schemaVersion,
+      };
+    }
+    return result;
+  }
+
   Map<String, dynamic> _companyUserPayload({
     required String companyId,
     required String userUid,
@@ -361,6 +402,11 @@ class UserManagementService {
     String? reportingManagerUid,
     String? reportingManagerName,
     String? accessScope,
+    String? verticalSelectionMode,
+    List<String>? verticalIds,
+    String? factorySelectionMode,
+    List<String>? factoryIds,
+    Map<String, dynamic>? verticalPermissions,
     String? email,
     String? displayName,
     String? phone,
@@ -377,6 +423,19 @@ class UserManagementService {
     final normalizedReportingManagerUid = _normalizeText(reportingManagerUid);
     final normalizedReportingManagerName = _normalizeText(reportingManagerName);
     final normalizedAccessScope = _normalizeText(accessScope);
+    final normalizedVerticalMode = _normalizeSelectionMode(
+      verticalSelectionMode,
+    );
+    final normalizedVerticalIds = _normalizeSelectionIds(verticalIds);
+    final storedVerticalIds = normalizedVerticalMode == 'single'
+        ? normalizedVerticalIds.take(1).toList()
+        : normalizedVerticalIds;
+    final normalizedFactoryMode = _normalizeSelectionMode(factorySelectionMode);
+    final normalizedFactoryIds = _normalizeSelectionIds(factoryIds);
+    final normalizedVerticalPermissions = _normalizeVerticalPermissions(
+      assignments: verticalPermissions,
+      verticalIds: storedVerticalIds,
+    );
     final normalizedEmail = _normalizeEmail(email);
     final normalizedDisplayName = _normalizeText(displayName);
     final normalizedPhone = _normalizePhone(phone);
@@ -410,6 +469,14 @@ class UserManagementService {
       'accessScope': normalizedAccessScope.isEmpty
           ? AccessScope.company
           : normalizedAccessScope,
+      'verticalSelectionMode': normalizedVerticalMode,
+      'verticalIds': storedVerticalIds,
+      'factorySelectionMode': normalizedFactoryMode,
+      'factoryIds': normalizedFactoryMode == 'single'
+          ? normalizedFactoryIds.take(1).toList()
+          : normalizedFactoryIds,
+      'verticalPermissions': normalizedVerticalPermissions,
+      'verticalPermissionSchemaVersion': 1,
       'isAdmin': isSuperAccessRole(normalizedRole),
       'isActive': isActive,
       'isDeleted': isDeleted,
@@ -472,6 +539,11 @@ class UserManagementService {
     String? reportingManagerUid,
     String? reportingManagerName,
     String? accessScope,
+    String? verticalSelectionMode,
+    List<String>? verticalIds,
+    String? factorySelectionMode,
+    List<String>? factoryIds,
+    Map<String, dynamic>? verticalPermissions,
     String? email,
     String? displayName,
     String? phone,
@@ -543,6 +615,11 @@ class UserManagementService {
           reportingManagerUid: reportingManagerUid,
           reportingManagerName: reportingManagerName,
           accessScope: accessScope,
+          verticalSelectionMode: verticalSelectionMode,
+          verticalIds: verticalIds,
+          factorySelectionMode: factorySelectionMode,
+          factoryIds: factoryIds,
+          verticalPermissions: verticalPermissions,
           email: email,
           displayName: displayName,
           phone: phone,
@@ -649,6 +726,11 @@ class UserManagementService {
     String? reportingManagerUid,
     String? reportingManagerName,
     String? accessScope,
+    String? verticalSelectionMode,
+    List<String>? verticalIds,
+    String? factorySelectionMode,
+    List<String>? factoryIds,
+    Map<String, dynamic>? verticalPermissions,
     String? email,
     String? displayName,
     String? phone,
@@ -672,6 +754,11 @@ class UserManagementService {
       reportingManagerUid: reportingManagerUid,
       reportingManagerName: reportingManagerName,
       accessScope: accessScope,
+      verticalSelectionMode: verticalSelectionMode,
+      verticalIds: verticalIds,
+      factorySelectionMode: factorySelectionMode,
+      factoryIds: factoryIds,
+      verticalPermissions: verticalPermissions,
       email: email,
       displayName: displayName,
       phone: phone,
@@ -1161,6 +1248,11 @@ class UserManagementService {
     String? reportingManagerUid,
     String? reportingManagerName,
     String? accessScope,
+    String? verticalSelectionMode,
+    List<String>? verticalIds,
+    String? factorySelectionMode,
+    List<String>? factoryIds,
+    Map<String, dynamic>? verticalPermissions,
     Duration expiry = const Duration(days: 7),
   }) async {
     _assertRequiredId('companyId', companyId);
@@ -1173,6 +1265,19 @@ class UserManagementService {
         ? 'Head Office'
         : _normalizeText(branchName);
     final normalizedBranchId = _safeBranchId(branchId, normalizedBranchName);
+    final normalizedVerticalMode = _normalizeSelectionMode(
+      verticalSelectionMode,
+    );
+    final normalizedVerticalIds = _normalizeSelectionIds(verticalIds);
+    final storedVerticalIds = normalizedVerticalMode == 'single'
+        ? normalizedVerticalIds.take(1).toList()
+        : normalizedVerticalIds;
+    final normalizedFactoryMode = _normalizeSelectionMode(factorySelectionMode);
+    final normalizedFactoryIds = _normalizeSelectionIds(factoryIds);
+    final normalizedVerticalPermissions = _normalizeVerticalPermissions(
+      assignments: verticalPermissions,
+      verticalIds: storedVerticalIds,
+    );
     final canonicalPermissions = _normalizePermissionsForRole(
       role: normalizedRole,
       permissions: permissions,
@@ -1258,6 +1363,14 @@ class UserManagementService {
           'accessScope': _normalizeText(accessScope).isEmpty
               ? AccessScope.company
               : _normalizeText(accessScope),
+          'verticalSelectionMode': normalizedVerticalMode,
+          'verticalIds': storedVerticalIds,
+          'factorySelectionMode': normalizedFactoryMode,
+          'factoryIds': normalizedFactoryMode == 'single'
+              ? normalizedFactoryIds.take(1).toList()
+              : normalizedFactoryIds,
+          'verticalPermissions': normalizedVerticalPermissions,
+          'verticalPermissionSchemaVersion': 1,
           'status': 'pending',
           'isActive': true,
           'isDeleted': false,

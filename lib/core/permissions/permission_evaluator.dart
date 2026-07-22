@@ -59,6 +59,25 @@ class PermissionEvaluator {
     );
   }
 
+  /// Future vertical-aware runtime entry point. Until modules are switched to
+  /// a vertical context, callers continue using [fromUserData], whose stored
+  /// permissions are the compatibility union of all selected verticals.
+  factory PermissionEvaluator.fromUserDataForVertical(
+    Map<String, dynamic> data, {
+    required String verticalId,
+  }) {
+    final assignments = data['verticalPermissions'];
+    final assignment = assignments is Map ? assignments[verticalId] : null;
+    if (assignment is Map && assignment.containsKey('permissions')) {
+      return PermissionEvaluator.fromExplicit(
+        permissions: assignment['permissions'],
+        allowedModuleIds: _stringSet(assignment['allowedModuleIds']),
+        role: (data['role'] ?? '').toString(),
+      );
+    }
+    return PermissionEvaluator.fromUserData(data);
+  }
+
   factory PermissionEvaluator.fromExplicit({
     required dynamic permissions,
     String role = '',
