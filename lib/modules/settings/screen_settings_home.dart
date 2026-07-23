@@ -1,7 +1,7 @@
 // FILE PATH: lib/modules/settings/screen_settings_home.dart
 import 'package:QUIK/modules/settings/coating_master/coating_master_screen.dart';
 import 'package:QUIK/modules/settings/company_profile/company_profile_bank_screen.dart';
-import 'package:QUIK/modules/settings/document_layout/document_layout_designer_screen.dart';
+import 'package:QUIK/modules/settings/letterhead/letterhead_settings_screen.dart';
 import 'package:QUIK/modules/settings/factory_master/factory_list_screen.dart';
 import 'package:QUIK/modules/settings/vertical_master/vertical_list_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -453,15 +453,17 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
             ),
           ),
           _ActionTile(
-            title: 'Letter Head Layout',
+            title: 'Letterhead Settings',
             subtitle:
-                'Configure the letterhead background, printable area, margins, header, and footer.',
+                'Upload domestic and export letterheads, set print positions, and manage default terms.',
             icon: Icons.description_outlined,
+            enabled: isAdminOrManager,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => DocumentLayoutDesignerScreen(
+                builder: (_) => LetterheadSettingsScreen(
                   companyId: widget.companyId,
                   canEdit: isAdminOrManager,
+                  currentUserName: widget.userEmail,
                 ),
               ),
             ),
