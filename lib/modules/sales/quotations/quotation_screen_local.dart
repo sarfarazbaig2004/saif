@@ -24,6 +24,8 @@ class QuotationScreenLocal extends StatefulWidget {
   final String? quotationId;
   final Map<String, dynamic>? inquirySeed;
   final Map<String, dynamic>? existingQuotation;
+  final String? activeVerticalId;
+  final String? activeVerticalName;
 
   const QuotationScreenLocal({
     super.key,
@@ -33,6 +35,8 @@ class QuotationScreenLocal extends StatefulWidget {
     this.quotationId,
     this.inquirySeed,
     this.existingQuotation,
+    this.activeVerticalId,
+    this.activeVerticalName,
   });
 
   @override
@@ -74,6 +78,13 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
   List<VerticalModel> _verticalOptions = const <VerticalModel>[];
 
   String get _tenantId => (_companyId ?? '').trim();
+  String get _lockedVerticalId {
+    final activeId = (widget.activeVerticalId ?? '').trim();
+    if (activeId.isNotEmpty) return activeId;
+    return (widget.inquirySeed?['verticalId'] ?? '').toString().trim();
+  }
+
+  bool get _isVerticalLocked => _lockedVerticalId.isNotEmpty;
 
   bool get _isAdminOrManager => [
     'admin',
@@ -184,9 +195,29 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
       await _applyInquirySeedIfNeeded();
       _quoteNumberController.text = 'Auto-generated on Save';
     }
+    _applyActiveVerticalConstraint();
 
     _calculateTotals();
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  void _applyActiveVerticalConstraint() {
+    final lockedId = _lockedVerticalId;
+    if (lockedId.isEmpty) return;
+
+    if ((_selectedVerticalId ?? '').isEmpty) {
+      _selectedVerticalId = lockedId;
+      _selectedVerticalName =
+          (widget.activeVerticalName ??
+                  widget.inquirySeed?['verticalName'] ??
+                  widget.inquirySeed?['businessVertical'] ??
+                  '')
+              .toString()
+              .trim();
+    }
+    _verticalOptions = _verticalOptions
+        .where((vertical) => vertical.id == lockedId)
+        .toList(growable: false);
   }
 
   void _loadExistingQuotation(Map<String, dynamic> data) {
@@ -1167,6 +1198,11 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
     }
     if ((_selectedVerticalId ?? '').isEmpty) {
       _setError('Select a business vertical before saving.');
+      return;
+    }
+    final lockedId = _lockedVerticalId;
+    if (lockedId.isNotEmpty && _selectedVerticalId != lockedId) {
+      _setError('This quotation does not belong to the active vertical.');
       return;
     }
     if (_tenantId.isEmpty || _currentUserUid == null) {
@@ -2820,10 +2856,11 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                               key: ValueKey(
                                 'vertical-${_selectedVerticalId ?? ''}-${_verticalOptions.length}',
                               ),
-                              initialValue: _verticalOptions.any(
-                                (vertical) =>
-                                    vertical.id == _selectedVerticalId,
-                              )
+                              initialValue:
+                                  _verticalOptions.any(
+                                    (vertical) =>
+                                        vertical.id == _selectedVerticalId,
+                                  )
                                   ? _selectedVerticalId
                                   : null,
                               isExpanded: true,
@@ -2845,7 +2882,7 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
                                     ),
                                   )
                                   .toList(),
-                              onChanged: _isReadOnly
+                              onChanged: _isReadOnly || _isVerticalLocked
                                   ? null
                                   : (value) {
                                       VerticalModel? selected;

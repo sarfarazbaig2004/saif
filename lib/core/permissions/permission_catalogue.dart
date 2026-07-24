@@ -98,6 +98,8 @@ class PermissionKeys {
   static const salesQuotationsReject = 'sales.quotations.reject';
   static const salesQuotationsConvert =
       'sales.quotations.convert_to_customer_po';
+  static const salesQuotationsResetConversion =
+      'sales.quotations.reset_conversion';
   static const salesQuotationsRevise = 'sales.quotations.create_revision';
   static const salesQuotationsCancel = 'sales.quotations.cancel';
   static const salesQuotationsDownloadPdf = 'sales.quotations.download_pdf';

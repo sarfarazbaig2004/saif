@@ -4,8 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/permissions/permission_catalogue.dart';
+import 'package:QUIK/core/permissions/permission_scope.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/customer_po/screens/customer_po_detail_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_number_service.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_screen_local.dart';
@@ -215,6 +218,30 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
     _primaryQuery = query;
   }
 
+  Query<Map<String, dynamic>> _activeQuotationQuery(
+    ActiveVerticalState? verticalState,
+  ) {
+    final baseQuery = _primaryQuery!;
+    if (verticalState?.isDataScoped != true) return baseQuery;
+    return _quotationCollection!.where(
+      'verticalId',
+      isEqualTo: verticalState!.activeVerticalId,
+    );
+  }
+
+  bool _canAccessRecord(Map<String, dynamic> data) {
+    final verticalState = ActiveVerticalScope.maybeOf(context);
+    if (verticalState == null ||
+        verticalState.canAccessRecord(data['verticalId']?.toString())) {
+      return true;
+    }
+    _showSnack(
+      'Switch to the record vertical before opening this quotation.',
+      isError: true,
+    );
+    return false;
+  }
+
   String _safeString(dynamic value, {String fallback = ''}) {
     if (value == null) return fallback;
     final str = value.toString().trim();
@@ -332,10 +359,21 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
   }
 
   Future<void> _openCreateQuotation() async {
+    if (!PermissionScope.require(
+      context,
+      PermissionKeys.salesQuotationsCreate,
+    )) {
+      return;
+    }
+    final verticalState = ActiveVerticalScope.maybeOf(context);
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            QuotationScreenLocal(userId: widget.userId, companyId: _companyId),
+        builder: (_) => QuotationScreenLocal(
+          userId: widget.userId,
+          companyId: _companyId,
+          activeVerticalId: verticalState?.activeVerticalId,
+          activeVerticalName: verticalState?.activeVerticalName,
+        ),
       ),
     );
     if (mounted) setState(() {});
@@ -345,6 +383,11 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
     String docId,
     Map<String, dynamic> data,
   ) async {
+    if (!PermissionScope.require(context, PermissionKeys.salesQuotationsEdit)) {
+      return;
+    }
+    if (!_canAccessRecord(data)) return;
+    final verticalState = ActiveVerticalScope.maybeOf(context);
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => QuotationScreenLocal(
@@ -352,6 +395,8 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
           companyId: _companyId,
           quotationId: docId,
           existingQuotation: data,
+          activeVerticalId: verticalState?.activeVerticalId,
+          activeVerticalName: verticalState?.activeVerticalName,
         ),
       ),
     );
@@ -1255,6 +1300,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
 
   @override
   Widget build(BuildContext context) {
+    final verticalState = ActiveVerticalScope.maybeOf(context);
     if (_isLoadingContext) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -1276,6 +1322,11 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
         body: Center(child: Text('System initialization failed')),
       );
     }
+    if (!PermissionScope.can(context, PermissionKeys.salesQuotationsView)) {
+      return const Scaffold(
+        body: Center(child: Text('No permission to view quotations.')),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -1286,15 +1337,18 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
       ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'New Quote',
-        backgroundColor: const Color(0xFF2563EB),
-        foregroundColor: Colors.white,
-        onPressed: _openCreateQuotation,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton:
+          PermissionScope.can(context, PermissionKeys.salesQuotationsCreate)
+          ? FloatingActionButton(
+              tooltip: 'New Quote',
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
+              onPressed: _openCreateQuotation,
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: _primaryQuery!.snapshots(),
+        stream: _activeQuotationQuery(verticalState).snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(
@@ -1611,6 +1665,42 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                             color: Colors.grey.shade600,
                                           ),
                                           onSelected: (val) {
+                                            final permissionKey = switch (val) {
+                                              'edit' =>
+                                                PermissionKeys
+                                                    .salesQuotationsEdit,
+                                              'delete' =>
+                                                PermissionKeys
+                                                    .salesQuotationsDelete,
+                                              'approve' =>
+                                                PermissionKeys
+                                                    .salesQuotationsApprove,
+                                              'reject' =>
+                                                PermissionKeys
+                                                    .salesQuotationsReject,
+                                              'convert' =>
+                                                PermissionKeys
+                                                    .salesQuotationsConvert,
+                                              'resetCustomerPo' =>
+                                                PermissionKeys
+                                                    .salesQuotationsResetConversion,
+                                              'revision' =>
+                                                PermissionKeys
+                                                    .salesQuotationsRevise,
+                                              'cancel' =>
+                                                PermissionKeys
+                                                    .salesQuotationsCancel,
+                                              _ =>
+                                                PermissionKeys
+                                                    .salesQuotationsView,
+                                            };
+                                            if (!PermissionScope.require(
+                                              context,
+                                              permissionKey,
+                                            )) {
+                                              return;
+                                            }
+                                            if (!_canAccessRecord(data)) return;
                                             if (val == 'view') {
                                               _openQuotationPreview(data);
                                             } else if (val == 'edit') {
@@ -1662,24 +1752,36 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                                   ),
                                                 ];
 
-                                            items.add(
-                                              const PopupMenuItem(
-                                                value: 'edit',
-                                                child: Text('Edit Quotation'),
-                                              ),
-                                            );
+                                            if (PermissionScope.can(
+                                              context,
+                                              PermissionKeys
+                                                  .salesQuotationsEdit,
+                                            )) {
+                                              items.add(
+                                                const PopupMenuItem(
+                                                  value: 'edit',
+                                                  child: Text('Edit Quotation'),
+                                                ),
+                                              );
+                                            }
 
-                                            items.add(
-                                              const PopupMenuItem(
-                                                value: 'delete',
-                                                child: Text(
-                                                  'Delete Quotation',
-                                                  style: TextStyle(
-                                                    color: Colors.red,
+                                            if (PermissionScope.can(
+                                              context,
+                                              PermissionKeys
+                                                  .salesQuotationsDelete,
+                                            )) {
+                                              items.add(
+                                                const PopupMenuItem(
+                                                  value: 'delete',
+                                                  child: Text(
+                                                    'Delete Quotation',
+                                                    style: TextStyle(
+                                                      color: Colors.red,
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                            );
+                                              );
+                                            }
 
                                             if (!isCancelled) {
                                               items.add(
@@ -1690,23 +1792,40 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                                       'approved' &&
                                                   approval.toLowerCase() !=
                                                       'rejected') {
-                                                items.add(
-                                                  const PopupMenuItem(
-                                                    value: 'approve',
-                                                    child: Text('Approve'),
-                                                  ),
-                                                );
-                                                items.add(
-                                                  const PopupMenuItem(
-                                                    value: 'reject',
-                                                    child: Text('Reject'),
-                                                  ),
-                                                );
+                                                if (PermissionScope.can(
+                                                  context,
+                                                  PermissionKeys
+                                                      .salesQuotationsApprove,
+                                                )) {
+                                                  items.add(
+                                                    const PopupMenuItem(
+                                                      value: 'approve',
+                                                      child: Text('Approve'),
+                                                    ),
+                                                  );
+                                                }
+                                                if (PermissionScope.can(
+                                                  context,
+                                                  PermissionKeys
+                                                      .salesQuotationsReject,
+                                                )) {
+                                                  items.add(
+                                                    const PopupMenuItem(
+                                                      value: 'reject',
+                                                      child: Text('Reject'),
+                                                    ),
+                                                  );
+                                                }
                                               }
 
                                               if (isApproved &&
                                                   !hasCustomerPo &&
-                                                  !isConverting) {
+                                                  !isConverting &&
+                                                  PermissionScope.can(
+                                                    context,
+                                                    PermissionKeys
+                                                        .salesQuotationsConvert,
+                                                  )) {
                                                 items.add(
                                                   const PopupMenuItem(
                                                     value: 'convert',
@@ -1729,39 +1848,57 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                                     ),
                                                   );
                                                 }
+                                                if (PermissionScope.can(
+                                                  context,
+                                                  PermissionKeys
+                                                      .salesQuotationsResetConversion,
+                                                )) {
+                                                  items.add(
+                                                    const PopupMenuItem(
+                                                      value: 'resetCustomerPo',
+                                                      child: Text(
+                                                        'Reset Customer PO Conversion',
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              }
+
+                                              if (PermissionScope.can(
+                                                context,
+                                                PermissionKeys
+                                                    .salesQuotationsRevise,
+                                              )) {
                                                 items.add(
                                                   const PopupMenuItem(
-                                                    value: 'resetCustomerPo',
+                                                    value: 'revision',
                                                     child: Text(
-                                                      'Reset Customer PO Conversion',
+                                                      'Create Revision',
                                                     ),
                                                   ),
                                                 );
                                               }
 
                                               items.add(
-                                                const PopupMenuItem(
-                                                  value: 'revision',
-                                                  child: Text(
-                                                    'Create Revision',
-                                                  ),
-                                                ),
-                                              );
-
-                                              items.add(
                                                 const PopupMenuDivider(),
                                               );
-                                              items.add(
-                                                const PopupMenuItem(
-                                                  value: 'cancel',
-                                                  child: Text(
-                                                    'Cancel',
-                                                    style: TextStyle(
-                                                      color: Colors.red,
+                                              if (PermissionScope.can(
+                                                context,
+                                                PermissionKeys
+                                                    .salesQuotationsCancel,
+                                              )) {
+                                                items.add(
+                                                  const PopupMenuItem(
+                                                    value: 'cancel',
+                                                    child: Text(
+                                                      'Cancel',
+                                                      style: TextStyle(
+                                                        color: Colors.red,
+                                                      ),
                                                     ),
                                                   ),
-                                                ),
-                                              );
+                                                );
+                                              }
                                             }
 
                                             return items;
@@ -1796,8 +1933,7 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
                                             : (data['verticalName'] ??
                                                       data['businessVertical'])
                                                   .toString(),
-                                        backgroundColor:
-                                            Colors.orange.shade50,
+                                        backgroundColor: Colors.orange.shade50,
                                         textColor: Colors.orange.shade900,
                                       ),
                                       if (approval != 'Pending')

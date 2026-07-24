@@ -6,10 +6,10 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/models/inquiry_model.dart';
 import 'package:QUIK/core/permissions/permission_catalogue.dart';
-import 'package:QUIK/core/permissions/permission_evaluator.dart';
 import 'package:QUIK/core/permissions/permission_scope.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
 import 'package:QUIK/core/tenancy/tenant_firestore.dart';
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/sales/costing/screens/costing_sheet_screen.dart';
 import 'package:QUIK/modules/sales/inquiries/helpers/inquiry_list_helpers.dart';
 import 'package:QUIK/modules/sales/inquiries/screens_add_inquiry.dart';
@@ -126,18 +126,38 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     return userData;
   }
 
-  // --- ROBUST PERMISSION SYSTEM ---
-  bool _hasInquiryPermission(Map<String, dynamic> userData) {
-    return PermissionEvaluator.fromUserData(
-      userData,
-    ).hasPermission(PermissionKeys.salesInquiriesView);
-  }
-
   // --- SMART FIRESTORE AUTO-FALLBACK QUERY ---
   Query<Map<String, dynamic>> _resolveInquiryQuery(String companyId) {
     return TenantFirestore(
       tenantId: companyId,
     ).collection('inquiries').orderBy('createdAt', descending: true);
+  }
+
+  Query<Map<String, dynamic>> _activeInquiryQuery(
+    String companyId,
+    ActiveVerticalState? verticalState,
+  ) {
+    if (verticalState?.isDataScoped != true) {
+      return _inquiryQuery ?? _resolveInquiryQuery(companyId);
+    }
+    return TenantFirestore(tenantId: companyId)
+        .collection('inquiries')
+        .where('verticalId', isEqualTo: verticalState!.activeVerticalId);
+  }
+
+  bool _canAccessRecord(Map<String, dynamic> data, {bool showMessage = true}) {
+    final verticalState = ActiveVerticalScope.maybeOf(context);
+    if (verticalState == null ||
+        verticalState.canAccessRecord(data['verticalId']?.toString())) {
+      return true;
+    }
+    if (showMessage) {
+      _showSnack(
+        'Switch to the record vertical before opening this inquiry.',
+        isError: true,
+      );
+    }
+    return false;
   }
 
   List<QueryDocumentSnapshot<Map<String, dynamic>>> _applyLocalFilters({
@@ -280,6 +300,7 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     if (!PermissionScope.require(context, PermissionKeys.salesInquiriesEdit)) {
       return;
     }
+    if (!_canAccessRecord(doc.data())) return;
     final targetCompanyId = (_companyId ?? '').trim();
 
     if (targetCompanyId.isEmpty) {
@@ -301,6 +322,21 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
           currentUserRole: role,
           existingDoc: doc.reference,
           existingInquiry: inquiry,
+          activeVerticalId: ActiveVerticalScope.maybeOf(
+            context,
+          )?.activeVerticalId,
+          activeVerticalName: ActiveVerticalScope.maybeOf(
+            context,
+          )?.activeVerticalName,
+          canCreateQuotation:
+              PermissionScope.can(
+                context,
+                PermissionKeys.salesInquiriesConvert,
+              ) &&
+              PermissionScope.can(
+                context,
+                PermissionKeys.salesQuotationsCreate,
+              ),
         ),
       ),
     );
@@ -316,13 +352,17 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     }
   }
 
-  Future<void> _deleteInquiry(String inquiryId) async {
+  Future<void> _deleteInquiry(
+    String inquiryId,
+    Map<String, dynamic> inquiryData,
+  ) async {
     if (!PermissionScope.require(
       context,
       PermissionKeys.salesInquiriesDelete,
     )) {
       return;
     }
+    if (!_canAccessRecord(inquiryData)) return;
     final companyId = (_companyId ?? '').trim();
     if (companyId.isEmpty) {
       _showSnack(
@@ -399,6 +439,13 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     )) {
       return;
     }
+    if (!PermissionScope.require(
+      context,
+      PermissionKeys.salesQuotationsCreate,
+    )) {
+      return;
+    }
+    if (!_canAccessRecord(inquiryData)) return;
     final targetCompanyId = (_companyId ?? '').trim();
 
     if (targetCompanyId.isEmpty) {
@@ -519,6 +566,12 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
           currentUserUid: _currentUser?.uid,
           companyId: targetCompanyId,
           inquirySeed: comprehensiveSeed,
+          activeVerticalId: ActiveVerticalScope.maybeOf(
+            context,
+          )?.activeVerticalId,
+          activeVerticalName: ActiveVerticalScope.maybeOf(
+            context,
+          )?.activeVerticalName,
         ),
       ),
     );
@@ -546,6 +599,7 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
     )) {
       return;
     }
+    if (!_canAccessRecord(doc.data())) return;
     final targetCompanyId = (_companyId ?? '').trim();
     if (targetCompanyId.isEmpty) {
       _showSnack('Missing company workspace.', isError: true);
@@ -609,8 +663,10 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
         final role = _getString(userData, 'role').isEmpty
             ? 'sales'
             : _getString(userData, 'role');
+        final verticalState = ActiveVerticalScope.maybeOf(context);
 
-        if (compId.isEmpty || !_hasInquiryPermission(userData)) {
+        if (compId.isEmpty ||
+            !PermissionScope.can(context, PermissionKeys.salesInquiriesView)) {
           return const Scaffold(
             body: Center(child: Text('No permission or company linked.')),
           );
@@ -651,6 +707,17 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                           companyId: compId,
                           currentUserUid: firebaseUser.uid,
                           currentUserRole: role,
+                          activeVerticalId: verticalState?.activeVerticalId,
+                          activeVerticalName: verticalState?.activeVerticalName,
+                          canCreateQuotation:
+                              PermissionScope.can(
+                                context,
+                                PermissionKeys.salesInquiriesConvert,
+                              ) &&
+                              PermissionScope.can(
+                                context,
+                                PermissionKeys.salesQuotationsCreate,
+                              ),
                         ),
                       ),
                     );
@@ -674,7 +741,7 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                 )
               : null,
           body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-            stream: _inquiryQuery!.snapshots(),
+            stream: _activeInquiryQuery(compId, verticalState).snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Center(
@@ -988,7 +1055,10 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                                     doc: doc,
                                                   );
                                                 } else if (value == 'delete') {
-                                                  _deleteInquiry(doc.id);
+                                                  _deleteInquiry(
+                                                    doc.id,
+                                                    doc.data(),
+                                                  );
                                                 }
                                               },
                                               itemBuilder: (context) => [
@@ -1002,10 +1072,15 @@ class _ScreensInquiryListState extends State<ScreensInquiryList> {
                                                     child: Text('Open Inquiry'),
                                                   ),
                                                 if (PermissionScope.can(
-                                                  context,
-                                                  PermissionKeys
-                                                      .salesInquiriesConvert,
-                                                ))
+                                                      context,
+                                                      PermissionKeys
+                                                          .salesInquiriesConvert,
+                                                    ) &&
+                                                    PermissionScope.can(
+                                                      context,
+                                                      PermissionKeys
+                                                          .salesQuotationsCreate,
+                                                    ))
                                                   const PopupMenuItem(
                                                     value: 'quote',
                                                     child: Text(

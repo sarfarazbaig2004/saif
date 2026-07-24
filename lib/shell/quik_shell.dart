@@ -10,6 +10,7 @@ import 'package:QUIK/core/permissions/permission_evaluator.dart';
 import 'package:QUIK/core/permissions/permission_scope.dart';
 import 'package:QUIK/core/modules/providers/module_access_provider.dart';
 import 'package:QUIK/core/theme/app_theme.dart';
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/administration/inventory/screen_inventory_profile_settings.dart';
 import 'package:QUIK/modules/administration/compliance/screens/compliance_legal_screen.dart';
 import 'package:QUIK/modules/administration/modules/screen_company_modules.dart';
@@ -31,6 +32,8 @@ import 'package:QUIK/modules/purchase/purchase_requisitions/screens/purchase_req
 import 'package:QUIK/modules/sales/inquiries/screens_inquiry_list.dart';
 import 'package:QUIK/modules/sales/quotations/screens_quotation_list.dart';
 import 'package:QUIK/modules/settings/screen_settings_home.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_model.dart';
+import 'package:QUIK/modules/settings/vertical_master/vertical_repository.dart';
 import 'package:QUIK/modules/sales/sales_orders/screens_sales_order_list.dart';
 import 'package:QUIK/modules/customer_po/screens/customer_po_list_screen.dart';
 import 'package:QUIK/modules/projects/screens/projects_list_screen.dart';
@@ -99,10 +102,15 @@ class _QuikShellState extends State<QuikShell> {
     permissions: const [],
   );
   List<SidebarGroup<ShellPage>> _currentSidebarGroups = [];
+  String? _requestedVerticalId;
+  late final Stream<List<VerticalModel>> _verticalsStream;
 
   @override
   void initState() {
     super.initState();
+    _verticalsStream = VerticalRepository(
+      companyId: widget.companyId,
+    ).watchVerticals();
     _resolvedIndustry = widget.industry;
 
     if (_resolvedIndustry == null || _resolvedIndustry!.isEmpty) {
@@ -1015,7 +1023,71 @@ class _QuikShellState extends State<QuikShell> {
     return 'Welcome ${_resolvedEmployeeName()}';
   }
 
-  Widget _buildTopHeader() {
+  Widget _buildVerticalSelector(ActiveVerticalState verticalState) {
+    if (verticalState.isLegacyUnscoped) {
+      return const _VerticalContextChip(
+        icon: Icons.layers_outlined,
+        label: 'All Verticals',
+        tooltip: 'Legacy access: vertical assignments are not configured.',
+      );
+    }
+
+    if (verticalState.hasUnavailableAssignments) {
+      return const _VerticalContextChip(
+        icon: Icons.warning_amber_rounded,
+        label: 'No active vertical',
+        tooltip: 'Assigned verticals are inactive or unavailable.',
+        isWarning: true,
+      );
+    }
+
+    final selectedValue = verticalState.activeVerticalId ?? '';
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 180, maxWidth: 260),
+      child: DropdownButtonFormField<String>(
+        key: ValueKey(
+          '$selectedValue-${verticalState.availableVerticals.length}',
+        ),
+        initialValue: selectedValue,
+        isExpanded: true,
+        isDense: true,
+        decoration: InputDecoration(
+          labelText: 'Active Vertical',
+          prefixIcon: const Icon(Icons.layers_outlined, size: 18),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 8,
+          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        items: [
+          if (verticalState.allowAllVerticals)
+            const DropdownMenuItem<String>(
+              value: '',
+              child: Text('All Verticals'),
+            ),
+          ...verticalState.availableVerticals.map(
+            (vertical) => DropdownMenuItem<String>(
+              value: vertical.id,
+              child: Text(
+                vertical.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ],
+        onChanged: (value) {
+          setState(() {
+            final normalized = (value ?? '').trim();
+            _requestedVerticalId = normalized.isEmpty ? null : normalized;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildTopHeader(ActiveVerticalState verticalState) {
     return Container(
       constraints: const BoxConstraints(minHeight: 48),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -1037,6 +1109,8 @@ class _QuikShellState extends State<QuikShell> {
               ),
             ),
           ),
+          const SizedBox(width: 12),
+          _buildVerticalSelector(verticalState),
         ],
       ),
     );
@@ -1132,8 +1206,6 @@ class _QuikShellState extends State<QuikShell> {
           evaluatorData['permissions'] = widget.permissions;
         }
         evaluatorData['role'] = _currentRole;
-        _permissionEvaluator = PermissionEvaluator.fromUserData(evaluatorData);
-
         final bool isDeleted = companyUserData['isDeleted'] == true;
         final bool isActive = companyUserData.containsKey('isActive')
             ? companyUserData['isActive'] == true
@@ -1143,55 +1215,99 @@ class _QuikShellState extends State<QuikShell> {
           return _blockedWorkspaceBody();
         }
 
-        _currentSidebarGroups = _computeSidebarGroups();
+        return StreamBuilder<List<VerticalModel>>(
+          stream: _verticalsStream,
+          builder: (context, verticalSnap) {
+            if (verticalSnap.connectionState == ConnectionState.waiting &&
+                !verticalSnap.hasData) {
+              return const Scaffold(
+                backgroundColor: zCanvasBg,
+                body: Center(child: CircularProgressIndicator(color: zBlue)),
+              );
+            }
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted) return;
+            final activeVerticals =
+                (verticalSnap.data ?? const <VerticalModel>[])
+                    .where(
+                      (vertical) => vertical.isActive && !vertical.isDeleted,
+                    )
+                    .map(
+                      (vertical) => ActiveVerticalOption(
+                        id: vertical.id,
+                        name: vertical.name,
+                      ),
+                    );
+            final unionEvaluator = PermissionEvaluator.fromUserData(
+              evaluatorData,
+            );
+            final verticalState = ActiveVerticalState.resolve(
+              userData: evaluatorData,
+              allActiveVerticals: activeVerticals,
+              requestedVerticalId: _requestedVerticalId,
+              isFullAccess: unionEvaluator.isFullAccess,
+            );
+            _permissionEvaluator = verticalState.permissionEvaluatorFor(
+              evaluatorData,
+            );
+            _currentSidebarGroups = _computeSidebarGroups();
 
-          final allowedPages = <ShellPage>[
-            if (_canViewPage(ShellPage.dashboard)) ShellPage.dashboard,
-            ..._currentSidebarGroups.expand((group) => group.children),
-          ];
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
 
-          final nextPage = allowedPages.isNotEmpty ? allowedPages.first : null;
+              final allowedPages = <ShellPage>[
+                if (_canViewPage(ShellPage.dashboard)) ShellPage.dashboard,
+                ..._currentSidebarGroups.expand((group) => group.children),
+              ];
 
-          if (activePage == null ||
-              (activePage != null && !_canViewPage(activePage!))) {
-            setState(() => activePage = nextPage);
-          }
-        });
+              final nextPage = allowedPages.isNotEmpty
+                  ? allowedPages.first
+                  : null;
 
-        return Scaffold(
-          backgroundColor: zCanvasBg,
-          body: Row(
-            children: [
-              ShellSidebar(
-                activePage: activePage ?? ShellPage.dashboard,
-                sidebarGroups: _currentSidebarGroups,
-                canInquiries: canInquiries,
-                companyId: widget.companyId,
-                userUid: widget.userUid,
-                currentRole: _currentRole,
-                showSettings: _isModuleEnabled(ModuleIds.settings),
-                showDashboard: _canViewPage(ShellPage.dashboard),
-                onSelectPage: _selectPage,
-                onLogout: _logout,
-              ),
-              Expanded(
-                child: Column(
+              if (activePage == null ||
+                  (activePage != null && !_canViewPage(activePage!))) {
+                setState(() => activePage = nextPage);
+              }
+            });
+
+            return ActiveVerticalScope(
+              state: verticalState,
+              child: Scaffold(
+                backgroundColor: zCanvasBg,
+                body: Row(
                   children: [
-                    _buildTopHeader(),
+                    ShellSidebar(
+                      activePage: activePage ?? ShellPage.dashboard,
+                      sidebarGroups: _currentSidebarGroups,
+                      canInquiries: canInquiries,
+                      companyId: widget.companyId,
+                      userUid: widget.userUid,
+                      currentRole: _currentRole,
+                      showSettings: _isModuleEnabled(ModuleIds.settings),
+                      showDashboard: _canViewPage(ShellPage.dashboard),
+                      onSelectPage: _selectPage,
+                      onLogout: _logout,
+                    ),
                     Expanded(
-                      child: PermissionScope(
-                        evaluator: _permissionEvaluator,
-                        child: _buildActiveBody(),
+                      child: Column(
+                        children: [
+                          _buildTopHeader(verticalState),
+                          Expanded(
+                            child: PermissionScope(
+                              key: ValueKey(
+                                'vertical-permissions-${verticalState.activeVerticalId ?? 'all'}',
+                              ),
+                              evaluator: _permissionEvaluator,
+                              child: _buildActiveBody(),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -2046,6 +2162,61 @@ class _QuikShellState extends State<QuikShell> {
           ],
         );
       },
+    );
+  }
+}
+
+class _VerticalContextChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String tooltip;
+  final bool isWarning;
+
+  const _VerticalContextChip({
+    required this.icon,
+    required this.label,
+    required this.tooltip,
+    this.isWarning = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = isWarning
+        ? const Color(0xFFB45309)
+        : const Color(0xFF334155);
+    final background = isWarning
+        ? const Color(0xFFFFF7ED)
+        : const Color(0xFFF8FAFC);
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 38),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: background,
+          border: Border.all(
+            color: isWarning
+                ? const Color(0xFFFED7AA)
+                : const Color(0xFFE2E8F0),
+          ),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: foreground),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              style: TextStyle(
+                color: foreground,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

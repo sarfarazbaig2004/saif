@@ -30,6 +30,9 @@ class ScreensAddInquiry extends StatefulWidget {
   final String currentUserRole;
   final DocumentReference<Map<String, dynamic>>? existingDoc;
   final Inquiry? existingInquiry;
+  final String? activeVerticalId;
+  final String? activeVerticalName;
+  final bool canCreateQuotation;
 
   const ScreensAddInquiry({
     super.key,
@@ -38,6 +41,9 @@ class ScreensAddInquiry extends StatefulWidget {
     required this.currentUserRole,
     this.existingDoc,
     this.existingInquiry,
+    this.activeVerticalId,
+    this.activeVerticalName,
+    this.canCreateQuotation = false,
   });
 
   @override
@@ -56,6 +62,9 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   String? _selectedVerticalId;
   String _selectedVerticalName = '';
   List<VerticalModel> _verticalOptions = const <VerticalModel>[];
+
+  bool get _isVerticalLocked =>
+      (widget.activeVerticalId ?? '').trim().isNotEmpty;
 
   String _customerNameSnapshot = '';
   String _customerIndustrySnapshot = '';
@@ -165,9 +174,21 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       _assignedToUid = widget.currentUserUid;
     }
     _hydrateFromInquiry();
+    _applyActiveVertical();
     await Future.wait([_loadExtraData(), _loadVerticals()]);
     _inquiryDate ??= DateTime.now();
     _calculateInquiryReadiness();
+  }
+
+  void _applyActiveVertical() {
+    final activeId = (widget.activeVerticalId ?? '').trim();
+    if (activeId.isEmpty) return;
+
+    final activeName = (widget.activeVerticalName ?? '').trim();
+    if (!_isEditing || (_selectedVerticalId ?? '').isEmpty) {
+      _selectedVerticalId = activeId;
+      _selectedVerticalName = activeName;
+    }
   }
 
   @override
@@ -392,9 +413,12 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
       ).watchVerticals().first;
       if (!mounted) return;
       setState(() {
+        final activeId = (widget.activeVerticalId ?? '').trim();
         _verticalOptions = verticals
             .where((vertical) => vertical.isActive && !vertical.isDeleted)
+            .where((vertical) => activeId.isEmpty || vertical.id == activeId)
             .toList(growable: false);
+        _applyActiveVertical();
       });
     } catch (_) {
       if (!mounted) return;
@@ -1161,6 +1185,12 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
   Future<void> _saveInquiry({bool createQuote = false}) async {
     if (_isSaving) return;
     FocusScope.of(context).unfocus();
+    if (createQuote && !widget.canCreateQuotation) {
+      _showValidationMessage(
+        'You do not have permission to create a quotation.',
+      );
+      return;
+    }
 
     if (_tenantId.isEmpty) {
       _showValidationMessage(
@@ -1170,6 +1200,13 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
     }
 
     if (!_validateForm()) return;
+    final activeId = (widget.activeVerticalId ?? '').trim();
+    if (activeId.isNotEmpty && _selectedVerticalId != activeId) {
+      _showValidationMessage(
+        'This inquiry does not belong to the active vertical.',
+      );
+      return;
+    }
 
     setState(() => _isSaving = true);
 
@@ -1203,6 +1240,8 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
               currentUserUid: widget.currentUserUid,
               companyId: _tenantId,
               inquirySeed: payload,
+              activeVerticalId: widget.activeVerticalId,
+              activeVerticalName: widget.activeVerticalName,
             ),
           ),
         );
@@ -1803,9 +1842,10 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
           key: ValueKey(
             'vertical-${_selectedVerticalId ?? ''}-${_verticalOptions.length}',
           ),
-          initialValue: _verticalOptions.any(
-            (vertical) => vertical.id == _selectedVerticalId,
-          )
+          initialValue:
+              _verticalOptions.any(
+                (vertical) => vertical.id == _selectedVerticalId,
+              )
               ? _selectedVerticalId
               : null,
           isExpanded: true,
@@ -1825,19 +1865,21 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                 ),
               )
               .toList(),
-          onChanged: (value) {
-            VerticalModel? selected;
-            for (final vertical in _verticalOptions) {
-              if (vertical.id == value) {
-                selected = vertical;
-                break;
-              }
-            }
-            setState(() {
-              _selectedVerticalId = selected?.id;
-              _selectedVerticalName = selected?.name ?? '';
-            });
-          },
+          onChanged: _isVerticalLocked
+              ? null
+              : (value) {
+                  VerticalModel? selected;
+                  for (final vertical in _verticalOptions) {
+                    if (vertical.id == value) {
+                      selected = vertical;
+                      break;
+                    }
+                  }
+                  setState(() {
+                    _selectedVerticalId = selected?.id;
+                    _selectedVerticalName = selected?.name ?? '';
+                  });
+                },
           validator: (_) => (_selectedVerticalId ?? '').isEmpty
               ? 'Business vertical is required'
               : null,
@@ -2224,31 +2266,32 @@ class _ScreensAddInquiryState extends State<ScreensAddInquiry> {
                     ),
                   ),
                 ),
-                SizedBox(
-                  width: buttonWidth,
-                  child: OutlinedButton(
-                    onPressed: _isSaving
-                        ? null
-                        : () => _saveInquiry(createQuote: true),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 16,
+                if (widget.canCreateQuotation)
+                  SizedBox(
+                    width: buttonWidth,
+                    child: OutlinedButton(
+                      onPressed: _isSaving
+                          ? null
+                          : () => _saveInquiry(createQuote: true),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        side: const BorderSide(color: Color(0xFF2563EB)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      side: const BorderSide(color: Color(0xFF2563EB)),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'Generate Quotation',
-                      style: TextStyle(
-                        color: Color(0xFF2563EB),
-                        fontWeight: FontWeight.w600,
+                      child: const Text(
+                        'Generate Quotation',
+                        style: TextStyle(
+                          color: Color(0xFF2563EB),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
-                ),
                 SizedBox(
                   width: buttonWidth,
                   child: FilledButton.icon(
