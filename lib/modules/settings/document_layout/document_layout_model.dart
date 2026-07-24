@@ -13,6 +13,8 @@ class DocumentLayoutModel {
   final double rightMarginPt;
   final double topMarginPt;
   final double bottomMarginPt;
+  final bool showGrid;
+  final bool snapToGrid;
 
   const DocumentLayoutModel({
     this.backgroundUrl = '', this.backgroundStoragePath = '',
@@ -21,6 +23,8 @@ class DocumentLayoutModel {
     this.footerHeightPt = 54, this.leftMarginPt = 36,
     this.rightMarginPt = 36, this.topMarginPt = 18,
     this.bottomMarginPt = 18,
+    this.showGrid = true,
+    this.snapToGrid = true,
   });
 
   factory DocumentLayoutModel.fromMap(Map<String, dynamic> map) {
@@ -38,6 +42,8 @@ class DocumentLayoutModel {
       rightMarginPt: number('rightMarginPt', 36),
       topMarginPt: number('topMarginPt', 18),
       bottomMarginPt: number('bottomMarginPt', 18),
+      showGrid: map['showGrid'] as bool? ?? true,
+      snapToGrid: map['snapToGrid'] as bool? ?? true,
     );
   }
 
@@ -51,6 +57,7 @@ class DocumentLayoutModel {
     'headerHeightPt': headerHeightPt, 'footerHeightPt': footerHeightPt,
     'leftMarginPt': leftMarginPt, 'rightMarginPt': rightMarginPt,
     'topMarginPt': topMarginPt, 'bottomMarginPt': bottomMarginPt,
+    'showGrid': showGrid, 'snapToGrid': snapToGrid,
   };
 
   DocumentLayoutModel copyWith({
@@ -59,6 +66,7 @@ class DocumentLayoutModel {
     int? backgroundSizeBytes, double? headerHeightPt,
     double? footerHeightPt, double? leftMarginPt, double? rightMarginPt,
     double? topMarginPt, double? bottomMarginPt,
+    bool? showGrid, bool? snapToGrid,
   }) => DocumentLayoutModel(
     backgroundUrl: backgroundUrl ?? this.backgroundUrl,
     backgroundStoragePath: backgroundStoragePath ?? this.backgroundStoragePath,
@@ -71,6 +79,8 @@ class DocumentLayoutModel {
     rightMarginPt: rightMarginPt ?? this.rightMarginPt,
     topMarginPt: topMarginPt ?? this.topMarginPt,
     bottomMarginPt: bottomMarginPt ?? this.bottomMarginPt,
+    showGrid: showGrid ?? this.showGrid,
+    snapToGrid: snapToGrid ?? this.snapToGrid,
   );
 
   static double pointsToMillimetres(double points) => points * 25.4 / 72;
