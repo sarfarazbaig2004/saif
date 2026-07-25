@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_customer_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_project_card.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/po_financial_card.dart';
@@ -16,11 +17,19 @@ import 'package:QUIK/modules/customer_po/screens/widgets/customer_po_detail_acti
 class CustomerPoDetailScreen extends StatelessWidget {
   final String companyId;
   final String docId;
+  final String activeVerticalId;
+  final String activeVerticalName;
+  final List<ActiveVerticalOption> availableVerticals;
+  final bool canChangeVertical;
 
   const CustomerPoDetailScreen({
     super.key,
     required this.companyId,
     required this.docId,
+    this.activeVerticalId = '',
+    this.activeVerticalName = '',
+    this.availableVerticals = const <ActiveVerticalOption>[],
+    this.canChangeVertical = false,
   });
 
   static const _maxWidth = 960.0;
@@ -128,7 +137,16 @@ class CustomerPoDetailScreen extends StatelessWidget {
           'Customer PO',
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
-        actions: [CustomerPoDetailActions(companyId: companyId, docId: docId)],
+        actions: [
+          CustomerPoDetailActions(
+            companyId: companyId,
+            docId: docId,
+            activeVerticalId: activeVerticalId,
+            activeVerticalName: activeVerticalName,
+            availableVerticals: availableVerticals,
+            canChangeVertical: canChangeVertical,
+          ),
+        ],
       ),
       body: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
         stream: FirebaseFirestore.instance
@@ -146,6 +164,15 @@ class CustomerPoDetailScreen extends StatelessWidget {
           }
 
           final d = snapshot.data!.data()!;
+          final recordVerticalId = (d['verticalId'] ?? '').toString().trim();
+          if (activeVerticalId.trim().isNotEmpty &&
+              recordVerticalId != activeVerticalId.trim()) {
+            return const Center(
+              child: Text(
+                'This Customer PO does not belong to the active vertical.',
+              ),
+            );
+          }
           final status = _fmt(d['status']).isEmpty
               ? 'draft'
               : _fmt(d['status']);

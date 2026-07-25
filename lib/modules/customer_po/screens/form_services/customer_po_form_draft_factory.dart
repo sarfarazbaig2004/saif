@@ -11,6 +11,8 @@ class CustomerPoFormDraftFactory {
     required bool isEditMode,
     required String existingId,
     required String companyId,
+    required String verticalId,
+    required String verticalName,
     required CustomerPoFormControllers controllers,
     required DateTime poDate,
     required String customerId,
@@ -36,6 +38,8 @@ class CustomerPoFormDraftFactory {
       CustomerPoFormDraft(
         id: id,
         companyId: companyId,
+        verticalId: verticalId,
+        verticalName: verticalName,
         internalPoNo: controllers.internalPoNo.text.trim(),
         customerPoNumber: controllers.customerPoNumber.text.trim(),
         poDate: poDate,

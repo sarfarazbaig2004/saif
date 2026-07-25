@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/customer_po/screens/customer_po_detail_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
 import 'package:QUIK/modules/customer_po/screens/widgets/customer_po_search_bar.dart';
@@ -42,6 +43,16 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
         : context.watchTenant.selectedTenantId.trim();
     final collectionPath =
         'companies/$activeCompanyId/${SalesCollections.customerPos}';
+    final verticalState = ActiveVerticalScope.maybeOf(context);
+    final poCollection = FirebaseFirestore.instance
+        .collection('companies')
+        .doc(activeCompanyId)
+        .collection(SalesCollections.customerPos);
+    final poStream = verticalState?.isDataScoped == true
+        ? poCollection
+              .where('verticalId', isEqualTo: verticalState!.activeVerticalId)
+              .snapshots()
+        : poCollection.snapshots();
     debugPrint(
       'CUSTOMER_PO_LIST_QUERY widgetCompanyId=${widget.companyId} '
       'activeCompanyId=$activeCompanyId path=$collectionPath',
@@ -62,8 +73,15 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      CustomerPoFormScreen(companyId: activeCompanyId),
+                  builder: (_) => CustomerPoFormScreen(
+                    companyId: activeCompanyId,
+                    activeVerticalId: verticalState?.activeVerticalId ?? '',
+                    activeVerticalName: verticalState?.activeVerticalName ?? '',
+                    availableVerticals:
+                        verticalState?.availableVerticals ??
+                        const <ActiveVerticalOption>[],
+                    canChangeVertical: verticalState?.allowAllVerticals == true,
+                  ),
                 ),
               );
             },
@@ -74,11 +92,7 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
         ],
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('companies')
-            .doc(activeCompanyId)
-            .collection(SalesCollections.customerPos)
-            .snapshots(),
+        stream: poStream,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(
@@ -156,6 +170,12 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                       final projectName =
                           (data['subject'] ?? data['projectName'] ?? '')
                               .toString();
+                      final verticalName =
+                          (data['verticalName'] ??
+                                  data['businessVertical'] ??
+                                  '')
+                              .toString()
+                              .trim();
                       final status = (data['status'] ?? 'Draft').toString();
                       final totalValue =
                           (data['grandTotal'] ??
@@ -182,6 +202,15 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                               builder: (_) => CustomerPoDetailScreen(
                                 companyId: activeCompanyId,
                                 docId: poDoc.id,
+                                activeVerticalId:
+                                    verticalState?.activeVerticalId ?? '',
+                                activeVerticalName:
+                                    verticalState?.activeVerticalName ?? '',
+                                availableVerticals:
+                                    verticalState?.availableVerticals ??
+                                    const <ActiveVerticalOption>[],
+                                canChangeVertical:
+                                    verticalState?.allowAllVerticals == true,
                               ),
                             ),
                           ),
@@ -195,10 +224,12 @@ class _CustomerPoListScreenState extends State<CustomerPoListScreen> {
                             [
                               if (customerPoNumber.isNotEmpty)
                                 'Customer PO No : $customerPoNumber',
+                              if (verticalName.isNotEmpty)
+                                'Vertical : $verticalName',
                               'Customer : $customerName',
                               if (projectName.isNotEmpty) projectName,
                             ].join('\n'),
-                            maxLines: 3,
+                            maxLines: 4,
                             overflow: TextOverflow.ellipsis,
                           ),
                           trailing: SizedBox(

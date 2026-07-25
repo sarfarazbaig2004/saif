@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/crm/customers/screens_add_customer.dart';
 import 'package:QUIK/modules/crm/customers/screens_customer_followup_list.dart';
 import 'package:QUIK/modules/crm/customers/customer_followup_model.dart';
@@ -1339,9 +1340,7 @@ class _FollowUpCard extends StatelessWidget {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Delete Follow-up'),
-        content: Text(
-          'Delete "${followup.title}"? This cannot be undone.',
-        ),
+        content: Text('Delete "${followup.title}"? This cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -1368,8 +1367,11 @@ class _FollowUpCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = DateFormat('dd MMM yyyy, hh:mm a').format(followup.followUpDate);
-    final isOverdue = followup.status != 'Closed' &&
+    final dateStr = DateFormat(
+      'dd MMM yyyy, hh:mm a',
+    ).format(followup.followUpDate);
+    final isOverdue =
+        followup.status != 'Closed' &&
         followup.status != 'Missed' &&
         followup.followUpDate.isBefore(DateTime.now());
 
@@ -1480,8 +1482,7 @@ class _FollowUpCard extends StatelessWidget {
                                 minWidth: 32,
                                 minHeight: 32,
                               ),
-                              onPressed: () =>
-                                  CustomerFollowupFormDialog.show(
+                              onPressed: () => CustomerFollowupFormDialog.show(
                                 context,
                                 customerRef: customerRef,
                                 currentUserName: currentUserName,
@@ -1518,10 +1519,7 @@ class _FollowUpCard extends StatelessWidget {
                             label: followup.followUpType,
                             icon: _typeIcon(followup.followUpType),
                           ),
-                        _StatusChip(
-                          label: followup.status,
-                          color: statusColor,
-                        ),
+                        _StatusChip(label: followup.status, color: statusColor),
                         _StatusChip(
                           label: followup.priority,
                           color: priorityColor,
@@ -1665,7 +1663,9 @@ class _StatusChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: outlined ? Colors.transparent : color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
-        border: outlined ? Border.all(color: color.withValues(alpha: 0.5)) : null,
+        border: outlined
+            ? Border.all(color: color.withValues(alpha: 0.5))
+            : null,
       ),
       child: Text(
         label,
@@ -2010,18 +2010,28 @@ class _CustomerPOsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final verticalState = ActiveVerticalScope.maybeOf(context);
+    final collection = FirebaseFirestore.instance
+        .collection('companies')
+        .doc(companyId)
+        .collection('customer_pos');
+    final stream = verticalState?.isDataScoped == true
+        ? collection
+              .where('verticalId', isEqualTo: verticalState!.activeVerticalId)
+              .snapshots()
+        : collection.where('customerId', isEqualTo: customerId).snapshots();
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('companies')
-          .doc(companyId)
-          .collection('customer_pos')
-          .where('customerId', isEqualTo: customerId)
-          .snapshots(),
+      stream: stream,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        final docs = snap.data?.docs ?? [];
+        final docs = (snap.data?.docs ?? [])
+            .where(
+              (doc) =>
+                  (doc.data()['customerId'] ?? '').toString() == customerId,
+            )
+            .toList(growable: false);
 
         if (docs.isEmpty) {
           return const _EmptyTabState(
@@ -2062,6 +2072,12 @@ class _CustomerPOsTab extends StatelessWidget {
                   builder: (_) => CustomerPoDetailScreen(
                     companyId: companyId,
                     docId: docs[i].id,
+                    activeVerticalId: verticalState?.activeVerticalId ?? '',
+                    activeVerticalName: verticalState?.activeVerticalName ?? '',
+                    availableVerticals:
+                        verticalState?.availableVerticals ??
+                        const <ActiveVerticalOption>[],
+                    canChangeVertical: verticalState?.allowAllVerticals == true,
                   ),
                 ),
               ),

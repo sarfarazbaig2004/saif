@@ -63,6 +63,10 @@ class PoHeaderCard extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         _labelValue('Customer PO Date', formatDate(data['poDate'])),
+        if (formatValue(data['verticalName']).isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _labelValue('Business Vertical', formatValue(data['verticalName'])),
+        ],
         const SizedBox(height: 10),
         PoRevisionBadge(
           revisionNo: numberValue(data['revisionNo']).toInt(),

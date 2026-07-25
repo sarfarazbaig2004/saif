@@ -37,6 +37,9 @@ class CustomerPoFormLoader {
 
     return CustomerPoFormData(
       id: doc.id,
+      verticalId: (d['verticalId'] ?? '').toString(),
+      verticalName: (d['verticalName'] ?? d['businessVertical'] ?? '')
+          .toString(),
       status: (d['status'] ?? 'Draft').toString(),
       poDate: _date(d['poDate']) ?? DateTime.now(),
       internalPoNo:

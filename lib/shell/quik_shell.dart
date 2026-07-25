@@ -1490,7 +1490,18 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.salesOrders:
         return Padding(
           padding: const EdgeInsets.all(10),
-          child: SalesOrderListScreen(companyId: widget.companyId),
+          child: SalesOrderListScreen(
+            companyId: widget.companyId,
+            activeVerticalId:
+                ActiveVerticalScope.maybeOf(context)?.activeVerticalId ?? '',
+            activeVerticalName:
+                ActiveVerticalScope.maybeOf(context)?.activeVerticalName ?? '',
+            availableVerticals:
+                ActiveVerticalScope.maybeOf(context)?.availableVerticals ??
+                const <ActiveVerticalOption>[],
+            canChangeVertical:
+                ActiveVerticalScope.maybeOf(context)?.allowAllVerticals == true,
+          ),
         );
 
       case ShellPage.adminUsers:

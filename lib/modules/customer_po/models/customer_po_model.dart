@@ -10,6 +10,8 @@ part 'customer_po_model_helpers.dart';
 class CustomerPoModel {
   final String id;
   final String companyId;
+  final String verticalId;
+  final String verticalName;
   final String internalPoNo;
   final String customerPoNumber;
   final int revisionNo;
@@ -57,6 +59,8 @@ class CustomerPoModel {
   const CustomerPoModel({
     required this.id,
     required this.companyId,
+    this.verticalId = '',
+    this.verticalName = '',
     String? internalPoNo,
     String? customerPoNo,
     String? poNumber,
@@ -147,6 +151,9 @@ class CustomerPoModel {
     return CustomerPoModel(
       id: (map['id'] ?? '').toString(),
       companyId: (map['companyId'] ?? '').toString(),
+      verticalId: (map['verticalId'] ?? '').toString(),
+      verticalName: (map['verticalName'] ?? map['businessVertical'] ?? '')
+          .toString(),
       internalPoNo:
           (map['internalPoNo'] ?? map['customerPoNo'] ?? map['poNumber'] ?? '')
               .toString(),
@@ -206,6 +213,8 @@ class CustomerPoModel {
     return {
       'id': id,
       'companyId': companyId,
+      'verticalId': verticalId,
+      'verticalName': verticalName,
       'internalPoNo': internalPoNo,
       'customerPoNumber': customerPoNumber,
       'customerPoNo': internalPoNo,

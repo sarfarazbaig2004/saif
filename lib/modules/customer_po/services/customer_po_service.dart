@@ -8,6 +8,7 @@ class CustomerPoService {
     : _repository = repository ?? CustomerPoRepository();
 
   Future<void> createCustomerPo(CustomerPoModel po) async {
+    _validateVertical(po);
     if (po.internalPoNo.trim().isEmpty) {
       throw Exception('Internal PO number is required');
     }
@@ -24,6 +25,7 @@ class CustomerPoService {
   }
 
   Future<void> updateCustomerPo(CustomerPoModel po) async {
+    _validateVertical(po);
     if (po.internalPoNo.trim().isEmpty) {
       throw Exception('Internal PO number is required');
     }
@@ -33,5 +35,11 @@ class CustomerPoService {
     }
 
     await _repository.updateCustomerPo(po);
+  }
+
+  void _validateVertical(CustomerPoModel po) {
+    if (po.verticalId.trim().isEmpty) {
+      throw Exception('Business vertical is required');
+    }
   }
 }

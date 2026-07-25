@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import 'package:QUIK/core/theme/app_theme.dart';
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/customer_po/providers/customer_po_provider.dart';
 import 'package:QUIK/modules/customer_po/widgets/customer_po_item_row.dart';
 import 'package:QUIK/modules/customer_po/screens/form_widgets/po_customer_picker_dialog.dart';
@@ -20,11 +22,19 @@ import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_numbe
 class CustomerPoFormScreen extends StatefulWidget {
   final String companyId;
   final String? existingDocId;
+  final String activeVerticalId;
+  final String activeVerticalName;
+  final List<ActiveVerticalOption> availableVerticals;
+  final bool canChangeVertical;
 
   const CustomerPoFormScreen({
     super.key,
     required this.companyId,
     this.existingDocId,
+    this.activeVerticalId = '',
+    this.activeVerticalName = '',
+    this.availableVerticals = const <ActiveVerticalOption>[],
+    this.canChangeVertical = false,
   });
 
   @override
@@ -45,6 +55,8 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   bool _isLoadingExisting = false;
   String _existingStatus = 'Draft';
   String _existingId = '';
+  String? _selectedVerticalId;
+  String _selectedVerticalName = '';
 
   bool _isLoadingCustomers = false;
   List<Map<String, dynamic>> _customers = [];
@@ -74,6 +86,10 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.activeVerticalId.trim().isNotEmpty) {
+      _selectedVerticalId = widget.activeVerticalId.trim();
+      _selectedVerticalName = widget.activeVerticalName.trim();
+    }
     _loadCustomers();
 
     _controllers.gstPercent.addListener(() => setState(() {}));
@@ -133,6 +149,10 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
     setState(() {
       _existingId = data.id;
       _existingStatus = data.status;
+      if (data.verticalId.trim().isNotEmpty) {
+        _selectedVerticalId = data.verticalId.trim();
+        _selectedVerticalName = data.verticalName.trim();
+      }
 
       _poDate = data.poDate;
 
@@ -162,6 +182,24 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
   }
 
   Future<void> _save() async {
+    final selectedVerticalId = (_selectedVerticalId ?? '').trim();
+    if (selectedVerticalId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Select a business vertical first.')),
+      );
+      return;
+    }
+    final activeVerticalId = widget.activeVerticalId.trim();
+    if (!widget.canChangeVertical &&
+        activeVerticalId.isNotEmpty &&
+        selectedVerticalId != activeVerticalId) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This PO does not belong to the active vertical.'),
+        ),
+      );
+      return;
+    }
     final internalPoNo = await CustomerPoNumberService.ensureValidInternalPoNo(
       companyId: widget.companyId,
       currentValue: _controllers.internalPoNo.text,
@@ -189,6 +227,8 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       isEditMode: _isEditMode,
       existingId: _existingId,
       companyId: widget.companyId,
+      verticalId: (_selectedVerticalId ?? '').trim(),
+      verticalName: _selectedVerticalName.trim(),
       controllers: _controllers,
       poDate: _poDate,
       customerId: _customerId,
@@ -223,65 +263,127 @@ class _CustomerPoFormScreenState extends State<CustomerPoFormScreen> {
       isSaving: _provider.loading,
       onSave: _save,
       formKey: _formKey,
-      body: PoFormTabs(
-        controllers: _controllers,
-        poDate: _poDate,
-        status: _existingStatus,
-        isEditMode: _isEditMode,
-        customerErrorVisible: _customerErrorVisible,
-        customerId: _customerId,
-        isLoadingCustomers: _isLoadingCustomers,
-        customerName: _customerName,
-        customerEmail: _customerEmail,
-        customerMobile: _customerMobile,
-        customerGstNumber: _customerGstNumber,
-        customerAddress: _customerAddress,
+      body: Column(
+        children: [
+          _verticalSelector(),
+          Expanded(
+            child: PoFormTabs(
+              controllers: _controllers,
+              poDate: _poDate,
+              status: _existingStatus,
+              isEditMode: _isEditMode,
+              customerErrorVisible: _customerErrorVisible,
+              customerId: _customerId,
+              isLoadingCustomers: _isLoadingCustomers,
+              customerName: _customerName,
+              customerEmail: _customerEmail,
+              customerMobile: _customerMobile,
+              customerGstNumber: _customerGstNumber,
+              customerAddress: _customerAddress,
 
-        // NEW STATE PASSED
-        showCustomerPicker: () => showDialog(
-          context: context,
-          builder: (_) => PoCustomerPickerDialog(
-            customers: _customers,
-            onSelected: (c) => setState(() {
-              _customerId = c['id'];
-              _customerName = c['name'];
-              _customerEmail = c['email'];
-              _customerMobile = c['mobile'];
-              _customerAddress = c['address'];
-              _customerGstNumber = c['gst'];
-              _customerErrorVisible = false;
-            }),
-          ),
-        ),
-
-        fieldBuilder: PoFormHelpers.field,
-        summaryRow: PoFormHelpers.summaryRow,
-        basicValue: _basicValue,
-        gstAmount: _gstAmount,
-        totalValue: _totalValue,
-        items: _items,
-        onItemsChanged: (items) => setState(() => _items = items),
-
-        poFileName: _poFileName,
-        poDocumentUrl: _poDocumentUrl,
-        isUploading: _isUploading,
-
-        pickAndUploadPdf: _pickAndUploadPdf,
-        removePdf: () => setState(() {
-          _poDocumentUrl = null;
-          _poFileName = null;
-          _uploadedAt = null;
-        }),
-
-        uploadAmendedPdf: !_isEditMode
-            ? null
-            : () => CustomerPoAmendmentHandler.uploadAmendedPo(
+              // NEW STATE PASSED
+              showCustomerPicker: () => showDialog(
                 context: context,
-                companyId: widget.companyId,
-                docId: _existingId,
-                currentRevisionNo: 0,
-                currentPoDocumentUrl: _poDocumentUrl,
+                builder: (_) => PoCustomerPickerDialog(
+                  customers: _customers,
+                  onSelected: (c) => setState(() {
+                    _customerId = c['id'];
+                    _customerName = c['name'];
+                    _customerEmail = c['email'];
+                    _customerMobile = c['mobile'];
+                    _customerAddress = c['address'];
+                    _customerGstNumber = c['gst'];
+                    _customerErrorVisible = false;
+                  }),
+                ),
               ),
+
+              fieldBuilder: PoFormHelpers.field,
+              summaryRow: PoFormHelpers.summaryRow,
+              basicValue: _basicValue,
+              gstAmount: _gstAmount,
+              totalValue: _totalValue,
+              items: _items,
+              onItemsChanged: (items) => setState(() => _items = items),
+
+              poFileName: _poFileName,
+              poDocumentUrl: _poDocumentUrl,
+              isUploading: _isUploading,
+
+              pickAndUploadPdf: _pickAndUploadPdf,
+              removePdf: () => setState(() {
+                _poDocumentUrl = null;
+                _poFileName = null;
+                _uploadedAt = null;
+              }),
+
+              uploadAmendedPdf: !_isEditMode
+                  ? null
+                  : () => CustomerPoAmendmentHandler.uploadAmendedPo(
+                      context: context,
+                      companyId: widget.companyId,
+                      docId: _existingId,
+                      currentRevisionNo: 0,
+                      currentPoDocumentUrl: _poDocumentUrl,
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _verticalSelector() {
+    final options = List<ActiveVerticalOption>.from(widget.availableVerticals);
+    final selectedId = (_selectedVerticalId ?? '').trim();
+    if (selectedId.isNotEmpty &&
+        !options.any((vertical) => vertical.id == selectedId)) {
+      options.add(
+        ActiveVerticalOption(
+          id: selectedId,
+          name: _selectedVerticalName.trim().isEmpty
+              ? 'Assigned vertical'
+              : _selectedVerticalName,
+        ),
+      );
+    }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      color: zBlueSoft,
+      child: DropdownButtonFormField<String>(
+        key: ValueKey('customer-po-vertical-$selectedId-${options.length}'),
+        initialValue: selectedId.isEmpty ? null : selectedId,
+        decoration: InputDecoration(
+          labelText: 'Business Vertical',
+          prefixIcon: const Icon(Icons.account_tree_outlined),
+          helperText: widget.canChangeVertical
+              ? 'Full access: vertical can be changed.'
+              : 'Locked to the active vertical.',
+        ),
+        items: options
+            .map(
+              (vertical) => DropdownMenuItem(
+                value: vertical.id,
+                child: Text(vertical.name),
+              ),
+            )
+            .toList(growable: false),
+        onChanged: widget.canChangeVertical
+            ? (value) {
+                final selected = options
+                    .where((vertical) => vertical.id == value)
+                    .toList(growable: false);
+                setState(() {
+                  _selectedVerticalId = value;
+                  _selectedVerticalName = selected.isEmpty
+                      ? ''
+                      : selected.first.name;
+                });
+              }
+            : null,
+        validator: (value) =>
+            (value ?? '').trim().isEmpty ? 'Select a vertical' : null,
       ),
     );
   }

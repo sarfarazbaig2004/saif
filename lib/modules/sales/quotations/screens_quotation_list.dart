@@ -536,6 +536,17 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       );
       return;
     }
+    final sourceVerticalId = _parseSafeString(data['verticalId']);
+    final sourceVerticalName = _parseSafeString(
+      data['verticalName'] ?? data['businessVertical'],
+    );
+    if (sourceVerticalId.isEmpty) {
+      _showSnack(
+        'Assign a business vertical to this quotation before conversion.',
+        isError: true,
+      );
+      return;
+    }
 
     final confirm = await _showConfirmDialog(
       'Convert to Customer PO',
@@ -657,6 +668,8 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
         'id': newPoRef.id,
         'companyId': _companyId,
         'tenantId': _companyId,
+        'verticalId': sourceVerticalId,
+        'verticalName': sourceVerticalName,
         'internalPoNo': internalPoNo,
         'customerPoNumber': '',
         'customerPoNo': internalPoNo,
@@ -1000,8 +1013,19 @@ class _ScreensQuotationListState extends State<ScreensQuotationList> {
       if (!mounted) return;
       await Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) =>
-              CustomerPoDetailScreen(companyId: companyId, docId: poId),
+          builder: (_) {
+            final verticalState = ActiveVerticalScope.maybeOf(context);
+            return CustomerPoDetailScreen(
+              companyId: companyId,
+              docId: poId,
+              activeVerticalId: verticalState?.activeVerticalId ?? '',
+              activeVerticalName: verticalState?.activeVerticalName ?? '',
+              availableVerticals:
+                  verticalState?.availableVerticals ??
+                  const <ActiveVerticalOption>[],
+              canChangeVertical: verticalState?.allowAllVerticals == true,
+            );
+          },
         ),
       );
     } catch (e) {

@@ -10,6 +10,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/sales/quotations/quotation_pdf_generator.dart';
 import 'package:QUIK/modules/finance/proforma_invoice/proforma_screen.dart';
 
@@ -39,8 +40,19 @@ String _parseSafeString(dynamic val, {String fallback = '-'}) {
 
 class SalesOrderListScreen extends StatefulWidget {
   final String companyId;
+  final String activeVerticalId;
+  final String activeVerticalName;
+  final List<ActiveVerticalOption> availableVerticals;
+  final bool canChangeVertical;
 
-  const SalesOrderListScreen({super.key, required this.companyId});
+  const SalesOrderListScreen({
+    super.key,
+    required this.companyId,
+    this.activeVerticalId = '',
+    this.activeVerticalName = '',
+    this.availableVerticals = const <ActiveVerticalOption>[],
+    this.canChangeVertical = false,
+  });
 
   @override
   State<SalesOrderListScreen> createState() => _SalesOrderListScreenState();
@@ -146,6 +158,12 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
           .collection('companies')
           .doc(widget.companyId)
           .collection('sales_orders');
+      if (widget.activeVerticalId.trim().isNotEmpty) {
+        query = query.where(
+          'verticalId',
+          isEqualTo: widget.activeVerticalId.trim(),
+        );
+      }
 
       if (_selectedStatus != 'All') {
         query = query.where('status', isEqualTo: _selectedStatus.toLowerCase());
@@ -512,7 +530,9 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
   }
 
   Future<void> _handlePOUpload(String docId) async {
+    var progressDialogOpen = false;
     try {
+      final docRef = await _activeOrderReference(docId);
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
@@ -539,6 +559,7 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
         builder: (ctx) =>
             const Center(child: CircularProgressIndicator(color: _zPrimary)),
       );
+      progressDialogOpen = true;
 
       Uint8List fileBytes;
       String fileName = file.name;
@@ -584,12 +605,6 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
       final snapshot = await uploadTask;
       final downloadUrl = await snapshot.ref.getDownloadURL();
 
-      final docRef = FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('sales_orders')
-          .doc(docId);
-
       final user = FirebaseAuth.instance.currentUser;
       final currentUserName = user != null
           ? await _getUserName(user.uid)
@@ -614,7 +629,10 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
         ]),
       });
 
-      if (mounted) Navigator.pop(context);
+      if (mounted && progressDialogOpen) {
+        Navigator.pop(context);
+        progressDialogOpen = false;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Purchase Order uploaded successfully'),
@@ -624,7 +642,7 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
 
       _fetchInitialData();
     } catch (e) {
-      if (mounted) Navigator.pop(context);
+      if (mounted && progressDialogOpen) Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to upload PO: $e'),
@@ -657,11 +675,7 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
     String logNote,
   ) async {
     try {
-      final docRef = FirebaseFirestore.instance
-          .collection('companies')
-          .doc(widget.companyId)
-          .collection('sales_orders')
-          .doc(docId);
+      final docRef = await _activeOrderReference(docId);
 
       final user = FirebaseAuth.instance.currentUser;
       final currentUserName = user != null
@@ -690,6 +704,64 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
         ),
       );
     }
+  }
+
+  Future<DocumentReference<Map<String, dynamic>>> _activeOrderReference(
+    String docId,
+  ) async {
+    final reference = FirebaseFirestore.instance
+        .collection('companies')
+        .doc(widget.companyId)
+        .collection('sales_orders')
+        .doc(docId);
+    final activeVerticalId = widget.activeVerticalId.trim();
+    if (activeVerticalId.isEmpty) return reference;
+
+    final snapshot = await reference.get();
+    final recordVerticalId = (snapshot.data()?['verticalId'] ?? '')
+        .toString()
+        .trim();
+    if (!snapshot.exists || recordVerticalId != activeVerticalId) {
+      throw StateError(
+        'This Sales Order does not belong to the active vertical.',
+      );
+    }
+    return reference;
+  }
+
+  Future<void> _assignOrderVertical(
+    QueryDocumentSnapshot<Map<String, dynamic>> order,
+  ) async {
+    if (!widget.canChangeVertical || widget.availableVerticals.isEmpty) return;
+    final selected = await showDialog<ActiveVerticalOption>(
+      context: context,
+      builder: (dialogContext) => SimpleDialog(
+        title: const Text('Assign Business Vertical'),
+        children: widget.availableVerticals
+            .map(
+              (vertical) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(dialogContext, vertical),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text(vertical.name),
+                ),
+              ),
+            )
+            .toList(growable: false),
+      ),
+    );
+    if (selected == null) return;
+
+    await order.reference.update({
+      'verticalId': selected.id,
+      'verticalName': selected.name,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await _fetchInitialData();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Sales Order moved to ${selected.name}.')),
+    );
   }
 
   void _showApprovalDialog(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
@@ -1301,6 +1373,8 @@ class _SalesOrderListScreenState extends State<SalesOrderListScreen> {
                           },
                           onCreateProformaTap: () =>
                               _createProformaInvoice(data),
+                          canAssignVertical: widget.canChangeVertical,
+                          onAssignVertical: () => _assignOrderVertical(doc),
                         );
                       },
                     ),
@@ -1322,6 +1396,8 @@ class _SalesOrderCard extends StatelessWidget {
   final VoidCallback onUploadPOTap;
   final VoidCallback onViewPOTap;
   final VoidCallback onCreateProformaTap;
+  final bool canAssignVertical;
+  final VoidCallback onAssignVertical;
 
   const _SalesOrderCard({
     super.key,
@@ -1334,6 +1410,8 @@ class _SalesOrderCard extends StatelessWidget {
     required this.onUploadPOTap,
     required this.onViewPOTap,
     required this.onCreateProformaTap,
+    required this.canAssignVertical,
+    required this.onAssignVertical,
   });
 
   @override
@@ -1501,6 +1579,7 @@ class _SalesOrderCard extends StatelessWidget {
                       if (value == 'view_po') onViewPOTap();
                       if (value == 'upload_po') onUploadPOTap();
                       if (value == 'create_proforma') onCreateProformaTap();
+                      if (value == 'assign_vertical') onAssignVertical();
                     },
                     itemBuilder: (BuildContext context) => [
                       const PopupMenuItem(
@@ -1534,6 +1613,12 @@ class _SalesOrderCard extends StatelessWidget {
                         child: Text('Create Proforma Invoice'),
                       ),
                       const PopupMenuDivider(),
+                      if (canAssignVertical)
+                        const PopupMenuItem(
+                          value: 'assign_vertical',
+                          child: Text('Assign Vertical'),
+                        ),
+                      if (canAssignVertical) const PopupMenuDivider(),
                       if (canApprove)
                         const PopupMenuItem(
                           value: 'approve',
@@ -1580,6 +1665,11 @@ class _SalesOrderCard extends StatelessWidget {
                     icon: Icons.tag_outlined,
                     text:
                         'Ref: ${_parseSafeString(data['referenceQuotationId'] ?? data['quotationId'])}',
+                  ),
+                if (_parseSafeString(data['verticalName']).isNotEmpty)
+                  _InlineInfo(
+                    icon: Icons.account_tree_outlined,
+                    text: _parseSafeString(data['verticalName']),
                   ),
                 _InlineInfo(
                   icon: Icons.currency_rupee_outlined,

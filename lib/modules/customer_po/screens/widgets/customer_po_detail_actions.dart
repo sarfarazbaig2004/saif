@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/modules/customer_po/screens/customer_po_form_screen.dart';
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/customer_po/screens/form_services/customer_po_record_status_service.dart';
 import 'package:QUIK/modules/production/core/production_firestore_utils.dart';
 import 'package:QUIK/modules/production/job_cards/models/job_card_model.dart';
@@ -11,14 +12,23 @@ import 'package:QUIK/modules/sales/shared/constants/sales_collections.dart';
 class CustomerPoDetailActions extends StatelessWidget {
   final String companyId;
   final String docId;
+  final String activeVerticalId;
+  final String activeVerticalName;
+  final List<ActiveVerticalOption> availableVerticals;
+  final bool canChangeVertical;
 
   const CustomerPoDetailActions({
     super.key,
     required this.companyId,
     required this.docId,
+    this.activeVerticalId = '',
+    this.activeVerticalName = '',
+    this.availableVerticals = const <ActiveVerticalOption>[],
+    this.canChangeVertical = false,
   });
 
   Future<void> _deleteCustomerPo(BuildContext context) async {
+    if (!await _canMutatePo(context)) return;
     await CustomerPoRecordStatusService.deleteForTesting(
       companyId: companyId,
       docId: docId,
@@ -43,6 +53,7 @@ class CustomerPoDetailActions extends StatelessWidget {
       if (po == null) {
         throw StateError('Customer PO not found.');
       }
+      _verifyActiveVertical(po);
 
       final repository = JobCardRepository(tenantId: companyId);
       final jobCardId = repository.newJobCardId();
@@ -172,6 +183,57 @@ class CustomerPoDetailActions extends StatelessWidget {
     return value?.toString().trim() ?? '';
   }
 
+  Future<bool> _canMutatePo(BuildContext context) async {
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('companies')
+          .doc(companyId)
+          .collection(SalesCollections.customerPos)
+          .doc(docId)
+          .get();
+      final data = snapshot.data();
+      if (data == null) throw StateError('Customer PO not found.');
+      _verifyActiveVertical(data);
+      return true;
+    } catch (error) {
+      if (!context.mounted) return false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Bad state: ', '')),
+        ),
+      );
+      return false;
+    }
+  }
+
+  void _verifyActiveVertical(Map<String, dynamic> data) {
+    final activeId = activeVerticalId.trim();
+    if (activeId.isEmpty) return;
+    final recordId = (data['verticalId'] ?? '').toString().trim();
+    if (recordId != activeId) {
+      throw StateError(
+        'This Customer PO does not belong to the active vertical.',
+      );
+    }
+  }
+
+  Future<void> _openEditor(BuildContext context) async {
+    if (!await _canMutatePo(context) || !context.mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CustomerPoFormScreen(
+          companyId: companyId,
+          existingDocId: docId,
+          activeVerticalId: activeVerticalId,
+          activeVerticalName: activeVerticalName,
+          availableVerticals: availableVerticals,
+          canChangeVertical: canChangeVertical,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -184,15 +246,7 @@ class CustomerPoDetailActions extends StatelessWidget {
         IconButton(
           icon: const Icon(Icons.edit_outlined),
           tooltip: 'Edit PO',
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => CustomerPoFormScreen(
-                companyId: companyId,
-                existingDocId: docId,
-              ),
-            ),
-          ),
+          onPressed: () => _openEditor(context),
         ),
         PopupMenuButton<String>(
           onSelected: (value) {

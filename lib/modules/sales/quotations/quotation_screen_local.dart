@@ -1584,10 +1584,18 @@ class _QuotationScreenLocalState extends State<QuotationScreenLocal> {
             currentValue: poNumber,
           );
       final poItems = _items.map(_quotationItemToCustomerPoItem).toList();
+      final verticalId = (_selectedVerticalId ?? '').trim();
+      if (verticalId.isEmpty) {
+        throw Exception(
+          'Assign a business vertical to this quotation before conversion.',
+        );
+      }
 
       final po = CustomerPoModel(
         id: poId,
         companyId: _tenantId,
+        verticalId: verticalId,
+        verticalName: _selectedVerticalName.trim(),
         internalPoNo: internalPoNo,
         customerPoNumber: '',
         linkedQuotationId: widget.quotationId ?? '',
