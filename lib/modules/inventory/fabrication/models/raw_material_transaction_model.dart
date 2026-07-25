@@ -80,6 +80,8 @@ extension RawMaterialTransactionTypeX on RawMaterialTransactionType {
 
 class RawMaterialTransactionModel {
   final String transactionId;
+  final String verticalId;
+  final String verticalName;
   final RawMaterialTransactionType transactionType;
   final DateTime? transactionDate;
   final String materialId;
@@ -106,6 +108,8 @@ class RawMaterialTransactionModel {
 
   const RawMaterialTransactionModel({
     required this.transactionId,
+    this.verticalId = '',
+    this.verticalName = '',
     required this.transactionType,
     this.transactionDate,
     required this.materialId,
@@ -136,6 +140,8 @@ class RawMaterialTransactionModel {
   Map<String, dynamic> toFirestore() {
     return {
       'transactionId': transactionId,
+      'verticalId': verticalId,
+      'verticalName': verticalName,
       'transactionType': transactionType.key,
       'transactionDate': transactionDate == null
           ? null
@@ -177,6 +183,8 @@ class RawMaterialTransactionModel {
     );
     return RawMaterialTransactionModel(
       transactionId: (data['transactionId'] ?? snapshot.id).toString(),
+      verticalId: (data['verticalId'] ?? '').toString(),
+      verticalName: (data['verticalName'] ?? data['vertical'] ?? '').toString(),
       transactionType: type,
       transactionDate: dateTimeFromValue(
         data['transactionDate'] ?? data['inwardDate'] ?? data['issueDate'],

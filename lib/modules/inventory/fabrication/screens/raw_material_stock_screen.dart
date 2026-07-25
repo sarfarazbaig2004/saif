@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_stock_summary_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/repositories/fabrication_inventory_repository.dart';
 import 'package:QUIK/modules/inventory/fabrication/widgets/fabrication_inventory_flow_card.dart';
@@ -47,7 +48,12 @@ class _FabricationRawMaterialStockScreenState
       return const Center(child: Text('Select a company workspace first.'));
     }
 
-    final repository = FabricationInventoryRepository(tenantId: activeTenantId);
+    final verticalState = ActiveVerticalScope.maybeOf(context);
+    final repository = FabricationInventoryRepository(
+      tenantId: activeTenantId,
+      verticalId: verticalState?.activeVerticalId ?? '',
+      verticalName: verticalState?.activeVerticalName ?? '',
+    );
 
     return StreamBuilder<List<RawMaterialStockSummaryModel>>(
       stream: repository.watchStockSummary(),
@@ -120,6 +126,7 @@ class _FabricationRawMaterialStockScreenState
     final fields = [
       row.materialCode,
       row.materialDescription,
+      row.verticalName,
       row.grade,
       row.lengthMm.toString(),
       row.rawMaterialCategory,
@@ -379,6 +386,7 @@ class _LiveStockTable extends StatelessWidget {
                 dataRowMinHeight: 44,
                 dataRowMaxHeight: 58,
                 columns: const [
+                  DataColumn(label: Text('Vertical')),
                   DataColumn(label: Text('Material Code')),
                   DataColumn(label: Text('Description / Thickness')),
                   DataColumn(label: Text('Grade / IS')),
@@ -402,6 +410,13 @@ class _LiveStockTable extends StatelessWidget {
                     .map((row) {
                       return DataRow(
                         cells: [
+                          DataCell(
+                            Text(
+                              row.verticalName.isEmpty
+                                  ? 'Not Assigned'
+                                  : row.verticalName,
+                            ),
+                          ),
                           DataCell(
                             Text(
                               row.materialCode.isEmpty ? '-' : row.materialCode,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_inward_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/repositories/fabrication_inventory_repository.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_inward_form_screen.dart';
@@ -28,7 +29,17 @@ class FabricationMaterialInwardScreen extends StatelessWidget {
       return const Center(child: Text('Select a company workspace first.'));
     }
 
-    final repository = FabricationInventoryRepository(tenantId: activeTenantId);
+    final verticalState = ActiveVerticalScope.maybeOf(context);
+    final activeVerticalId = verticalState?.activeVerticalId ?? '';
+    final activeVerticalName = verticalState?.activeVerticalName ?? '';
+    final repository = FabricationInventoryRepository(
+      tenantId: activeTenantId,
+      verticalId: activeVerticalId,
+      verticalName: activeVerticalName,
+    );
+    final mustSelectVertical =
+        verticalState?.allowAllVerticals == true &&
+        !verticalState!.isDataScoped;
 
     return ProductionListScaffold<RawMaterialInwardModel>(
       title: purchaseView ? 'GRN / Material Receipt' : 'Raw Material Inward',
@@ -50,20 +61,35 @@ class FabricationMaterialInwardScreen extends StatelessWidget {
           ? 'Create a GRN whenever raw material reaches the factory gate or store. This should be the transaction that increases available stock.'
           : 'Start here when raw material is unloaded at the factory. Each inward entry should represent a supplier receipt so stock can later be matched with the live raw material register.',
       headerAction: FilledButton.icon(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => MaterialInwardFormScreen(
-              tenantId: activeTenantId,
-              purchaseView: purchaseView,
+        onPressed: () {
+          if (mustSelectVertical) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Select a business vertical before creating a receipt.',
+                ),
+              ),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MaterialInwardFormScreen(
+                tenantId: activeTenantId,
+                verticalId: activeVerticalId,
+                verticalName: activeVerticalName,
+                purchaseView: purchaseView,
+              ),
             ),
-          ),
-        ),
+          );
+        },
         icon: const Icon(Icons.add),
         label: Text(purchaseView ? 'New GRN' : 'New Inward'),
       ),
       itemBuilder: (context, item) {
         final subtitle = [
+          if (item.verticalName.isNotEmpty) item.verticalName,
           if (item.inwardDate != null) _formatDate(item.inwardDate!),
           if (item.supplierName.isNotEmpty) item.supplierName,
           if (item.challanNo.isNotEmpty) 'Challan ${item.challanNo}',

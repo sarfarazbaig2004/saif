@@ -4,6 +4,8 @@ import 'package:QUIK/modules/production/core/production_firestore_utils.dart';
 
 class RawMaterialStockSummaryModel {
   final String itemId;
+  final String verticalId;
+  final String verticalName;
   final String materialId;
   final String materialCode;
   final String materialDescription;
@@ -30,6 +32,8 @@ class RawMaterialStockSummaryModel {
 
   const RawMaterialStockSummaryModel({
     required this.itemId,
+    this.verticalId = '',
+    this.verticalName = '',
     required this.materialId,
     required this.materialCode,
     required this.materialDescription,
@@ -62,6 +66,8 @@ class RawMaterialStockSummaryModel {
 
     return RawMaterialStockSummaryModel(
       itemId: (data['itemId'] ?? snapshot.id).toString(),
+      verticalId: (data['verticalId'] ?? '').toString(),
+      verticalName: (data['verticalName'] ?? data['vertical'] ?? '').toString(),
       materialId: (data['materialId'] ?? '').toString(),
       materialCode: (data['materialCode'] ?? '').toString(),
       materialDescription:

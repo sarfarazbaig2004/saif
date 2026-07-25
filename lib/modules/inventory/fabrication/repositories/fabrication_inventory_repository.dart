@@ -16,10 +16,20 @@ class FabricationInventoryRepository {
   FabricationInventoryRepository({
     FirebaseFirestore? firestore,
     required this.tenantId,
-  }) : _firestore = firestore ?? FirebaseFirestore.instance;
+    String verticalId = '',
+    String verticalName = '',
+    this.canManageAllVerticals = false,
+  }) : verticalId = verticalId.trim(),
+       verticalName = verticalName.trim(),
+       _firestore = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _firestore;
   final String tenantId;
+  final String verticalId;
+  final String verticalName;
+  final bool canManageAllVerticals;
+
+  bool get isVerticalScoped => verticalId.isNotEmpty;
 
   DocumentReference<Map<String, dynamic>> get _tenantRef {
     return TenantFirestore(
@@ -80,19 +90,30 @@ class FabricationInventoryRepository {
   }
 
   Stream<List<RawMaterialModel>> watchRawMaterials({bool activeOnly = false}) {
-    return _materialsRef
-        .orderBy('materialCode')
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-              .map(RawMaterialModel.fromFirestore)
-              .where((material) => !activeOnly || material.isActive)
-              .toList(growable: false),
-        );
+    final snapshots = isVerticalScoped
+        ? _materialsRef.where('verticalId', isEqualTo: verticalId).snapshots()
+        : _materialsRef.orderBy('materialCode').snapshots();
+    return snapshots.map((snapshot) {
+      final materials = snapshot.docs
+          .map(RawMaterialModel.fromFirestore)
+          .where((material) => !activeOnly || material.isActive)
+          .toList();
+      materials.sort(
+        (a, b) => a.materialCode.toLowerCase().compareTo(
+          b.materialCode.toLowerCase(),
+        ),
+      );
+      return materials;
+    });
   }
 
   Stream<List<RawMaterialStockSummaryModel>> watchStockSummary() {
-    return _transactionsRef.snapshots().map((snapshot) {
+    final snapshots = isVerticalScoped
+        ? _transactionsRef
+              .where('verticalId', isEqualTo: verticalId)
+              .snapshots()
+        : _transactionsRef.snapshots();
+    return snapshots.map((snapshot) {
       final transactions = snapshot.docs
           .map(RawMaterialTransactionModel.fromFirestore)
           .toList(growable: false);
@@ -101,7 +122,11 @@ class FabricationInventoryRepository {
   }
 
   Future<List<RawMaterialStockSummaryModel>> fetchStockSummary() async {
-    final snapshot = await _transactionsRef.get();
+    final snapshot = isVerticalScoped
+        ? await _transactionsRef
+              .where('verticalId', isEqualTo: verticalId)
+              .get()
+        : await _transactionsRef.get();
     final transactions = snapshot.docs
         .map(RawMaterialTransactionModel.fromFirestore)
         .toList(growable: false);
@@ -113,18 +138,28 @@ class FabricationInventoryRepository {
     int limit = 50,
   }) {
     final fetchLimit = type == null ? limit : limit * 4;
-    return _transactionsRef
-        .orderBy('transactionDate', descending: true)
-        .limit(fetchLimit)
-        .snapshots()
-        .map((snapshot) {
-          final rows = snapshot.docs
-              .map(RawMaterialTransactionModel.fromFirestore)
-              .where((row) => type == null || row.transactionType == type)
-              .take(limit)
-              .toList(growable: false);
-          return rows;
-        });
+    final snapshots = isVerticalScoped
+        ? _transactionsRef
+              .where('verticalId', isEqualTo: verticalId)
+              .snapshots()
+        : _transactionsRef
+              .orderBy('transactionDate', descending: true)
+              .limit(fetchLimit)
+              .snapshots();
+    return snapshots.map((snapshot) {
+      final rows = snapshot.docs
+          .map(RawMaterialTransactionModel.fromFirestore)
+          .where((row) => type == null || row.transactionType == type)
+          .toList();
+      rows.sort((a, b) {
+        final aDate =
+            a.transactionDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bDate =
+            b.transactionDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDate.compareTo(aDate);
+      });
+      return rows.take(limit).toList(growable: false);
+    });
   }
 
   Stream<List<RawMaterialInwardModel>> watchInwardEntries({int limit = 50}) {
@@ -136,6 +171,8 @@ class FabricationInventoryRepository {
           .map(
             (row) => RawMaterialInwardModel(
               inwardId: row.transactionId,
+              verticalId: row.verticalId,
+              verticalName: row.verticalName,
               inwardDate: row.transactionDate,
               supplierName: row.partyOrProcess,
               challanNo: row.referenceNo,
@@ -161,6 +198,8 @@ class FabricationInventoryRepository {
           .map(
             (row) => RawMaterialIssueModel(
               issueId: row.transactionId,
+              verticalId: row.verticalId,
+              verticalName: row.verticalName,
               issueDate: row.transactionDate,
               issuedTo: row.partyOrProcess,
               workOrderId: row.workOrderId,
@@ -213,23 +252,113 @@ class FabricationInventoryRepository {
 
   String newPurchaseBillId() => _purchaseBillRef.doc().id;
 
-  Future<void> saveRawMaterial(RawMaterialModel material) {
+  Future<void> saveRawMaterial(RawMaterialModel material) async {
     final materialId = material.materialId.trim().isEmpty
         ? newMaterialId()
         : material.materialId.trim();
-    return _materialsRef.doc(materialId).set({
+    final materialRef = _materialsRef.doc(materialId);
+    final effectiveVerticalId = canManageAllVerticals
+        ? material.verticalId.trim()
+        : isVerticalScoped
+        ? verticalId
+        : material.verticalId.trim();
+    final effectiveVerticalName = canManageAllVerticals
+        ? material.verticalName.trim()
+        : isVerticalScoped
+        ? verticalName
+        : material.verticalName.trim();
+
+    if ((canManageAllVerticals || isVerticalScoped) &&
+        effectiveVerticalId.isEmpty) {
+      throw StateError('Select a business vertical before saving this item.');
+    }
+
+    final existing = await materialRef.get();
+    final existingVerticalId = (existing.data()?['verticalId'] ?? '')
+        .toString()
+        .trim();
+    if (isVerticalScoped &&
+        !canManageAllVerticals &&
+        existing.exists &&
+        existingVerticalId != verticalId) {
+      throw StateError(
+        'This item does not belong to the active business vertical.',
+      );
+    }
+
+    await materialRef.set({
       ...material.toFirestore(),
       'materialId': materialId,
+      'verticalId': effectiveVerticalId,
+      'verticalName': effectiveVerticalName,
       'companyId': tenantId,
       'tenantId': tenantId,
     }, SetOptions(merge: true));
+
+    if (canManageAllVerticals &&
+        existing.exists &&
+        existingVerticalId != effectiveVerticalId) {
+      await _reassignMaterialLedger(
+        materialId: materialId,
+        verticalId: effectiveVerticalId,
+        verticalName: effectiveVerticalName,
+      );
+    }
   }
 
-  Future<void> deleteRawMaterial(String materialId) {
-    return _materialsRef.doc(materialId.trim()).set({
+  Future<void> _reassignMaterialLedger({
+    required String materialId,
+    required String verticalId,
+    required String verticalName,
+  }) async {
+    final snapshots = await Future.wait([
+      _transactionsRef.where('materialId', isEqualTo: materialId).get(),
+      _inwardRef.where('materialId', isEqualTo: materialId).get(),
+      _issueRef.where('materialId', isEqualTo: materialId).get(),
+    ]);
+    final references = snapshots
+        .expand((snapshot) => snapshot.docs)
+        .map((doc) => doc.reference)
+        .toList(growable: false);
+
+    const maximumWritesPerBatch = 450;
+    for (var offset = 0; offset < references.length;) {
+      final batch = _firestore.batch();
+      final end = (offset + maximumWritesPerBatch)
+          .clamp(0, references.length)
+          .toInt();
+      for (var index = offset; index < end; index += 1) {
+        batch.update(references[index], {
+          'verticalId': verticalId,
+          'verticalName': verticalName,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      }
+      await batch.commit();
+      offset = end;
+    }
+  }
+
+  Future<void> deleteRawMaterial(String materialId) async {
+    final materialRef = _materialsRef.doc(materialId.trim());
+    if (isVerticalScoped) {
+      final existing = await materialRef.get();
+      final existingVerticalId = (existing.data()?['verticalId'] ?? '')
+          .toString()
+          .trim();
+      if (!existing.exists || existingVerticalId != verticalId) {
+        throw StateError(
+          'This item does not belong to the active business vertical.',
+        );
+      }
+    }
+
+    await materialRef.set({
       'isActive': false,
       'deletedAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
+      if (isVerticalScoped) 'verticalId': verticalId,
+      if (isVerticalScoped) 'verticalName': verticalName,
       'companyId': tenantId,
       'tenantId': tenantId,
     }, SetOptions(merge: true));
@@ -239,6 +368,8 @@ class FabricationInventoryRepository {
     return saveInventoryTransaction(
       RawMaterialTransactionModel(
         transactionId: entry.inwardId,
+        verticalId: entry.verticalId,
+        verticalName: entry.verticalName,
         transactionType: RawMaterialTransactionType.inward,
         transactionDate: entry.inwardDate,
         materialId: '',
@@ -274,6 +405,8 @@ class FabricationInventoryRepository {
     return saveInventoryTransaction(
       RawMaterialTransactionModel(
         transactionId: entry.issueId,
+        verticalId: entry.verticalId,
+        verticalName: entry.verticalName,
         transactionType: RawMaterialTransactionType.issue,
         transactionDate: entry.issueDate,
         materialId: '',
@@ -317,7 +450,11 @@ class FabricationInventoryRepository {
 
     await _firestore.runTransaction((transaction) async {
       if (normalizedEntry.transactionType.stockSign < 0) {
-        final stockSnapshot = await _transactionsRef.get();
+        final stockSnapshot = isVerticalScoped
+            ? await _transactionsRef
+                  .where('verticalId', isEqualTo: verticalId)
+                  .get()
+            : await _transactionsRef.get();
         final existing = stockSnapshot.docs
             .where((doc) => doc.id != transactionId)
             .map(RawMaterialTransactionModel.fromFirestore)
@@ -396,6 +533,8 @@ class FabricationInventoryRepository {
 
     return RawMaterialTransactionModel(
       transactionId: transactionId,
+      verticalId: isVerticalScoped ? verticalId : entry.verticalId.trim(),
+      verticalName: isVerticalScoped ? verticalName : entry.verticalName.trim(),
       transactionType: entry.transactionType,
       transactionDate: entry.transactionDate ?? DateTime.now(),
       materialId: entry.materialId,
@@ -428,6 +567,7 @@ class FabricationInventoryRepository {
     RawMaterialTransactionModel a,
     RawMaterialTransactionModel b,
   ) {
+    if (a.verticalId.trim() != b.verticalId.trim()) return false;
     if (a.materialId.trim().isNotEmpty && b.materialId.trim().isNotEmpty) {
       return a.materialId == b.materialId &&
           _normalizeText(a.plantName) == _normalizeText(b.plantName) &&
@@ -447,13 +587,18 @@ class FabricationInventoryRepository {
     final Map<String, _SummaryAccumulator> rows = {};
 
     for (final transaction in transactions) {
+      final verticalKey = transaction.verticalId.trim().isEmpty
+          ? 'unassigned'
+          : transaction.verticalId.trim();
       final key = transaction.materialId.trim().isNotEmpty
           ? [
+              verticalKey,
               transaction.materialId,
               _normalizeText(transaction.plantName),
               _normalizeText(transaction.warehouseName),
             ].join('-')
           : [
+              verticalKey,
               _summaryItemId(
                 materialDescription: transaction.materialDescription,
                 grade: transaction.grade,
@@ -466,6 +611,8 @@ class FabricationInventoryRepository {
         key,
         () => _SummaryAccumulator(
           itemId: key,
+          verticalId: transaction.verticalId,
+          verticalName: transaction.verticalName,
           materialId: transaction.materialId,
           materialCode: transaction.materialCode,
           materialDescription: transaction.materialDescription,
@@ -497,6 +644,8 @@ class FabricationInventoryRepository {
 class _SummaryAccumulator {
   _SummaryAccumulator({
     required this.itemId,
+    required this.verticalId,
+    required this.verticalName,
     required this.materialId,
     required this.materialCode,
     required this.materialDescription,
@@ -511,6 +660,8 @@ class _SummaryAccumulator {
   });
 
   final String itemId;
+  final String verticalId;
+  String verticalName;
   final String materialId;
   String materialCode;
   String materialDescription;
@@ -532,6 +683,9 @@ class _SummaryAccumulator {
   DateTime? lastUpdatedAt;
 
   void apply(RawMaterialTransactionModel transaction) {
+    verticalName = verticalName.isEmpty
+        ? transaction.verticalName
+        : verticalName;
     materialCode = materialCode.isEmpty
         ? transaction.materialCode
         : materialCode;
@@ -584,6 +738,8 @@ class _SummaryAccumulator {
         openingKg + inwardKg + returnKg + adjustmentKg - issueKg - scrapKg;
     return RawMaterialStockSummaryModel(
       itemId: itemId,
+      verticalId: verticalId,
+      verticalName: verticalName,
       materialId: materialId,
       materialCode: materialCode,
       materialDescription: materialDescription,

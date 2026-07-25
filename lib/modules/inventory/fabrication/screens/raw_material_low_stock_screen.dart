@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/theme/app_theme.dart';
 import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_stock_summary_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/repositories/fabrication_inventory_repository.dart';
@@ -27,8 +28,14 @@ class _RawMaterialLowStockScreenState extends State<RawMaterialLowStockScreen> {
     return selectedTenantId.isNotEmpty ? selectedTenantId : widget.tenantId;
   }
 
-  FabricationInventoryRepository get _repository =>
-      FabricationInventoryRepository(tenantId: _tenantId);
+  FabricationInventoryRepository get _repository {
+    final verticalState = ActiveVerticalScope.maybeOf(context);
+    return FabricationInventoryRepository(
+      tenantId: _tenantId,
+      verticalId: verticalState?.activeVerticalId ?? '',
+      verticalName: verticalState?.activeVerticalName ?? '',
+    );
+  }
 
   @override
   void initState() {
@@ -126,6 +133,7 @@ class _RawMaterialLowStockScreenState extends State<RawMaterialLowStockScreen> {
     return [
       row.materialCode,
       row.materialDescription,
+      row.verticalName,
       row.grade,
       row.rawMaterialCategory,
       row.plantName,
@@ -268,6 +276,7 @@ class _LowStockTable extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: DataTable(
           columns: const [
+            DataColumn(label: Text('Vertical')),
             DataColumn(label: Text('Material')),
             DataColumn(label: Text('Grade')),
             DataColumn(label: Text('Plant')),
@@ -281,6 +290,13 @@ class _LowStockTable extends StatelessWidget {
                 final reorderLevel = material?.reorderLevel ?? row.reorderLevel;
                 return DataRow(
                   cells: [
+                    DataCell(
+                      Text(
+                        row.verticalName.isEmpty
+                            ? 'Not Assigned'
+                            : row.verticalName,
+                      ),
+                    ),
                     DataCell(Text(row.materialDescription)),
                     DataCell(Text(row.grade)),
                     DataCell(Text(row.plantName)),

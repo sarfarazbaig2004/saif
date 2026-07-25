@@ -4,6 +4,8 @@ import 'package:QUIK/modules/production/core/production_firestore_utils.dart';
 
 class RawMaterialIssueModel {
   final String issueId;
+  final String verticalId;
+  final String verticalName;
   final DateTime? issueDate;
   final String issuedTo;
   final String workOrderId;
@@ -16,6 +18,8 @@ class RawMaterialIssueModel {
 
   const RawMaterialIssueModel({
     required this.issueId,
+    this.verticalId = '',
+    this.verticalName = '',
     this.issueDate,
     required this.issuedTo,
     required this.workOrderId,
@@ -30,6 +34,8 @@ class RawMaterialIssueModel {
   Map<String, dynamic> toFirestore() {
     return {
       'issueId': issueId,
+      'verticalId': verticalId,
+      'verticalName': verticalName,
       'issueDate': issueDate == null ? null : Timestamp.fromDate(issueDate!),
       'issuedTo': issuedTo,
       'workOrderId': workOrderId,
@@ -49,6 +55,8 @@ class RawMaterialIssueModel {
     final data = snapshot.data() ?? const <String, dynamic>{};
     return RawMaterialIssueModel(
       issueId: (data['issueId'] ?? snapshot.id).toString(),
+      verticalId: (data['verticalId'] ?? '').toString(),
+      verticalName: (data['verticalName'] ?? data['vertical'] ?? '').toString(),
       issueDate: dateTimeFromValue(data['issueDate']),
       issuedTo: (data['issuedTo'] ?? '').toString(),
       workOrderId: (data['workOrderId'] ?? '').toString(),

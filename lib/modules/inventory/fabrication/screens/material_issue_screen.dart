@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/tenancy/tenant_context.dart';
+import 'package:QUIK/core/verticals/active_vertical_scope.dart';
 import 'package:QUIK/modules/inventory/fabrication/models/raw_material_issue_model.dart';
 import 'package:QUIK/modules/inventory/fabrication/repositories/fabrication_inventory_repository.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_issue_form_screen.dart';
@@ -22,7 +23,17 @@ class FabricationMaterialIssueScreen extends StatelessWidget {
       return const Center(child: Text('Select a company workspace first.'));
     }
 
-    final repository = FabricationInventoryRepository(tenantId: activeTenantId);
+    final verticalState = ActiveVerticalScope.maybeOf(context);
+    final activeVerticalId = verticalState?.activeVerticalId ?? '';
+    final activeVerticalName = verticalState?.activeVerticalName ?? '';
+    final repository = FabricationInventoryRepository(
+      tenantId: activeTenantId,
+      verticalId: activeVerticalId,
+      verticalName: activeVerticalName,
+    );
+    final mustSelectVertical =
+        verticalState?.allowAllVerticals == true &&
+        !verticalState!.isDataScoped;
 
     return ProductionListScaffold<RawMaterialIssueModel>(
       title: 'Raw Material Issue',
@@ -39,17 +50,34 @@ class FabricationMaterialIssueScreen extends StatelessWidget {
       emptyMessage:
           'Record an issue whenever steel is given to the shop floor. This keeps stock accurate and helps track how much material has been consumed against jobs or production stages.',
       headerAction: FilledButton.icon(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => MaterialIssueFormScreen(tenantId: activeTenantId),
-          ),
-        ),
+        onPressed: () {
+          if (mustSelectVertical) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Select a business vertical before creating an issue.',
+                ),
+              ),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MaterialIssueFormScreen(
+                tenantId: activeTenantId,
+                verticalId: activeVerticalId,
+                verticalName: activeVerticalName,
+              ),
+            ),
+          );
+        },
         icon: const Icon(Icons.add),
         label: const Text('New Issue'),
       ),
       itemBuilder: (context, item) {
         final subtitle = [
+          if (item.verticalName.isNotEmpty) item.verticalName,
           if (item.issueDate != null) _formatDate(item.issueDate!),
           if (item.issuedTo.isNotEmpty) item.issuedTo,
           if (item.workOrderId.isNotEmpty) 'WO ${item.workOrderId}',

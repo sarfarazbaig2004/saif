@@ -4,6 +4,8 @@ import 'package:QUIK/modules/production/core/production_firestore_utils.dart';
 
 class RawMaterialModel {
   final String materialId;
+  final String verticalId;
+  final String verticalName;
   final String materialCode;
   final String descriptionThickness;
   final String gradeIs;
@@ -29,6 +31,8 @@ class RawMaterialModel {
 
   const RawMaterialModel({
     required this.materialId,
+    this.verticalId = '',
+    this.verticalName = '',
     required this.materialCode,
     required this.descriptionThickness,
     required this.gradeIs,
@@ -53,9 +57,12 @@ class RawMaterialModel {
   });
 
   /// Legacy documents have no type and are always raw materials.
-  String get effectiveItemType => itemType.trim().isEmpty ? 'raw_material' : itemType;
-  String get effectiveItemCode => itemCode.trim().isEmpty ? materialCode : itemCode;
-  String get effectiveItemName => itemName.trim().isEmpty ? descriptionThickness : itemName;
+  String get effectiveItemType =>
+      itemType.trim().isEmpty ? 'raw_material' : itemType;
+  String get effectiveItemCode =>
+      itemCode.trim().isEmpty ? materialCode : itemCode;
+  String get effectiveItemName =>
+      itemName.trim().isEmpty ? descriptionThickness : itemName;
 
   String get displayName {
     if (materialCode.trim().isEmpty) return descriptionThickness;
@@ -66,6 +73,8 @@ class RawMaterialModel {
   Map<String, dynamic> toFirestore() {
     return {
       'materialId': materialId,
+      'verticalId': verticalId,
+      'verticalName': verticalName,
       'itemType': effectiveItemType,
       'itemCode': effectiveItemCode,
       'itemName': effectiveItemName,
@@ -108,6 +117,8 @@ class RawMaterialModel {
     final data = snapshot.data() ?? const <String, dynamic>{};
     return RawMaterialModel(
       materialId: (data['materialId'] ?? snapshot.id).toString(),
+      verticalId: (data['verticalId'] ?? '').toString(),
+      verticalName: (data['verticalName'] ?? data['vertical'] ?? '').toString(),
       materialCode: (data['materialCode'] ?? data['itemCode'] ?? '').toString(),
       descriptionThickness:
           (data['descriptionThickness'] ??
@@ -129,13 +140,25 @@ class RawMaterialModel {
       isActive: data['isActive'] == null ? true : data['isActive'] == true,
       itemType: (data['itemType'] ?? 'raw_material').toString(),
       itemCode: (data['itemCode'] ?? data['materialCode'] ?? '').toString(),
-      itemName: (data['itemName'] ?? data['descriptionThickness'] ?? data['materialDescription'] ?? data['description'] ?? '').toString(),
-      brandOrMake: (data['brandOrMake'] ?? data['brand'] ?? data['make'] ?? '').toString(),
+      itemName:
+          (data['itemName'] ??
+                  data['descriptionThickness'] ??
+                  data['materialDescription'] ??
+                  data['description'] ??
+                  '')
+              .toString(),
+      brandOrMake: (data['brandOrMake'] ?? data['brand'] ?? data['make'] ?? '')
+          .toString(),
       hsnCode: (data['hsnCode'] ?? '').toString(),
       gstPercent: doubleFromValue(data['gstPercent']),
-      minimumStock: doubleFromValue(data['minimumStock'] ?? data['reorderLevel']),
+      minimumStock: doubleFromValue(
+        data['minimumStock'] ?? data['reorderLevel'],
+      ),
       warehouse: (data['warehouse'] ?? data['warehouseName'] ?? '').toString(),
-      status: (data['status'] ?? (data['isActive'] == false ? 'inactive' : 'active')).toString(),
+      status:
+          (data['status'] ??
+                  (data['isActive'] == false ? 'inactive' : 'active'))
+              .toString(),
       itemDetails: Map<String, dynamic>.from(data),
     );
   }

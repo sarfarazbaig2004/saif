@@ -4,6 +4,8 @@ import 'package:QUIK/modules/production/core/production_firestore_utils.dart';
 
 class RawMaterialInwardModel {
   final String inwardId;
+  final String verticalId;
+  final String verticalName;
   final DateTime? inwardDate;
   final String supplierName;
   final String challanNo;
@@ -17,6 +19,8 @@ class RawMaterialInwardModel {
 
   const RawMaterialInwardModel({
     required this.inwardId,
+    this.verticalId = '',
+    this.verticalName = '',
     this.inwardDate,
     required this.supplierName,
     required this.challanNo,
@@ -32,6 +36,8 @@ class RawMaterialInwardModel {
   Map<String, dynamic> toFirestore() {
     return {
       'inwardId': inwardId,
+      'verticalId': verticalId,
+      'verticalName': verticalName,
       'inwardDate': inwardDate == null ? null : Timestamp.fromDate(inwardDate!),
       'supplierName': supplierName,
       'challanNo': challanNo,
@@ -52,6 +58,8 @@ class RawMaterialInwardModel {
     final data = snapshot.data() ?? const <String, dynamic>{};
     return RawMaterialInwardModel(
       inwardId: (data['inwardId'] ?? snapshot.id).toString(),
+      verticalId: (data['verticalId'] ?? '').toString(),
+      verticalName: (data['verticalName'] ?? data['vertical'] ?? '').toString(),
       inwardDate: dateTimeFromValue(data['inwardDate']),
       supplierName: (data['supplierName'] ?? '').toString(),
       challanNo: (data['challanNo'] ?? '').toString(),

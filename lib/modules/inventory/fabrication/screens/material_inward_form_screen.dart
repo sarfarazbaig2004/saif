@@ -9,11 +9,15 @@ import 'package:QUIK/modules/inventory/fabrication/services/material_inward_weig
 
 class MaterialInwardFormScreen extends StatefulWidget {
   final String tenantId;
+  final String verticalId;
+  final String verticalName;
   final bool purchaseView;
 
   const MaterialInwardFormScreen({
     super.key,
     required this.tenantId,
+    this.verticalId = '',
+    this.verticalName = '',
     this.purchaseView = false,
   });
 
@@ -49,7 +53,11 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
   }
 
   FabricationInventoryRepository get _repository =>
-      FabricationInventoryRepository(tenantId: _tenantId);
+      FabricationInventoryRepository(
+        tenantId: _tenantId,
+        verticalId: widget.verticalId,
+        verticalName: widget.verticalName,
+      );
 
   @override
   void initState() {
@@ -117,6 +125,8 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
       await _repository.saveInventoryTransaction(
         RawMaterialTransactionModel(
           transactionId: _repository.newTransactionId(),
+          verticalId: widget.verticalId,
+          verticalName: widget.verticalName,
           transactionType: RawMaterialTransactionType.inward,
           transactionDate: _inwardDate,
           materialId: material?.materialId ?? '',
@@ -209,6 +219,10 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
               return ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  if (widget.verticalId.trim().isNotEmpty) ...[
+                    _verticalContextCard(),
+                    const SizedBox(height: 12),
+                  ],
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -257,6 +271,36 @@ class _MaterialInwardFormScreenState extends State<MaterialInwardFormScreen> {
             },
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _verticalContextCard() {
+    final label = widget.verticalName.trim().isEmpty
+        ? widget.verticalId.trim()
+        : widget.verticalName.trim();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: zBlueSoft,
+        border: Border.all(color: zBlue.withValues(alpha: 0.24)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.account_tree_outlined, color: zBlue),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Business Vertical: $label',
+              style: const TextStyle(color: zText, fontWeight: FontWeight.w800),
+            ),
+          ),
+          const Text(
+            'Locked to active vertical',
+            style: TextStyle(color: zMuted, fontWeight: FontWeight.w600),
+          ),
+        ],
       ),
     );
   }
