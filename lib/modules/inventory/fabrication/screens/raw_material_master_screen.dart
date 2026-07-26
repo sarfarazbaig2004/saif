@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/core/tenancy/tenant_context.dart';
@@ -37,6 +39,10 @@ class RawMaterialMasterScreen extends StatefulWidget {
 class _RawMaterialMasterScreenState extends State<RawMaterialMasterScreen> {
   final _search = TextEditingController();
   String _query = '', _selectedType = 'all';
+  Timer? _searchDebounce;
+  Stream<List<RawMaterialModel>>? _itemsStream;
+  String _itemsStreamKey = '';
+
   String get _tenantId => context.tenant.selectedTenantId.trim().isNotEmpty
       ? context.tenant.selectedTenantId.trim()
       : widget.tenantId;
@@ -53,13 +59,12 @@ class _RawMaterialMasterScreenState extends State<RawMaterialMasterScreen> {
   @override
   void initState() {
     super.initState();
-    _search.addListener(
-      () => setState(() => _query = _search.text.trim().toLowerCase()),
-    );
+    _search.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _search.dispose();
     super.dispose();
   }
@@ -69,8 +74,9 @@ class _RawMaterialMasterScreenState extends State<RawMaterialMasterScreen> {
     if (_tenantId.isEmpty) {
       return const Center(child: Text('Select a company workspace first.'));
     }
+    _ensureItemsStream();
     return StreamBuilder<List<RawMaterialModel>>(
-      stream: _repository.watchRawMaterials(activeOnly: true),
+      stream: _itemsStream,
       builder: (context, snapshot) {
         final items = (snapshot.data ?? const <RawMaterialModel>[])
             .where(_matches)
@@ -102,6 +108,28 @@ class _RawMaterialMasterScreenState extends State<RawMaterialMasterScreen> {
         );
       },
     );
+  }
+
+  void _onSearchChanged() {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 180), () {
+      if (!mounted) return;
+      final nextQuery = _search.text.trim().toLowerCase();
+      if (nextQuery == _query) return;
+      setState(() => _query = nextQuery);
+    });
+  }
+
+  void _ensureItemsStream() {
+    final verticalState = ActiveVerticalScope.maybeOf(context);
+    final streamKey = [
+      _tenantId,
+      verticalState?.activeVerticalId ?? '',
+      verticalState?.allowAllVerticals == true,
+    ].join('|');
+    if (_itemsStream != null && _itemsStreamKey == streamKey) return;
+    _itemsStreamKey = streamKey;
+    _itemsStream = _repository.watchRawMaterials(activeOnly: true);
   }
 
   bool _matches(RawMaterialModel item) {
@@ -265,7 +293,7 @@ class _Header extends StatelessWidget {
   );
 }
 
-class _ItemTable extends StatelessWidget {
+class _ItemTable extends StatefulWidget {
   const _ItemTable({
     required this.items,
     required this.onEdit,
@@ -276,85 +304,235 @@ class _ItemTable extends StatelessWidget {
   final ValueChanged<RawMaterialModel> onDelete;
 
   @override
+  State<_ItemTable> createState() => _ItemTableState();
+}
+
+class _ItemTableState extends State<_ItemTable> {
+  static const _tableWidth = 1518.0;
+  final _horizontalController = ScrollController();
+  final _verticalController = ScrollController();
+
+  @override
+  void dispose() {
+    _horizontalController.dispose();
+    _verticalController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border.all(color: zBorder),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columnSpacing: 18,
-          columns: const [
-            DataColumn(label: Text('Vertical')),
-            DataColumn(label: Text('Item Type')),
-            DataColumn(label: Text('Item Code')),
-            DataColumn(label: Text('Item Name / Description')),
-            DataColumn(label: Text('Grade / IS')),
-            DataColumn(label: Text('UOM')),
-            DataColumn(label: Text('Category')),
-            DataColumn(label: Text('Product Family')),
-            DataColumn(label: Text('Reorder Level')),
-            DataColumn(label: Text('')),
-          ],
-          rows: items
-              .map(
-                (i) => DataRow(
-                  cells: [
-                    DataCell(
-                      Text(i.verticalName.isEmpty ? '-' : i.verticalName),
-                    ),
-                    DataCell(
-                      Text(
-                        _itemTypes[i.effectiveItemType] ?? i.effectiveItemType,
-                      ),
-                    ),
-                    DataCell(Text(i.effectiveItemCode)),
-                    DataCell(
-                      SizedBox(
-                        width: 260,
-                        child: Text(
-                          i.effectiveItemName,
-                          overflow: TextOverflow.ellipsis,
+      child: Column(
+        children: [
+          const _TableScrollHint(),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) => Scrollbar(
+                controller: _horizontalController,
+                thumbVisibility: true,
+                trackVisibility: true,
+                interactive: true,
+                notificationPredicate: (notification) =>
+                    notification.metrics.axis == Axis.horizontal,
+                child: SingleChildScrollView(
+                  controller: _horizontalController,
+                  scrollDirection: Axis.horizontal,
+                  primary: false,
+                  child: SizedBox(
+                    width: _tableWidth,
+                    height: constraints.maxHeight,
+                    child: Column(
+                      children: [
+                        const _ItemTableHeader(),
+                        const Divider(height: 1, color: zBorder),
+                        Expanded(
+                          child: Scrollbar(
+                            controller: _verticalController,
+                            thumbVisibility: true,
+                            trackVisibility: true,
+                            interactive: true,
+                            child: ListView.builder(
+                              controller: _verticalController,
+                              primary: false,
+                              itemExtent: 56,
+                              itemCount: widget.items.length,
+                              itemBuilder: (context, index) => _ItemTableRow(
+                                item: widget.items[index],
+                                onEdit: widget.onEdit,
+                                onDelete: widget.onDelete,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                      ],
                     ),
-                    DataCell(Text(i.gradeIs)),
-                    DataCell(Text(i.uom)),
-                    DataCell(Text(i.category)),
-                    DataCell(Text(i.productFamily)),
-                    DataCell(Text(_number(i.reorderLevel))),
-                    DataCell(
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            tooltip: 'Edit',
-                            onPressed: () => onEdit(i),
-                            icon: const Icon(Icons.edit_outlined),
-                          ),
-                          IconButton(
-                            tooltip: 'Delete',
-                            onPressed: () => onDelete(i),
-                            icon: const Icon(Icons.delete_outline),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              )
-              .toList(),
-        ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
 
-  static String _number(double v) =>
-      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+class _TableScrollHint extends StatelessWidget {
+  const _TableScrollHint();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 32,
+    width: double.infinity,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    color: const Color(0xFFF8FAFC),
+    child: const Row(
+      children: [
+        Icon(Icons.mouse_outlined, size: 15, color: zMuted),
+        SizedBox(width: 6),
+        Text(
+          'Mouse wheel: vertical  •  Shift + wheel or bottom bar: horizontal',
+          style: TextStyle(
+            color: zMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ItemTableHeader extends StatelessWidget {
+  const _ItemTableHeader();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 46,
+    padding: const EdgeInsets.symmetric(horizontal: 10),
+    color: const Color(0xFFF8FAFC),
+    child: const Row(
+      children: [
+        _ItemCell(text: 'Vertical', width: 150, header: true),
+        _ItemCell(text: 'Item Type', width: 160, header: true),
+        _ItemCell(text: 'Item Code', width: 130, header: true),
+        _ItemCell(text: 'Item Name / Description', width: 280, header: true),
+        _ItemCell(text: 'Grade / IS', width: 120, header: true),
+        _ItemCell(text: 'UOM', width: 80, header: true),
+        _ItemCell(text: 'Category', width: 140, header: true),
+        _ItemCell(text: 'Product Family', width: 160, header: true),
+        _ItemCell(text: 'Reorder Level', width: 120, header: true),
+        SizedBox(width: 138),
+      ],
+    ),
+  );
+}
+
+class _ItemTableRow extends StatelessWidget {
+  const _ItemTableRow({
+    required this.item,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final RawMaterialModel item;
+  final ValueChanged<RawMaterialModel> onEdit;
+  final ValueChanged<RawMaterialModel> onDelete;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(
+      border: Border(bottom: BorderSide(color: Color(0xFFE8EDF3))),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        children: [
+          _ItemCell(
+            text: item.verticalName.isEmpty ? '-' : item.verticalName,
+            width: 150,
+          ),
+          _ItemCell(
+            text: _itemTypes[item.effectiveItemType] ?? item.effectiveItemType,
+            width: 160,
+          ),
+          _ItemCell(text: item.effectiveItemCode, width: 130),
+          _ItemCell(text: item.effectiveItemName, width: 280),
+          _ItemCell(text: item.gradeIs, width: 120),
+          _ItemCell(text: item.uom, width: 80),
+          _ItemCell(text: item.category, width: 140),
+          _ItemCell(text: item.productFamily, width: 160),
+          _ItemCell(text: _number(item.reorderLevel), width: 120),
+          SizedBox(
+            width: 138,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  tooltip: 'Edit',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => onEdit(item),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+                IconButton(
+                  tooltip: 'Delete',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => onDelete(item),
+                  icon: const Icon(Icons.delete_outline),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  static String _number(double value) => value == value.roundToDouble()
+      ? value.toStringAsFixed(0)
+      : value.toStringAsFixed(2);
+}
+
+class _ItemCell extends StatelessWidget {
+  const _ItemCell({
+    required this.text,
+    required this.width,
+    this.header = false,
+  });
+
+  final String text;
+  final double width;
+  final bool header;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: width,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Tooltip(
+        message: text,
+        waitDuration: const Duration(milliseconds: 500),
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: header ? zText : const Color(0xFF334155),
+            fontSize: header ? 12 : 13,
+            fontWeight: header ? FontWeight.w800 : FontWeight.w500,
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _ItemFormDialog extends StatefulWidget {
