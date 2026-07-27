@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/auth/login/login_form_sections.dart';
@@ -10,6 +12,7 @@ class LoginFormCard extends StatelessWidget {
   final FormFieldValidator<String> validateEmail;
   final FormFieldValidator<String> validatePassword;
   final bool compactHeight;
+  final bool showProductHeader;
   final bool obscurePassword;
   final bool loading;
   final bool rememberMe;
@@ -17,6 +20,7 @@ class LoginFormCard extends StatelessWidget {
   final ValueChanged<bool?> onRememberChanged;
   final VoidCallback? onForgotPassword;
   final VoidCallback? onLogin;
+  final VoidCallback onCreateWorkspace;
   final VoidCallback onJoinWorkspace;
 
   const LoginFormCard({
@@ -27,6 +31,7 @@ class LoginFormCard extends StatelessWidget {
     required this.validateEmail,
     required this.validatePassword,
     required this.compactHeight,
+    required this.showProductHeader,
     required this.obscurePassword,
     required this.loading,
     required this.rememberMe,
@@ -34,34 +39,32 @@ class LoginFormCard extends StatelessWidget {
     required this.onRememberChanged,
     required this.onForgotPassword,
     required this.onLogin,
+    required this.onCreateWorkspace,
     required this.onJoinWorkspace,
   });
 
-  InputDecoration _input(String label, IconData icon) {
+  InputDecoration _input(String hint) {
     return InputDecoration(
-      labelText: label,
-      hintText: label,
-      prefixIcon: Icon(icon, color: zMuted, size: 20),
+      hintText: hint,
       filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
-      border: _border(zBorder),
-      enabledBorder: _border(zBorder),
-      focusedBorder: _border(zBlue, width: 1.2),
+      fillColor: Colors.white.withValues(alpha: 0.92),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 19),
+      border: _border(const Color(0xFFD7E0EB)),
+      enabledBorder: _border(const Color(0xFFD7E0EB)),
+      focusedBorder: _border(zAccent, width: 1.4),
       errorBorder: _border(Colors.red),
       focusedErrorBorder: _border(Colors.red, width: 1.2),
-      labelStyle: const TextStyle(
-        color: zMuted,
-        fontSize: 13.5,
-        fontWeight: FontWeight.w600,
+      hintStyle: const TextStyle(
+        color: Color(0xFF91A2B9),
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
       ),
-      hintStyle: const TextStyle(color: zMuted, fontSize: 13.5),
     );
   }
 
   OutlineInputBorder _border(Color color, {double width = 1}) {
     return OutlineInputBorder(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(10),
       borderSide: BorderSide(color: color, width: width),
     );
   }
@@ -69,93 +72,113 @@ class LoginFormCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 455),
-      child: Container(
-        padding: EdgeInsets.all(compactHeight ? 22 : 28),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: zBorder),
-          boxShadow: [
-            BoxShadow(
-              color: zBlue.withValues(alpha: 0.035),
-              blurRadius: 54,
-              offset: const Offset(0, 18),
+      constraints: const BoxConstraints(maxWidth: 570),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(38),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: showProductHeader
+                  ? 24
+                  : compactHeight
+                  ? 40
+                  : 60,
+              vertical: compactHeight ? 32 : 58,
             ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 30,
-              offset: const Offset(0, 18),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const LoginProductHeader(),
-              SizedBox(height: compactHeight ? 14 : 20),
-              TextFormField(
-                controller: emailController,
-                textInputAction: TextInputAction.next,
-                keyboardType: TextInputType.emailAddress,
-                autofillHints: const [
-                  AutofillHints.username,
-                  AutofillHints.email,
-                ],
-                validator: validateEmail,
-                decoration: _input('Work email', Icons.email_outlined),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FB).withValues(alpha: 0.82),
+              borderRadius: BorderRadius.circular(38),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.9),
+                width: 1.4,
               ),
-              const SizedBox(height: 14),
-              TextFormField(
-                controller: passwordController,
-                obscureText: obscurePassword,
-                textInputAction: TextInputAction.done,
-                autofillHints: const [AutofillHints.password],
-                validator: validatePassword,
-                onFieldSubmitted: (_) => onLogin?.call(),
-                decoration: _input('Password', Icons.lock_outline).copyWith(
-                  suffixIcon: IconButton(
-                    onPressed: onTogglePassword,
-                    icon: Icon(
-                      obscurePassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
-                      color: zMuted,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.13),
+                  blurRadius: 70,
+                  offset: const Offset(0, 30),
+                ),
+              ],
+            ),
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (showProductHeader) ...[
+                    const LoginProductHeader(),
+                    SizedBox(height: compactHeight ? 22 : 30),
+                  ],
+                  const Text(
+                    'Welcome back',
+                    style: TextStyle(
+                      color: zText,
+                      fontSize: 30,
+                      height: 1.15,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.7,
                     ),
                   ),
-                ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Enter your credentials to access your workspace.',
+                    style: TextStyle(
+                      color: zMuted,
+                      fontSize: 16,
+                      height: 1.5,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  SizedBox(height: compactHeight ? 26 : 42),
+                  TextFormField(
+                    controller: emailController,
+                    textInputAction: TextInputAction.next,
+                    keyboardType: TextInputType.emailAddress,
+                    autofillHints: const [
+                      AutofillHints.username,
+                      AutofillHints.email,
+                    ],
+                    validator: validateEmail,
+                    decoration: _input('name@company.com'),
+                  ),
+                  const SizedBox(height: 18),
+                  TextFormField(
+                    controller: passwordController,
+                    obscureText: obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    autofillHints: const [AutofillHints.password],
+                    validator: validatePassword,
+                    onFieldSubmitted: (_) => onLogin?.call(),
+                    decoration: _input('Password').copyWith(
+                      suffixIcon: IconButton(
+                        onPressed: onTogglePassword,
+                        icon: Icon(
+                          obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          color: const Color(0xFF91A2B9),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  LoginOptions(
+                    rememberMe: rememberMe,
+                    onRememberChanged: onRememberChanged,
+                    onForgotPassword: onForgotPassword,
+                  ),
+                  const SizedBox(height: 22),
+                  SignInButton(loading: loading, onLogin: onLogin),
+                  const SizedBox(height: 24),
+                  LoginWorkspaceLinks(
+                    onCreateWorkspace: onCreateWorkspace,
+                    onJoinWorkspace: onJoinWorkspace,
+                  ),
+                ],
               ),
-              const SizedBox(height: 10),
-              LoginOptions(
-                rememberMe: rememberMe,
-                onRememberChanged: onRememberChanged,
-                onForgotPassword: onForgotPassword,
-              ),
-              const SizedBox(height: 8),
-              SignInButton(loading: loading, onLogin: onLogin),
-              const SizedBox(height: 10),
-              JoinWorkspaceButton(onPressed: onJoinWorkspace),
-              const SizedBox(height: 12),
-              const Text(
-                'Sign in to the Aman Infra client workspace. New users are '
-                'provisioned by the workspace administrator.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: zMuted,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w600,
-                  height: 1.45,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

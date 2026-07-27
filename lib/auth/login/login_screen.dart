@@ -119,6 +119,12 @@ class _LoginScreenState extends State<LoginScreen> {
     await _sendPasswordReset(email);
   }
 
+  void _createWorkspace() {
+    _toast(
+      'New workspace setup is managed by Genzprotech. Contact your administrator.',
+    );
+  }
+
   Future<void> _sendPasswordReset(String email) async {
     final normalizedEmail = email.trim().toLowerCase();
     if (normalizedEmail.isEmpty) {
@@ -148,98 +154,162 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final screen = media.size;
-    final isWide = screen.width > 1120;
-    final compactHeight = screen.height < 780;
+    final isWide = media.size.width >= 1040;
+    final compactHeight = media.size.height < 760;
 
     return Scaffold(
       backgroundColor: zLoginBg,
       resizeToAvoidBottomInset: true,
-      body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFF8FAFC), Color(0xFFF1F5F9)],
+      body: LayoutBuilder(
+        builder: (context, constraints) => TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 480),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) => Opacity(
+            opacity: value,
+            child: Transform.translate(
+              offset: Offset(0, 12 * (1 - value)),
+              child: child,
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 360),
-                curve: Curves.easeOutCubic,
-                builder: (context, value, child) {
-                  return Opacity(
-                    opacity: value,
-                    child: Transform.translate(
-                      offset: Offset(0, 10 * (1 - value)),
-                      child: child,
-                    ),
-                  );
-                },
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.only(
-                    left: isWide ? 28 : 18,
-                    right: isWide ? 28 : 18,
-                    top: compactHeight ? 14 : 22,
-                    bottom: media.viewInsets.bottom + 20,
-                  ),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight:
-                          constraints.maxHeight - (compactHeight ? 28 : 42),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        if (isWide) ...[
-                          const Expanded(flex: 6, child: LoginBrandPanel()),
-                          const SizedBox(width: 28),
-                        ],
-                        Expanded(
-                          flex: isWide ? 5 : 1,
-                          child: Align(
-                            alignment: isWide
-                                ? Alignment.centerLeft
-                                : Alignment.center,
-                            child: LoginFormCard(
-                              formKey: _formKey,
-                              emailController: _email,
-                              passwordController: _pass,
-                              compactHeight: compactHeight,
-                              obscurePassword: _obscure,
-                              loading: _loading,
-                              rememberMe: _rememberMe,
-                              validateEmail: _validateEmail,
-                              validatePassword: _validatePassword,
-                              onTogglePassword: () {
-                                setState(() => _obscure = !_obscure);
-                              },
-                              onRememberChanged: (value) {
-                                setState(() => _rememberMe = value ?? false);
-                              },
-                              onForgotPassword: _loading ? null : _forgot,
-                              onLogin: _loading ? null : _login,
-                              onJoinWorkspace: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const ScreenJoinCompany(),
-                                ),
-                              ),
-                            ),
-                          ),
+          child: isWide
+              ? Row(
+                  children: [
+                    const Expanded(flex: 59, child: LoginBrandPanel()),
+                    Expanded(
+                      flex: 41,
+                      child: _LoginFormPane(
+                        child: _buildFormCard(
+                          compactHeight: compactHeight,
+                          showProductHeader: false,
                         ),
-                      ],
+                      ),
                     ),
+                  ],
+                )
+              : _MobileLoginLayout(
+                  bottomInset: media.viewInsets.bottom,
+                  child: _buildFormCard(
+                    compactHeight: compactHeight,
+                    showProductHeader: true,
                   ),
                 ),
-              );
-            },
-          ),
         ),
       ),
     );
   }
+
+  Widget _buildFormCard({
+    required bool compactHeight,
+    required bool showProductHeader,
+  }) {
+    return LoginFormCard(
+      formKey: _formKey,
+      emailController: _email,
+      passwordController: _pass,
+      compactHeight: compactHeight,
+      showProductHeader: showProductHeader,
+      obscurePassword: _obscure,
+      loading: _loading,
+      rememberMe: _rememberMe,
+      validateEmail: _validateEmail,
+      validatePassword: _validatePassword,
+      onTogglePassword: () => setState(() => _obscure = !_obscure),
+      onRememberChanged: (value) {
+        setState(() => _rememberMe = value ?? false);
+      },
+      onForgotPassword: _loading ? null : _forgot,
+      onLogin: _loading ? null : _login,
+      onCreateWorkspace: _createWorkspace,
+      onJoinWorkspace: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const ScreenJoinCompany()),
+      ),
+    );
+  }
+}
+
+class _LoginFormPane extends StatelessWidget {
+  const _LoginFormPane({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      const DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFF4F6F9), Color(0xFFDCE5F1)],
+          ),
+        ),
+      ),
+      const Positioned(
+        right: -160,
+        bottom: -180,
+        child: _AmbientCircle(size: 520),
+      ),
+      const Positioned(left: -170, top: -220, child: _AmbientCircle(size: 460)),
+      SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 42, vertical: 30),
+            child: child,
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _MobileLoginLayout extends StatelessWidget {
+  const _MobileLoginLayout({required this.bottomInset, required this.child});
+
+  final double bottomInset;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      const LoginBrandPanel(compact: true),
+      Container(color: const Color(0xFF0F172A).withValues(alpha: 0.42)),
+      SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(18, 24, 18, bottomInset + 24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.sizeOf(context).height - 48,
+            ),
+            child: Center(child: child),
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+class _AmbientCircle extends StatelessWidget {
+  const _AmbientCircle({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+      gradient: RadialGradient(
+        colors: [
+          Colors.white.withValues(alpha: 0.16),
+          Colors.white.withValues(alpha: 0),
+        ],
+      ),
+    ),
+  );
 }

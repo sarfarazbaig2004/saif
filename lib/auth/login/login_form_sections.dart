@@ -10,12 +10,11 @@ class LoginProductHeader extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 54,
-          height: 54,
+          width: 50,
+          height: 50,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            color: zBlueSoft,
-            border: Border.all(color: zBorder),
+            borderRadius: BorderRadius.circular(14),
+            color: Colors.white,
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(12),
@@ -35,30 +34,18 @@ class LoginProductHeader extends StatelessWidget {
               Text(
                 'QUIK ERP',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w900,
                   color: zText,
                 ),
               ),
-              SizedBox(height: 2),
+              SizedBox(height: 3),
               Text(
-                'by Genzprotech',
+                'Modern Business Management Platform',
                 style: TextStyle(
                   color: zMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  height: 1.25,
-                ),
-              ),
-              SizedBox(height: 7),
-              Divider(height: 1, color: zBorder),
-              SizedBox(height: 7),
-              Text(
-                'Aman Infra Developer Workspace',
-                style: TextStyle(
-                  color: zText,
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
                   height: 1.25,
                 ),
               ),
@@ -84,11 +71,12 @@ class LoginOptions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final remember = Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Checkbox(
           value: rememberMe,
-          activeColor: zBlue,
+          activeColor: zAccent,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
           visualDensity: VisualDensity.compact,
           onChanged: onRememberChanged,
@@ -96,24 +84,38 @@ class LoginOptions extends StatelessWidget {
         const Text(
           'Remember me',
           style: TextStyle(
-            fontSize: 13.5,
-            color: zText,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const Spacer(),
-        TextButton(
-          onPressed: onForgotPassword,
-          child: const Text(
-            'Forgot password?',
-            style: TextStyle(
-              fontSize: 13.5,
-              color: zBlue,
-              fontWeight: FontWeight.w600,
-            ),
+            fontSize: 14.5,
+            color: Color(0xFF43546B),
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
+    );
+    final forgot = TextButton(
+      onPressed: onForgotPassword,
+      child: const Text(
+        'Forgot password?',
+        style: TextStyle(
+          fontSize: 14.5,
+          color: Color(0xFF5B6C82),
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 420) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              remember,
+              Align(alignment: Alignment.centerRight, child: forgot),
+            ],
+          );
+        }
+        return Row(children: [remember, const Spacer(), forgot]);
+      },
     );
   }
 }
@@ -127,13 +129,13 @@ class SignInButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 44,
+      height: 58,
       child: FilledButton(
         style: FilledButton.styleFrom(
-          backgroundColor: zBlue,
+          backgroundColor: zPrimary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
           elevation: 0,
         ),
@@ -149,36 +151,53 @@ class SignInButton extends StatelessWidget {
               )
             : const Text(
                 'Sign In',
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
               ),
       ),
     );
   }
 }
 
-class JoinWorkspaceButton extends StatelessWidget {
-  final VoidCallback onPressed;
+class LoginWorkspaceLinks extends StatelessWidget {
+  final VoidCallback onCreateWorkspace;
+  final VoidCallback onJoinWorkspace;
 
-  const JoinWorkspaceButton({super.key, required this.onPressed});
+  const LoginWorkspaceLinks({
+    super.key,
+    required this.onCreateWorkspace,
+    required this.onJoinWorkspace,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 44,
-      child: OutlinedButton(
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: zBorder),
-          foregroundColor: zBlue,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+  Widget build(BuildContext context) => Wrap(
+    alignment: WrapAlignment.center,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    spacing: 7,
+    runSpacing: 4,
+    children: [
+      TextButton(
+        onPressed: onCreateWorkspace,
+        child: const Text(
+          'Create Workspace',
+          style: TextStyle(
+            color: zAccent,
+            fontSize: 14.5,
+            fontWeight: FontWeight.w800,
           ),
         ),
-        onPressed: onPressed,
+      ),
+      const Text('•', style: TextStyle(color: Color(0xFF9BA9BA))),
+      TextButton(
+        onPressed: onJoinWorkspace,
         child: const Text(
-          'Join Existing Workspace',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          'Join Company',
+          style: TextStyle(
+            color: zAccent,
+            fontSize: 14.5,
+            fontWeight: FontWeight.w800,
+          ),
         ),
       ),
-    );
-  }
+    ],
+  );
 }
