@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:QUIK/modules/engineering/bom/helpers/bom_column_config.dart';
 import 'package:QUIK/modules/engineering/bom/models/engineering_bom_line_model.dart';
 import 'package:QUIK/modules/engineering/bom/services/bom_weight_calculator.dart';
-import 'package:QUIK/modules/inventory/material_master/models/material_master_model.dart';
+import 'package:QUIK/modules/inventory/item_master/screens_add_item_master.dart';
 
 class BomLineDraft {
   final itemDescription = TextEditingController();

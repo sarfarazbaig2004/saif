@@ -3,6 +3,7 @@ import 'package:QUIK/modules/settings/coating_master/coating_master_screen.dart'
 import 'package:QUIK/modules/settings/company_profile/company_profile_bank_screen.dart';
 import 'package:QUIK/modules/settings/document_layout/document_layout_designer_screen.dart';
 import 'package:QUIK/modules/settings/factory_master/factory_list_screen.dart';
+import 'package:QUIK/modules/settings/inventory_masters/screen_inventory_masters.dart';
 import 'package:QUIK/modules/settings/vertical_master/vertical_list_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -125,23 +126,23 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
             Expanded(
               child: compact
                   ? Column(
-                      children: [
-                        SizedBox(
-                          height: 58,
-                          child: _buildLeftNav(horizontal: true),
-                        ),
-                        const SizedBox(height: 10),
-                        Expanded(child: _buildRightPanel()),
-                      ],
-                    )
+                children: [
+                  SizedBox(
+                    height: 58,
+                    child: _buildLeftNav(horizontal: true),
+                  ),
+                  const SizedBox(height: 10),
+                  Expanded(child: _buildRightPanel()),
+                ],
+              )
                   : Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(width: 250, child: _buildLeftNav()),
-                        const SizedBox(width: 12),
-                        Expanded(child: _buildRightPanel()),
-                      ],
-                    ),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(width: 250, child: _buildLeftNav()),
+                  const SizedBox(width: 12),
+                  Expanded(child: _buildRightPanel()),
+                ],
+              ),
             ),
           ],
         );
@@ -381,7 +382,7 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
         _ActionTile(
           title: 'My Profile',
           subtitle:
-              'View and update your profile and workspace registration details.',
+          'View and update your profile and workspace registration details.',
           icon: Icons.person_outline,
           onTap: _showProfileDetails,
         ),
@@ -394,7 +395,7 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
         _ActionTile(
           title: 'Notification Center',
           subtitle:
-              'Notification preferences are not configured yet. Coming soon.',
+          'Notification preferences are not configured yet. Coming soon.',
           icon: Icons.notifications_active_outlined,
           onTap: () => _showComingSoon('Notification Center'),
         ),
@@ -411,7 +412,7 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
           _ActionTile(
             title: 'Company Profile & Banking',
             subtitle:
-                'Manage company identity, GST, PAN, address, billing information, and multiple bank accounts.',
+            'Manage company identity, GST, PAN, address, billing information, and multiple bank accounts.',
             icon: Icons.apartment_outlined,
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
@@ -426,7 +427,7 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
           _ActionTile(
             title: 'Factories',
             subtitle:
-                'Manage factories, plants, addresses, and GST registration details.',
+            'Manage factories, plants, addresses, and GST registration details.',
             icon: Icons.factory_outlined,
             enabled: isAdminOrManager,
             onTap: () => Navigator.of(context).push(
@@ -453,9 +454,24 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
             ),
           ),
           _ActionTile(
+            title: 'Inventory Masters',
+            subtitle:
+            'Configure item categories, subcategories, UOMs and measurement profiles.',
+            icon: Icons.tune_outlined,
+            enabled: isAdminOrManager,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => InventoryMastersScreen(
+                  companyId: widget.companyId,
+                  canEdit: isAdminOrManager,
+                ),
+              ),
+            ),
+          ),
+          _ActionTile(
             title: 'Letter Head Layout',
             subtitle:
-                'Configure the letterhead background, printable area, margins, header, and footer.',
+            'Configure the letterhead background, printable area, margins, header, and footer.',
             icon: Icons.description_outlined,
             enabled: isAdminOrManager,
             onTap: () => Navigator.of(context).push(
@@ -470,7 +486,7 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
           _ActionTile(
             title: 'Document Numbering',
             subtitle:
-                'Control quotation, invoice, and order numbering formats.',
+            'Control quotation, invoice, and order numbering formats.',
             icon: Icons.numbers_outlined,
             enabled: isAdminOrManager,
             onTap: () => _showComingSoon('Document Numbering'),
@@ -507,8 +523,8 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
           subtitle: snapshot.hasError
               ? 'Company details could not be loaded.'
               : (details.isEmpty
-                    ? 'Optional company details are not configured.'
-                    : details),
+              ? 'Optional company details are not configured.'
+              : details),
           icon: Icons.apartment_outlined,
           onTap: snapshot.hasData
               ? () => _showCompanyProfileDialog(data)
@@ -619,61 +635,61 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
               onPressed: saving
                   ? null
                   : () async {
-                      final updates = <String, dynamic>{};
-                      for (final field in fields) {
-                        final next = controllers[field.$1]!.text.trim();
-                        final previous = (existing[field.$1] ?? '')
-                            .toString()
-                            .trim();
-                        if (next.isNotEmpty && next != previous) {
-                          updates[field.$1] = next;
-                        }
-                      }
-                      if (updates.isEmpty) {
-                        Navigator.pop(dialogContext);
-                        return;
-                      }
-                      setLocalState(() {
-                        saving = true;
-                        error = null;
-                      });
-                      try {
-                        updates['updatedAt'] = FieldValue.serverTimestamp();
-                        updates['updatedBy'] =
-                            FirebaseAuth.instance.currentUser?.uid;
-                        await FirebaseFirestore.instance
-                            .collection('companies')
-                            .doc(widget.companyId)
-                            .update(updates);
-                        if (!mounted) return;
-                        Navigator.pop(dialogContext);
-                        ScaffoldMessenger.of(this.context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Workspace profile updated successfully.',
-                            ),
-                          ),
-                        );
-                      } on FirebaseException catch (exception) {
-                        setLocalState(() {
-                          saving = false;
-                          error =
-                              exception.message ??
-                              'Workspace profile update failed.';
-                        });
-                      } catch (_) {
-                        setLocalState(() {
-                          saving = false;
-                          error = 'Workspace profile update failed.';
-                        });
-                      }
-                    },
+                final updates = <String, dynamic>{};
+                for (final field in fields) {
+                  final next = controllers[field.$1]!.text.trim();
+                  final previous = (existing[field.$1] ?? '')
+                      .toString()
+                      .trim();
+                  if (next.isNotEmpty && next != previous) {
+                    updates[field.$1] = next;
+                  }
+                }
+                if (updates.isEmpty) {
+                  Navigator.pop(dialogContext);
+                  return;
+                }
+                setLocalState(() {
+                  saving = true;
+                  error = null;
+                });
+                try {
+                  updates['updatedAt'] = FieldValue.serverTimestamp();
+                  updates['updatedBy'] =
+                      FirebaseAuth.instance.currentUser?.uid;
+                  await FirebaseFirestore.instance
+                      .collection('companies')
+                      .doc(widget.companyId)
+                      .update(updates);
+                  if (!mounted) return;
+                  Navigator.pop(dialogContext);
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Workspace profile updated successfully.',
+                      ),
+                    ),
+                  );
+                } on FirebaseException catch (exception) {
+                  setLocalState(() {
+                    saving = false;
+                    error =
+                        exception.message ??
+                            'Workspace profile update failed.';
+                  });
+                } catch (_) {
+                  setLocalState(() {
+                    saving = false;
+                    error = 'Workspace profile update failed.';
+                  });
+                }
+              },
               child: saving
                   ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
                   : const Text('Save Changes'),
             ),
           ],
@@ -732,7 +748,7 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
         _ActionTile(
           title: 'Coating Master',
           subtitle:
-              'Manage HDG, Galvalume, AZ150, AZ350, ZM350 coating percentages.',
+          'Manage HDG, Galvalume, AZ150, AZ350, ZM350 coating percentages.',
           icon: Icons.layers_outlined,
           enabled: isAdminOrManager,
           onTap: () => Navigator.of(context).push(
@@ -752,7 +768,7 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
           _ActionTile(
             title: 'Security Policies',
             subtitle:
-                'Future controls for session rules and account protection.',
+            'Future controls for session rules and account protection.',
             icon: Icons.security_outlined,
             enabled: isAdminOrManager,
             onTap: () => _showComingSoon('Security Policies'),
@@ -770,7 +786,7 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
         _ActionTile(
           title: 'Delete Account',
           subtitle:
-              'Permanently delete your login and remove your root user profile.',
+          'Permanently delete your login and remove your root user profile.',
           icon: Icons.delete_forever_outlined,
           isDanger: true,
           onTap: () => _showDeleteDialog(context),
@@ -934,10 +950,10 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
                   onPressed: saving ? null : submit,
                   child: saving
                       ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                       : const Text('Update Password'),
                 ),
               ],
@@ -1084,10 +1100,10 @@ class _ScreenSettingsHomeState extends State<ScreenSettingsHome> {
                   onPressed: deleting ? null : submitDelete,
                   child: deleting
                       ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                       : const Text('Delete Permanently'),
                 ),
               ],

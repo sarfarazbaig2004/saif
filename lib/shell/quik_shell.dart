@@ -20,7 +20,7 @@ import 'package:QUIK/modules/dashboard/dashboard_screen.dart';
 import 'package:QUIK/modules/dispatch/screens/dispatch_list_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_inward_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/material_issue_screen.dart';
-import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_master_screen.dart';
+import 'package:QUIK/modules/inventory/item_master/screens_item_master_list.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_low_stock_screen.dart';
 import 'package:QUIK/modules/inventory/fabrication/screens/raw_material_stock_screen.dart';
 import 'package:QUIK/modules/purchase/fabrication/screens/purchase_bill_screen.dart';
@@ -128,12 +128,12 @@ class _QuikShellState extends State<QuikShell> {
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
         final raw =
-            (data['industryType'] ??
-                    data['businessCategory'] ??
-                    data['industry'] ??
-                    '')
-                .toString()
-                .toLowerCase();
+        (data['industryType'] ??
+            data['businessCategory'] ??
+            data['industry'] ??
+            '')
+            .toString()
+            .toLowerCase();
 
         if (raw.contains('export') && raw.contains('import')) {
           _resolvedIndustry = 'export_import';
@@ -167,10 +167,10 @@ class _QuikShellState extends State<QuikShell> {
   }
 
   bool _hasPermission(
-    String module,
-    String submodule, {
-    String action = 'view',
-  }) {
+      String module,
+      String submodule, {
+        String action = 'view',
+      }) {
     final parsed = PermissionEvaluator.parsePermissions({
       module: {
         submodule: {action: true},
@@ -236,7 +236,7 @@ class _QuikShellState extends State<QuikShell> {
     }
 
     final cataloguePermission =
-        AmanPermissionCatalogue.routeViewPermission[page.name];
+    AmanPermissionCatalogue.routeViewPermission[page.name];
     if (cataloguePermission != null) {
       final moduleId = cataloguePermission.split('.').first;
       return _isModuleEnabled(moduleId) &&
@@ -251,8 +251,8 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.settingsGeneral:
         return true;
 
-      // New Modules
-      // New Modules
+    // New Modules
+    // New Modules
       case ShellPage.customerPoList:
         return _hasPermission('customerPo', 'customerPo');
 
@@ -270,7 +270,7 @@ class _QuikShellState extends State<QuikShell> {
           'engineering',
         ); // Let them see the placeholder landing page if module is on
 
-      // Sales
+    // Sales
       case ShellPage.salesInquiries:
         return _hasPermission('sales', 'inquiries');
       case ShellPage.salesQuotations:
@@ -283,10 +283,10 @@ class _QuikShellState extends State<QuikShell> {
         return _hasPermission('sales', 'tasks');
       case ShellPage.salesMeetings:
         return _hasPermission('sales', 'meetings');
-      // Service
+    // Service
       case ShellPage.service:
         return true;
-      // CRM
+    // CRM
       case ShellPage.crmCustomers:
         return _hasPermission('crm', 'customers');
       case ShellPage.crmContacts:
@@ -295,7 +295,7 @@ class _QuikShellState extends State<QuikShell> {
         return _hasPermission('crm', 'customerVisits');
       case ShellPage.crmCommunication:
         return _hasPermission('crm', 'communicationHistory');
-      // Purchase
+    // Purchase
       case ShellPage.purchaseVendors:
         return _hasPermission('purchase', 'vendors');
       case ShellPage.purchaseVendorOffers:
@@ -317,7 +317,7 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.purchaseRequisitions:
         return _hasPermission('purchase', 'purchaseOrders') ||
             _hasPermission('purchase', 'vendors');
-      // Inventory
+    // Inventory
       case ShellPage.inventoryProducts:
         return _hasPermission('inventory', 'products');
       case ShellPage.inventoryStockSummary:
@@ -336,14 +336,14 @@ class _QuikShellState extends State<QuikShell> {
       case ShellPage.inventoryMaterialInward:
       case ShellPage.inventoryMaterialIssue:
         return _hasPermission('inventory', 'products');
-      // Dispatch
+    // Dispatch
       case ShellPage.dispatchReady:
       case ShellPage.dispatchChallans:
       case ShellPage.dispatchShipmentTracking:
       case ShellPage.dispatchDelivered:
         return _isModuleEnabled(ModuleIds.dispatch) &&
             _hasPermission('dispatch', _dispatchPermissionKey(page));
-      // Production
+    // Production
       case ShellPage.productionItems:
       case ShellPage.productionProcesses:
       case ShellPage.productionWorkCenters:
@@ -370,7 +370,7 @@ class _QuikShellState extends State<QuikShell> {
         return _hasPermission('hr', 'employees') ||
             _hasPermission('hr', 'attendance') ||
             _hasPermission('hr', 'wages');
-      // Finance
+    // Finance
       case ShellPage.financeProforma:
         return _hasPermission('finance', 'proformaInvoice');
       case ShellPage.financeTaxInvoice:
@@ -383,7 +383,7 @@ class _QuikShellState extends State<QuikShell> {
         return _hasPermission('finance', 'outstanding');
       case ShellPage.financeExpenses:
         return _hasPermission('finance', 'expenseEntries');
-      // Reports
+    // Reports
       case ShellPage.reportsSales:
         return _hasPermission('reports', 'salesReport');
       case ShellPage.reportsInquiry:
@@ -394,7 +394,7 @@ class _QuikShellState extends State<QuikShell> {
         return _hasPermission('reports', 'productReport');
       case ShellPage.reportsPayment:
         return _hasPermission('reports', 'paymentReport');
-      // Administration
+    // Administration
       case ShellPage.adminUsers:
         return _hasPermission('administration', 'users');
 
@@ -998,7 +998,7 @@ class _QuikShellState extends State<QuikShell> {
 
     if (_currentSidebarGroups.any((group) => group.children.contains(page))) {
       final group = _currentSidebarGroups.firstWhere(
-        (g) => g.children.contains(page),
+            (g) => g.children.contains(page),
       );
       return buildModulePageTitle(group.title, page.label);
     }
@@ -1067,7 +1067,7 @@ class _QuikShellState extends State<QuikShell> {
               child: Text('All Verticals'),
             ),
           ...verticalState.availableVerticals.map(
-            (vertical) => DropdownMenuItem<String>(
+                (vertical) => DropdownMenuItem<String>(
               value: vertical.id,
               child: Text(
                 vertical.name,
@@ -1227,16 +1227,16 @@ class _QuikShellState extends State<QuikShell> {
             }
 
             final activeVerticals =
-                (verticalSnap.data ?? const <VerticalModel>[])
-                    .where(
-                      (vertical) => vertical.isActive && !vertical.isDeleted,
-                    )
-                    .map(
-                      (vertical) => ActiveVerticalOption(
-                        id: vertical.id,
-                        name: vertical.name,
-                      ),
-                    );
+            (verticalSnap.data ?? const <VerticalModel>[])
+                .where(
+                  (vertical) => vertical.isActive && !vertical.isDeleted,
+            )
+                .map(
+                  (vertical) => ActiveVerticalOption(
+                id: vertical.id,
+                name: vertical.name,
+              ),
+            );
             final unionEvaluator = PermissionEvaluator.fromUserData(
               evaluatorData,
             );
@@ -1356,9 +1356,10 @@ class _QuikShellState extends State<QuikShell> {
         );
 
       case ShellPage.inventoryProducts:
+      case ShellPage.inventoryMaterialMaster:
         return Padding(
-          padding: EdgeInsets.all(10),
-          child: RawMaterialMasterScreen(tenantId: widget.companyId),
+          padding: const EdgeInsets.all(10),
+          child: ScreenItemMasterList(tenantId: widget.companyId),
         );
 
       case ShellPage.inventoryStockSummary:
@@ -1493,14 +1494,14 @@ class _QuikShellState extends State<QuikShell> {
           child: SalesOrderListScreen(
             companyId: widget.companyId,
             activeVerticalId:
-                ActiveVerticalScope.maybeOf(context)?.activeVerticalId ?? '',
+            ActiveVerticalScope.maybeOf(context)?.activeVerticalId ?? '',
             activeVerticalName:
-                ActiveVerticalScope.maybeOf(context)?.activeVerticalName ?? '',
+            ActiveVerticalScope.maybeOf(context)?.activeVerticalName ?? '',
             availableVerticals:
-                ActiveVerticalScope.maybeOf(context)?.availableVerticals ??
+            ActiveVerticalScope.maybeOf(context)?.availableVerticals ??
                 const <ActiveVerticalOption>[],
             canChangeVertical:
-                ActiveVerticalScope.maybeOf(context)?.allowAllVerticals == true,
+            ActiveVerticalScope.maybeOf(context)?.allowAllVerticals == true,
           ),
         );
 
@@ -1707,7 +1708,7 @@ class _QuikShellState extends State<QuikShell> {
         );
 
       default:
-        // This acts as the fallback landing page for Customer PO, Projects, etc.
+      // This acts as the fallback landing page for Customer PO, Projects, etc.
         return Padding(
           padding: const EdgeInsets.all(10),
           child: _moduleLandingPage(activePage!),
@@ -1758,8 +1759,8 @@ class _QuikShellState extends State<QuikShell> {
                     : 'Restricted',
                 icon: allowed
                     ? (implemented
-                          ? Icons.check_circle_outline
-                          : Icons.construction_outlined)
+                    ? Icons.check_circle_outline
+                    : Icons.construction_outlined)
                     : Icons.lock_outline,
                 tint: allowed
                     ? (implemented ? zSuccessSoft : zBlueSoft)
@@ -1979,11 +1980,11 @@ class _QuikShellState extends State<QuikShell> {
 
     final inquiryStream = canShowInquiryDashboard
         ? FirebaseFirestore.instance
-              .collection('companies')
-              .doc(widget.companyId)
-              .collection('inquiries')
-              .where('assignedToUid', isEqualTo: widget.userUid)
-              .snapshots()
+        .collection('companies')
+        .doc(widget.companyId)
+        .collection('inquiries')
+        .where('assignedToUid', isEqualTo: widget.userUid)
+        .snapshots()
         : null;
 
     if (!canShowInquiryDashboard) {
@@ -2050,7 +2051,7 @@ class _QuikShellState extends State<QuikShell> {
                   child: Panel(
                     title: 'Next Build Suggestion',
                     emptyText:
-                        'Start with Follow-ups, Stock Summary and Vendors',
+                    'Start with Follow-ups, Stock Summary and Vendors',
                     emptyIcon: Icons.rocket_launch_outlined,
                   ),
                 ),

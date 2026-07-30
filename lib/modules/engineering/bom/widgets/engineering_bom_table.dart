@@ -8,7 +8,7 @@ import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_material_lo
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_models.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_table_cells.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_total_row.dart';
-import 'package:QUIK/modules/inventory/material_master/models/material_master_model.dart';
+import 'package:QUIK/modules/inventory/item_master/screens_add_item_master.dart';
 
 class EngineeringBomTable extends StatelessWidget {
   final List<BomLineDraft> lines;

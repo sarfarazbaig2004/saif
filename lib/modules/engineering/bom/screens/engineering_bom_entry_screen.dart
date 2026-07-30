@@ -15,7 +15,7 @@ import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_entry_scaff
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_models.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_revision_reason_dialog.dart';
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_fastener_bom_models.dart';
-import 'package:QUIK/modules/inventory/material_master/repositories/material_master_repository.dart';
+import 'package:QUIK/modules/inventory/item_master/screens_add_item_master.dart';
 
 class EngineeringBomEntryScreen extends StatefulWidget {
   final String tenantId;
