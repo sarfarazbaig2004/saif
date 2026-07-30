@@ -7,7 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:QUIK/core/permissions/permission_catalogue.dart';
 import 'package:QUIK/core/permissions/permission_scope.dart';
-import 'package:QUIK/modules/inventory/material_master/widgets/material_picker_dialog.dart';
+import 'package:QUIK/modules/inventory/item_master/screens_item_master_list.dart';
 import 'package:QUIK/modules/purchase/purchase_orders/models/purchase_order_model.dart';
 import 'package:QUIK/modules/purchase/purchase_orders/repositories/purchase_order_repository.dart';
 import 'package:QUIK/modules/purchase/purchase_orders/services/purchase_order_pdf_generator.dart';

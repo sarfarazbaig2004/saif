@@ -1,5 +1,5 @@
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_models.dart';
-import 'package:QUIK/modules/inventory/material_master/repositories/material_master_repository.dart';
+import 'package:QUIK/modules/inventory/item_master/screens_add_item_master.dart';
 
 class EngineeringBomMaterialRefreshResult {
   final int refreshed;

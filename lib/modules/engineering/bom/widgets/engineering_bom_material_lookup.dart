@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:QUIK/modules/engineering/bom/widgets/engineering_bom_models.dart';
-import 'package:QUIK/modules/inventory/material_master/models/material_master_model.dart';
-import 'package:QUIK/modules/inventory/material_master/widgets/material_picker_dialog.dart';
+import 'package:QUIK/modules/inventory/item_master/screens_add_item_master.dart';
+import 'package:QUIK/modules/inventory/item_master/screens_item_master_list.dart';
 
 class EngineeringBomMaterialLookup {
   const EngineeringBomMaterialLookup._();
