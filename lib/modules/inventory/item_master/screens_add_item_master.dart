@@ -422,26 +422,6 @@ class ItemMasterConfiguration {
     return '${nature.trim().toLowerCase()}|${name.trim().toLowerCase()}';
   }
 
-  static int _natureOrder(String nature) {
-    const values = [
-      'Raw Material',
-      'Bought-Out Component',
-      'Consumable',
-      'Spare Part',
-      'Tool & Equipment',
-      'Safety Item',
-      'Packaging Material',
-      'Semi-Finished Good',
-      'Finished Good',
-      'Service',
-      'Asset',
-      'Scrap',
-      'Other',
-    ];
-    final index = values.indexOf(nature);
-    return index < 0 ? values.length : index;
-  }
-
   static String _codeFromName(String value) {
     final parts = value
         .toUpperCase()
@@ -3408,7 +3388,7 @@ class _ScreenAddItemMasterState extends State<ScreenAddItemMaster> {
 
     return DropdownButtonFormField<String>(
       key: ValueKey(
-        'subcategory-${_itemNature}-${_category.text}-$selectedValue',
+        'subcategory-$_itemNature-${_category.text}-$selectedValue',
       ),
       initialValue: selectedValue,
       isExpanded: true,
@@ -4668,62 +4648,6 @@ class _Subheading extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _InfoBox extends StatelessWidget {
-  const _InfoBox({
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: zSurfaceSoft,
-        border: Border.all(color: zBorder),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 17, color: zMuted),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: zText,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  message,
-                  style: const TextStyle(
-                    color: zMuted,
-                    fontSize: 10,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
